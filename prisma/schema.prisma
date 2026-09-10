@@ -1,0 +1,397 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model School {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  address     String?
+  logo        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users          User[]
+  academicYears  AcademicYear[]
+  categories     Category[]
+  courses        Course[]
+  cohorts        Cohort[]
+  courseRequests CourseRequest[]
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String
+  name             String
+  nis              String?  // Nomor Induk Siswa (student ID)
+  nip              String?  // Nomor Induk Pegawai (staff ID)
+  role             Role
+  avatar           String?
+  isActive         Boolean  @default(true)
+  mustChangePassword Boolean @default(false)
+  locale           String   @default("id")
+  schoolId         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  school                School?              @relation(fields: [schoolId], references: [id])
+  teacherCourses        Course[]             @relation("CourseTeacher")
+  enrollments           Enrollment[]
+  quizAttempts          QuizAttempt[]
+  assignmentSubmissions AssignmentSubmission[]
+  grades                Grade[]
+  notifications         Notification[]
+  cohortMemberships     CohortMember[]
+  courseRequests        CourseRequest[]
+
+  @@index([schoolId])
+  @@index([email])
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SUPERVISOR
+  TEACHER
+  STUDENT
+}
+
+model AcademicYear {
+  id        String             @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    AcademicYearStatus @default(ACTIVE)
+  schoolId  String
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  school    School    @relation(fields: [schoolId], references: [id])
+  courses   Course[]
+
+  @@index([schoolId])
+}
+
+enum AcademicYearStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String
+  parentId  String?
+  schoolId  String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  school    School     @relation(fields: [schoolId], references: [id])
+  courses   Course[]
+
+  @@index([schoolId])
+  @@index([parentId])
+}
+
+model Course {
+  id              String       @id @default(cuid())
+  title           String
+  description     String?
+  status          CourseStatus @default(DRAFT)
+  schoolId        String
+  teacherId       String
+  categoryId      String?
+  academicYearId  String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  school       School       @relation(fields: [schoolId], references: [id])
+  teacher      User         @relation("CourseTeacher", fields: [teacherId], references: [id])
+  category     Category?    @relation(fields: [categoryId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  modules      Module[]
+  enrollments  Enrollment[]
+  grades       Grade[]
+
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([academicYearId])
+}
+
+enum CourseStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  ARCHIVED
+}
+
+model CourseRequest {
+  id              String              @id @default(cuid())
+  title           String
+  description     String?
+  categoryId      String?
+  academicYearId  String
+  requesterId     String
+  status          CourseRequestStatus  @default(PENDING)
+  adminNote       String?
+  courseId         String?
+  schoolId        String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  requester  User   @relation(fields: [requesterId], references: [id])
+  school     School @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([requesterId])
+}
+
+enum CourseRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Cohort {
+  id        String   @id @default(cuid())
+  name      String
+  schoolId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school      School         @relation(fields: [schoolId], references: [id])
+  members     CohortMember[]
+  enrollments Enrollment[]
+
+  @@index([schoolId])
+}
+
+model CohortMember {
+  id        String   @id @default(cuid())
+  cohortId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  cohort Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cohortId, userId])
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  courseId  String
+  userId    String
+  cohortId  String?
+  method    EnrollmentMethod
+  createdAt DateTime         @default(now())
+
+  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cohort Cohort? @relation(fields: [cohortId], references: [id])
+
+  @@unique([courseId, userId])
+}
+
+enum EnrollmentMethod {
+  COHORT_SYNC
+  MANUAL
+}
+
+model Module {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int      @default(0)
+  courseId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  contents    Content[]
+  quizzes     Quiz[]
+  assignments Assignment[]
+
+  @@index([courseId])
+}
+
+model Content {
+  id        String      @id @default(cuid())
+  title     String
+  type      ContentType
+  body      String?     @db.Text
+  fileUrl   String?
+  fileName  String?
+  fileSize  Int?
+  order     Int         @default(0)
+  moduleId  String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([moduleId])
+}
+
+enum ContentType {
+  TEXT
+  FILE
+  VIDEO
+}
+
+model Quiz {
+  id               String   @id @default(cuid())
+  title            String
+  description      String?
+  moduleId         String
+  duration         Int?
+  deadline         DateTime?
+  shuffleQuestions Boolean  @default(false)
+  isPublished      Boolean  @default(false)
+  order            Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  module    Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@index([moduleId])
+}
+
+model QuizQuestion {
+  id       String       @id @default(cuid())
+  quizId   String
+  type     QuestionType
+  text     String       @db.Text
+  options  Json?
+  points   Float        @default(1)
+  order    Int          @default(0)
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers QuizAnswer[]
+
+  @@index([quizId])
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  ESSAY
+}
+
+model QuizAttempt {
+  id          String    @id @default(cuid())
+  quizId      String
+  userId      String
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  score       Float?
+  isGraded    Boolean   @default(false)
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id])
+  answers QuizAnswer[]
+
+  @@index([quizId])
+  @@index([userId])
+}
+
+model QuizAnswer {
+  id          String  @id @default(cuid())
+  attemptId   String
+  questionId  String
+  answer      String? @db.Text
+  score       Float?
+  teacherNote String?
+
+  attempt  QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question QuizQuestion @relation(fields: [questionId], references: [id])
+
+  @@index([attemptId])
+}
+
+model Assignment {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?  @db.Text
+  moduleId     String
+  deadline     DateTime?
+  maxFileSize  Int?
+  allowedTypes String?
+  maxScore     Float    @default(100)
+  isPublished  Boolean  @default(false)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  module      Module                 @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@index([moduleId])
+}
+
+model AssignmentSubmission {
+  id           String    @id @default(cuid())
+  assignmentId String
+  userId       String
+  fileUrl      String
+  fileName     String
+  fileSize     Int
+  submittedAt  DateTime  @default(now())
+  score        Float?
+  teacherNote  String?   @db.Text
+  gradedAt     DateTime?
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@index([assignmentId])
+  @@index([userId])
+}
+
+model Grade {
+  id        String    @id @default(cuid())
+  courseId  String
+  userId    String
+  label     String
+  score     Float
+  maxScore  Float     @default(100)
+  type      GradeType
+  sourceId  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([courseId])
+  @@index([userId])
+}
+
+enum GradeType {
+  QUIZ
+  ASSIGNMENT
+  MANUAL
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

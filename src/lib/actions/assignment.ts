@@ -1,0 +1,119 @@
+'use server';
+
+import { db } from '@/lib/db';
+import { requireAuth, requireRole } from '@/lib/auth-utils';
+import { revalidatePath } from 'next/cache';
+
+export async function getAssignmentById(assignmentId: string) {
+  const session = await requireAuth();
+
+  return db.assignment.findUnique({
+    where: { id: assignmentId },
+    include: {
+      module: {
+        include: {
+          course: true,
+        },
+      },
+      submissions: {
+        where:
+          session.user.role === 'STUDENT'
+            ? { userId: session.user.id }
+            : undefined,
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, nis: true },
+          },
+        },
+      },
+      _count: {
+        select: { submissions: true },
+      },
+    },
+  });
+}
+
+export async function createAssignment(data: {
+  moduleId: string;
+  title: string;
+  description?: string;
+  deadline?: string;
+  maxScore?: number;
+  maxFileSize?: number;
+  allowedTypes?: string;
+}) {
+  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+
+  const count = await db.assignment.count({ where: { moduleId: data.moduleId } });
+
+  const assignment = await db.assignment.create({
+    data: {
+      moduleId: data.moduleId,
+      title: data.title,
+      description: data.description || null,
+      deadline: data.deadline ? new Date(data.deadline) : null,
+      maxScore: Number(data.maxScore || 100),
+      maxFileSize: data.maxFileSize ? Number(data.maxFileSize) : 25,
+      allowedTypes: data.allowedTypes || 'pdf,docx,zip,pptx,xlsx',
+      isPublished: true,
+      order: count,
+    },
+  });
+
+  revalidatePath('/[locale]/teacher/course/[courseId]/modules', 'page');
+  return assignment;
+}
+
+export async function deleteAssignment(assignmentId: string) {
+  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+
+  const deleted = await db.assignment.delete({
+    where: { id: assignmentId },
+  });
+
+  revalidatePath('/[locale]/teacher/course/[courseId]/modules', 'page');
+  return deleted;
+}
+
+export async function submitAssignment(data: {
+  assignmentId: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+}) {
+  const session = await requireAuth();
+
+  const existing = await db.assignmentSubmission.findFirst({
+    where: {
+      assignmentId: data.assignmentId,
+      userId: session.user.id,
+    },
+  });
+
+  let submission;
+  if (existing) {
+    submission = await db.assignmentSubmission.update({
+      where: { id: existing.id },
+      data: {
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        submittedAt: new Date(),
+      },
+    });
+  } else {
+    submission = await db.assignmentSubmission.create({
+      data: {
+        assignmentId: data.assignmentId,
+        userId: session.user.id,
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        submittedAt: new Date(),
+      },
+    });
+  }
+
+  revalidatePath('/[locale]/student/course/[courseId]/assignment/[assignmentId]', 'page');
+  return submission;
+}
