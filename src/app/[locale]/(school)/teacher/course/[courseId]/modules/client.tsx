@@ -87,6 +87,8 @@ export function TeacherCourseModulesClient({
   const [mcOptions, setMcOptions] = useState<{ id: string; text: string; isCorrect: boolean }[]>([
     { id: 'A', text: '', isCorrect: true },
     { id: 'B', text: '', isCorrect: false },
+    { id: 'C', text: '', isCorrect: false },
+    { id: 'D', text: '', isCorrect: false },
   ]);
 
   // Edit Question Modal State
@@ -248,6 +250,8 @@ export function TeacherCourseModulesClient({
     setMcOptions([
       { id: 'A', text: '', isCorrect: true },
       { id: 'B', text: '', isCorrect: false },
+      { id: 'C', text: '', isCorrect: false },
+      { id: 'D', text: '', isCorrect: false },
     ]);
   };
 
@@ -1000,55 +1004,107 @@ export function TeacherCourseModulesClient({
                 </div>
 
                 {qType === QuestionType.MULTIPLE_CHOICE && (
-                  <div className="space-y-2 pt-2">
-                    <Label className="text-xs font-semibold text-gray-600">
-                      Pilihan Jawaban & Tentukan Kunci Jawaban:
-                    </Label>
+                  <div className="space-y-3 pt-2 border-t border-gray-200">
+                    <div>
+                      <Label className="text-xs font-bold text-[#002446]">
+                        Pilihan Jawaban & Tentukan Kunci Jawaban:
+                      </Label>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Klik radio button di samping huruf untuk memilih jawaban benar. Anda dapat menambah atau mengurangi pilihan (minimal 2).
+                      </p>
+                    </div>
+
                     <div className="space-y-2">
                       {mcOptions.map((opt, index) => (
-                        <div key={opt.id} className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="correctKey"
-                            checked={opt.isCorrect}
-                            onChange={() => {
-                              setMcOptions(prev => prev.map(o => ({ ...o, isCorrect: o.id === opt.id })));
-                            }}
-                            className="mt-1"
-                          />
-                          <span className="text-sm font-bold w-6">{opt.id}.</span>
+                        <div
+                          key={opt.id}
+                          className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+                            opt.isCorrect
+                              ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                              : 'bg-white border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="radio"
+                              name="correctKey"
+                              checked={opt.isCorrect}
+                              onChange={() => {
+                                setMcOptions((prev) =>
+                                  prev.map((o) => ({ ...o, isCorrect: o.id === opt.id }))
+                                );
+                              }}
+                              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span
+                              className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
+                                opt.isCorrect
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {opt.id}
+                            </span>
+                          </label>
+
                           <Input
-                            placeholder={`Pilihan ${opt.id}`}
+                            placeholder={`Masukkan teks untuk Pilihan ${opt.id}...`}
                             value={opt.text}
                             onChange={(e) => {
-                              setMcOptions(prev => prev.map(o => o.id === opt.id ? { ...o, text: e.target.value } : o));
+                              setMcOptions((prev) =>
+                                prev.map((o) => (o.id === opt.id ? { ...o, text: e.target.value } : o))
+                              );
                             }}
+                            className={`flex-1 bg-white text-sm ${
+                              opt.isCorrect ? 'border-emerald-300 focus-visible:ring-emerald-500' : ''
+                            }`}
                           />
+
+                          {opt.isCorrect && (
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded hidden sm:inline whitespace-nowrap">
+                              ✓ Kunci Benar
+                            </span>
+                          )}
+
                           {mcOptions.length > 2 && (
                             <Button
                               type="button"
                               variant="ghost"
+                              size="sm"
                               onClick={() => {
-                                setMcOptions(prev => prev.filter(o => o.id !== opt.id));
+                                setMcOptions((prev) => {
+                                  const filtered = prev.filter((o) => o.id !== opt.id);
+                                  const hadCorrect = filtered.some((o) => o.isCorrect);
+                                  return filtered.map((o, idx) => ({
+                                    ...o,
+                                    id: String.fromCharCode(65 + idx),
+                                    isCorrect: hadCorrect ? o.isCorrect : idx === 0,
+                                  }));
+                                });
                               }}
-                              className="h-8 w-8 p-0 text-red-500"
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              title={`Hapus Pilihan ${opt.id}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
                       ))}
+
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
                         onClick={() => {
-                          const nextChar = String.fromCharCode(mcOptions[mcOptions.length - 1].id.charCodeAt(0) + 1);
-                          setMcOptions(prev => [...prev, { id: nextChar, text: '', isCorrect: false }]);
+                          const nextLetter = String.fromCharCode(65 + mcOptions.length);
+                          setMcOptions((prev) => [
+                            ...prev,
+                            { id: nextLetter, text: '', isCorrect: false },
+                          ]);
                         }}
-                        className="text-xs mt-2"
+                        className="w-full mt-2 border-dashed border-2 border-blue-200 bg-blue-50/30 text-[#002446] hover:bg-blue-50 hover:border-[#002446] flex items-center justify-center gap-2 py-2.5 font-semibold text-xs transition-colors"
                       >
-                        + Tambah Opsi
+                        <Plus className="h-4 w-4 text-[#FF8928]" />
+                        Tambah Pilihan Jawaban ({String.fromCharCode(65 + mcOptions.length)})
                       </Button>
                     </div>
                   </div>
@@ -1275,64 +1331,119 @@ export function TeacherCourseModulesClient({
                 </div>
 
                 {editQuestionModal.type === QuestionType.MULTIPLE_CHOICE && (
-                  <div className="space-y-2 pt-2">
-                    <Label className="text-sm font-semibold">Pilihan Jawaban</Label>
+                  <div className="space-y-3 pt-2 border-t border-gray-200">
+                    <div>
+                      <Label className="text-xs font-bold text-[#002446]">
+                        Pilihan Jawaban & Tentukan Kunci Jawaban:
+                      </Label>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Pilih radio button untuk menentukan kunci jawaban yang benar.
+                      </p>
+                    </div>
+
                     <div className="space-y-2">
                       {editQuestionModal.options.map((opt: any) => (
-                        <div key={opt.id} className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="editCorrectKey"
-                            checked={opt.isCorrect}
-                            onChange={() => {
-                              setEditQuestionModal({
-                                ...editQuestionModal,
-                                options: editQuestionModal.options.map((o: any) => ({ ...o, isCorrect: o.id === opt.id }))
-                              });
-                            }}
-                            className="mt-1"
-                          />
-                          <span className="text-sm font-bold w-6">{opt.id}.</span>
+                        <div
+                          key={opt.id}
+                          className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+                            opt.isCorrect
+                              ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                              : 'bg-white border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="radio"
+                              name="editCorrectKey"
+                              checked={opt.isCorrect}
+                              onChange={() => {
+                                setEditQuestionModal({
+                                  ...editQuestionModal,
+                                  options: editQuestionModal.options.map((o: any) => ({
+                                    ...o,
+                                    isCorrect: o.id === opt.id,
+                                  })),
+                                });
+                              }}
+                              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span
+                              className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
+                                opt.isCorrect
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {opt.id}
+                            </span>
+                          </label>
+
                           <Input
                             value={opt.text}
                             onChange={(e) => {
                               setEditQuestionModal({
                                 ...editQuestionModal,
-                                options: editQuestionModal.options.map((o: any) => o.id === opt.id ? { ...o, text: e.target.value } : o)
+                                options: editQuestionModal.options.map((o: any) =>
+                                  o.id === opt.id ? { ...o, text: e.target.value } : o
+                                ),
                               });
                             }}
+                            className={`flex-1 bg-white text-sm ${
+                              opt.isCorrect ? 'border-emerald-300 focus-visible:ring-emerald-500' : ''
+                            }`}
                           />
+
+                          {opt.isCorrect && (
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded hidden sm:inline whitespace-nowrap">
+                              ✓ Kunci Benar
+                            </span>
+                          )}
+
                           {editQuestionModal.options.length > 2 && (
                             <Button
                               type="button"
                               variant="ghost"
+                              size="sm"
                               onClick={() => {
+                                const filtered = editQuestionModal.options.filter(
+                                  (o: any) => o.id !== opt.id
+                                );
+                                const hadCorrect = filtered.some((o: any) => o.isCorrect);
                                 setEditQuestionModal({
                                   ...editQuestionModal,
-                                  options: editQuestionModal.options.filter((o: any) => o.id !== opt.id)
+                                  options: filtered.map((o: any, idx: number) => ({
+                                    ...o,
+                                    id: String.fromCharCode(65 + idx),
+                                    isCorrect: hadCorrect ? o.isCorrect : idx === 0,
+                                  })),
                                 });
                               }}
-                              className="h-8 w-8 p-0 text-red-500"
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              title={`Hapus Pilihan ${opt.id}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>
                       ))}
+
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
                         onClick={() => {
-                          const nextChar = String.fromCharCode(editQuestionModal.options[editQuestionModal.options.length - 1].id.charCodeAt(0) + 1);
+                          const nextLetter = String.fromCharCode(65 + editQuestionModal.options.length);
                           setEditQuestionModal({
                             ...editQuestionModal,
-                            options: [...editQuestionModal.options, { id: nextChar, text: '', isCorrect: false }]
+                            options: [
+                              ...editQuestionModal.options,
+                              { id: nextLetter, text: '', isCorrect: false },
+                            ],
                           });
                         }}
-                        className="text-xs mt-2"
+                        className="w-full mt-2 border-dashed border-2 border-blue-200 bg-blue-50/30 text-[#002446] hover:bg-blue-50 hover:border-[#002446] flex items-center justify-center gap-2 py-2.5 font-semibold text-xs transition-colors"
                       >
-                        + Tambah Opsi
+                        <Plus className="h-4 w-4 text-[#FF8928]" />
+                        Tambah Pilihan Jawaban ({String.fromCharCode(65 + editQuestionModal.options.length)})
                       </Button>
                     </div>
                   </div>
