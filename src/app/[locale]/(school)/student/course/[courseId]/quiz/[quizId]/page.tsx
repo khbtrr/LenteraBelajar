@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
-import { getQuizById, startOrGetQuizAttempt } from '@/lib/actions/quiz';
-import { StudentQuizClient } from './client';
+import { getQuizById, getQuizStatusForStudent } from '@/lib/actions/quiz';
+import { StudentQuizLanding } from './landing';
 
 export default async function StudentQuizPage({
   params,
@@ -10,16 +10,18 @@ export default async function StudentQuizPage({
   const { courseId, quizId } = await params;
 
   try {
-    const quizData = await startOrGetQuizAttempt(quizId);
+    const [quiz, status] = await Promise.all([
+      getQuizById(quizId),
+      getQuizStatusForStudent(quizId),
+    ]);
+
+    if (!quiz) notFound();
 
     return (
-      <StudentQuizClient
+      <StudentQuizLanding
         courseId={courseId}
-        quizId={quizId}
-        initialAttempt={quizData.attempt}
-        quizTitle={quizData.quizTitle}
-        durationMinutes={quizData.durationMinutes}
-        questions={quizData.questions}
+        quiz={quiz}
+        status={status}
       />
     );
   } catch (err: any) {

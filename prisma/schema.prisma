@@ -117,9 +117,11 @@ model Course {
   teacher      User         @relation("CourseTeacher", fields: [teacherId], references: [id])
   category     Category?    @relation(fields: [categoryId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
-  modules      Module[]
-  enrollments  Enrollment[]
-  grades       Grade[]
+  modules                Module[]
+  enrollments            Enrollment[]
+  grades                 Grade[]
+  questionBank           QuestionBank[]
+  questionBankCategories QuestionBankCategory[]
 
   @@index([schoolId])
   @@index([teacherId])
@@ -256,12 +258,16 @@ model Quiz {
   shuffleQuestions Boolean  @default(false)
   isPublished      Boolean  @default(false)
   order            Int      @default(0)
+  maxAttempts      Int?     @default(1)  // null = unlimited
+  passingGrade     Float?               // null = no passing grade (0-100)
+  useQuestionBank  Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  module    Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  questions QuizQuestion[]
-  attempts  QuizAttempt[]
+  module                Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions             QuizQuestion[]
+  attempts              QuizAttempt[]
+  questionBankSelections QuizBankSelection[]
 
   @@index([moduleId])
 }
@@ -287,13 +293,14 @@ enum QuestionType {
 }
 
 model QuizAttempt {
-  id          String    @id @default(cuid())
-  quizId      String
-  userId      String
-  startedAt   DateTime  @default(now())
-  submittedAt DateTime?
-  score       Float?
-  isGraded    Boolean   @default(false)
+  id               String    @id @default(cuid())
+  quizId           String
+  userId           String
+  startedAt        DateTime  @default(now())
+  submittedAt      DateTime?
+  score            Float?
+  isGraded         Boolean   @default(false)
+  questionSnapshot Json?     // Snapshot of randomly selected questions for bank-soal mode
 
   quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
   user    User         @relation(fields: [userId], references: [id])
@@ -394,4 +401,47 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model QuestionBankCategory {
+  id        String   @id @default(cuid())
+  name      String
+  courseId   String
+  createdAt DateTime @default(now())
+
+  course    Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions QuestionBank[]
+  quizBankSelections QuizBankSelection[]
+
+  @@index([courseId])
+}
+
+model QuestionBank {
+  id         String       @id @default(cuid())
+  courseId    String
+  categoryId String?
+  type       QuestionType
+  text       String       @db.Text
+  options    Json?
+  points     Float        @default(1)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  course   Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  category QuestionBankCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([courseId])
+  @@index([categoryId])
+}
+
+model QuizBankSelection {
+  id         String @id @default(cuid())
+  quizId     String
+  categoryId String
+  count      Int
+
+  quiz     Quiz                 @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  category QuestionBankCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([quizId])
 }

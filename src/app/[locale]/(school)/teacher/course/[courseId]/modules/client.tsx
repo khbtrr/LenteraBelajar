@@ -29,7 +29,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
-import { createQuiz, deleteQuiz, addQuizQuestion } from '@/lib/actions/quiz';
+import { createQuiz, deleteQuiz, addQuizQuestion, updateQuizQuestion, getQuizWithQuestions } from '@/lib/actions/quiz';
 import { createAssignment, deleteAssignment } from '@/lib/actions/assignment';
 import { RichTextEditor } from '@/components/editor/rich-text-editor';
 import { ContentType, QuestionType } from '@prisma/client';
@@ -67,6 +67,8 @@ export function TeacherCourseModulesClient({
   const [quizDuration, setQuizDuration] = useState('30');
   const [quizDeadline, setQuizDeadline] = useState('');
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
+  const [quizMaxAttempts, setQuizMaxAttempts] = useState('1');
+  const [quizPassingGrade, setQuizPassingGrade] = useState('');
 
   // Question builder inside quiz creation
   const [questions, setQuestions] = useState<
@@ -82,11 +84,14 @@ export function TeacherCourseModulesClient({
   const [qType, setQType] = useState<QuestionType>(QuestionType.MULTIPLE_CHOICE);
   const [qText, setQText] = useState('');
   const [qPoints, setQPoints] = useState(5);
-  const [optA, setOptA] = useState('');
-  const [optB, setOptB] = useState('');
-  const [optC, setOptC] = useState('');
-  const [optD, setOptD] = useState('');
-  const [correctOpt, setCorrectOpt] = useState('A');
+  const [mcOptions, setMcOptions] = useState<{ id: string; text: string; isCorrect: boolean }[]>([
+    { id: 'A', text: '', isCorrect: true },
+    { id: 'B', text: '', isCorrect: false },
+  ]);
+
+  // Edit Question Modal State
+  const [editingQuiz, setEditingQuiz] = useState<any>(null);
+  const [editQuestionModal, setEditQuestionModal] = useState<{ id?: string; questionId?: string; type: QuestionType; text: string; points: number; options: any[] } | null>(null);
 
   // Assignment Modal State
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -217,19 +222,20 @@ export function TeacherCourseModulesClient({
     if (!qText.trim()) return;
 
     if (qType === QuestionType.MULTIPLE_CHOICE) {
-      if (!optA || !optB) {
-        alert('Minimal sediakan Pilihan A dan B');
+      const validOptions = mcOptions.filter((o) => o.text.trim());
+      if (validOptions.length < 2) {
+        alert('Minimal sediakan 2 Pilihan Jawaban');
         return;
       }
-      const opts = [
-        { id: 'A', text: optA, isCorrect: correctOpt === 'A' },
-        { id: 'B', text: optB, isCorrect: correctOpt === 'B' },
-        ...(optC ? [{ id: 'C', text: optC, isCorrect: correctOpt === 'C' }] : []),
-        ...(optD ? [{ id: 'D', text: optD, isCorrect: correctOpt === 'D' }] : []),
-      ];
+      const hasCorrect = validOptions.some((o) => o.isCorrect);
+      if (!hasCorrect) {
+        alert('Pilih setidaknya 1 jawaban yang benar');
+        return;
+      }
+      
       setQuestions((prev) => [
         ...prev,
-        { type: QuestionType.MULTIPLE_CHOICE, text: qText, points: Number(qPoints), options: opts },
+        { type: QuestionType.MULTIPLE_CHOICE, text: qText, points: Number(qPoints), options: validOptions },
       ]);
     } else {
       setQuestions((prev) => [
@@ -239,11 +245,10 @@ export function TeacherCourseModulesClient({
     }
 
     setQText('');
-    setOptA('');
-    setOptB('');
-    setOptC('');
-    setOptD('');
-    setCorrectOpt('A');
+    setMcOptions([
+      { id: 'A', text: '', isCorrect: true },
+      { id: 'B', text: '', isCorrect: false },
+    ]);
   };
 
   const handleSaveQuiz = async (e: React.FormEvent) => {
@@ -258,6 +263,8 @@ export function TeacherCourseModulesClient({
         duration: quizDuration ? Number(quizDuration) : undefined,
         deadline: quizDeadline || undefined,
         shuffleQuestions,
+        maxAttempts: quizMaxAttempts === 'unlimited' ? null : Number(quizMaxAttempts),
+        passingGrade: quizPassingGrade ? Number(quizPassingGrade) : null,
       });
 
       // Add all drafted questions
@@ -291,6 +298,8 @@ export function TeacherCourseModulesClient({
       setQuizTitle('');
       setQuizDesc('');
       setQuestions([]);
+      setQuizMaxAttempts('1');
+      setQuizPassingGrade('');
     } catch (err) {
       console.error(err);
       alert('Gagal membuat kuis');
@@ -372,6 +381,61 @@ export function TeacherCourseModulesClient({
     }
   };
 
+  const handleEditQuizClick = async (quizId: string) => {
+    setLoading(true);
+    try {
+      const data = await getQuizWithQuestions(quizId);
+      setEditingQuiz(data);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal memuat kuis');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveEditedQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editQuestionModal || !editingQuiz) return;
+    
+    setLoading(true);
+    try {
+      let opts = undefined;
+      if (editQuestionModal.type === QuestionType.MULTIPLE_CHOICE) {
+         const validOptions = editQuestionModal.options.filter((o) => o.text.trim());
+         if (validOptions.length < 2) {
+           alert('Minimal 2 Pilihan Jawaban');
+           setLoading(false);
+           return;
+         }
+         opts = validOptions;
+      }
+      
+      const questionId = editQuestionModal.id || editQuestionModal.questionId;
+      if (!questionId) {
+        alert('ID soal tidak valid');
+        setLoading(false);
+        return;
+      }
+
+      await updateQuizQuestion(questionId, {
+        text: editQuestionModal.text,
+        points: editQuestionModal.points,
+        options: opts
+      });
+      
+      alert('Berhasil menyimpan soal');
+      setEditQuestionModal(null);
+      const data = await getQuizWithQuestions(editingQuiz.id);
+      setEditingQuiz(data);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyimpan soal');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -379,12 +443,19 @@ export function TeacherCourseModulesClient({
           Total <strong>{modules.length}</strong> bab modul pembelajaran
         </div>
 
-        <Button
-          onClick={() => setIsModuleModalOpen(true)}
-          className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" /> Tambah Bab Modul
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href={`/teacher/course/${course.id}/question-bank`}>
+            <Button variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-100">
+              Bank Soal
+            </Button>
+          </Link>
+          <Button
+            onClick={() => setIsModuleModalOpen(true)}
+            className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" /> Tambah Bab Modul
+          </Button>
+        </div>
       </div>
 
       {modules.length === 0 ? (
@@ -569,6 +640,14 @@ export function TeacherCourseModulesClient({
                           </div>
 
                           <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditQuizClick(q.id)}
+                              className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                            >
+                              Edit Kuis
+                            </Button>
                             <Link href={`/teacher/course/${course.id}/quiz-attempts/${q.id}`}>
                               <Button
                                 size="sm"
@@ -849,6 +928,38 @@ export function TeacherCourseModulesClient({
                 </Label>
               </div>
 
+              {/* Max Attempts & KKM */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="qzMaxAttempts">Kesempatan Mengerjakan</Label>
+                  <select
+                    id="qzMaxAttempts"
+                    value={quizMaxAttempts}
+                    onChange={(e) => setQuizMaxAttempts(e.target.value)}
+                    className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                      <option key={n} value={String(n)}>{n} kali</option>
+                    ))}
+                    <option value="unlimited">Unlimited (Tanpa Batas)</option>
+                  </select>
+                  <p className="text-[11px] text-gray-500">Nilai <strong>terbaik</strong> dari semua percobaan yang diambil.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="qzPassingGrade">Nilai Minimal Lulus (KKM)</Label>
+                  <Input
+                    id="qzPassingGrade"
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder="Kosongkan jika tidak ada"
+                    value={quizPassingGrade}
+                    onChange={(e) => setQuizPassingGrade(e.target.value)}
+                  />
+                  <p className="text-[11px] text-gray-500">Opsional. Nilai 0-100.</p>
+                </div>
+              </div>
+
               {/* Input Bank Soal */}
               <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
                 <div className="flex items-center justify-between">
@@ -893,59 +1004,52 @@ export function TeacherCourseModulesClient({
                     <Label className="text-xs font-semibold text-gray-600">
                       Pilihan Jawaban & Tentukan Kunci Jawaban:
                     </Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="correctKey"
-                          checked={correctOpt === 'A'}
-                          onChange={() => setCorrectOpt('A')}
-                        />
-                        <Input
-                          placeholder="Pilihan A"
-                          value={optA}
-                          onChange={(e) => setOptA(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="correctKey"
-                          checked={correctOpt === 'B'}
-                          onChange={() => setCorrectOpt('B')}
-                        />
-                        <Input
-                          placeholder="Pilihan B"
-                          value={optB}
-                          onChange={(e) => setOptB(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="correctKey"
-                          checked={correctOpt === 'C'}
-                          onChange={() => setCorrectOpt('C')}
-                        />
-                        <Input
-                          placeholder="Pilihan C (Opsional)"
-                          value={optC}
-                          onChange={(e) => setOptC(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="correctKey"
-                          checked={correctOpt === 'D'}
-                          onChange={() => setCorrectOpt('D')}
-                        />
-                        <Input
-                          placeholder="Pilihan D (Opsional)"
-                          value={optD}
-                          onChange={(e) => setOptD(e.target.value)}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      {mcOptions.map((opt, index) => (
+                        <div key={opt.id} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="correctKey"
+                            checked={opt.isCorrect}
+                            onChange={() => {
+                              setMcOptions(prev => prev.map(o => ({ ...o, isCorrect: o.id === opt.id })));
+                            }}
+                            className="mt-1"
+                          />
+                          <span className="text-sm font-bold w-6">{opt.id}.</span>
+                          <Input
+                            placeholder={`Pilihan ${opt.id}`}
+                            value={opt.text}
+                            onChange={(e) => {
+                              setMcOptions(prev => prev.map(o => o.id === opt.id ? { ...o, text: e.target.value } : o));
+                            }}
+                          />
+                          {mcOptions.length > 2 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => {
+                                setMcOptions(prev => prev.filter(o => o.id !== opt.id));
+                              }}
+                              className="h-8 w-8 p-0 text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const nextChar = String.fromCharCode(mcOptions[mcOptions.length - 1].id.charCodeAt(0) + 1);
+                          setMcOptions(prev => [...prev, { id: nextChar, text: '', isCorrect: false }]);
+                        }}
+                        className="text-xs mt-2"
+                      >
+                        + Tambah Opsi
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -1070,6 +1174,178 @@ export function TeacherCourseModulesClient({
               </Button>
               <Button type="submit" disabled={loading} className="bg-[#002446] text-white">
                 {loading ? 'Menyimpan...' : 'Simpan Tugas'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Edit Kuis & Soal */}
+      <Dialog open={!!editingQuiz} onOpenChange={(open) => {
+        if (!open) {
+          setEditingQuiz(null);
+          setEditQuestionModal(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              Edit Kuis: {editingQuiz?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          {editingQuiz?._count?.attempts > 0 && (
+            <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm font-semibold">
+              ⚠️ Peringatan: Sudah ada {editingQuiz._count.attempts} siswa yang mengerjakan kuis ini. Perubahan pada soal bisa memengaruhi perhitungan nilai.
+            </div>
+          )}
+
+          <div className="py-4 flex-1 overflow-y-auto space-y-4">
+            <h4 className="font-bold text-sm">Daftar Soal</h4>
+            <div className="divide-y border rounded-lg bg-white">
+              {editingQuiz?.questions?.map((q: any, idx: number) => (
+                <div key={q.id} className="p-3 text-sm flex items-center justify-between">
+                  <div>
+                    <span className="font-bold mr-2 text-[#002446]">#{idx + 1}</span>
+                    <Badge variant="outline" className="mr-2 text-[10px]">
+                      {q.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+                    </Badge>
+                    <span className="text-gray-800">{q.text.substring(0, 50)}{q.text.length > 50 ? '...' : ''}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditQuestionModal({
+                      id: q.id,
+                      questionId: q.id,
+                      type: q.type,
+                      text: q.text,
+                      points: q.points,
+                      options: q.options || []
+                    })}
+                    className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100"
+                  >
+                    Edit Soal
+                  </Button>
+                </div>
+              ))}
+              {editingQuiz?.questions?.length === 0 && (
+                <div className="p-4 text-center text-gray-500 text-sm">Belum ada soal.</div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingQuiz(null)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Edit Soal */}
+      <Dialog open={!!editQuestionModal} onOpenChange={(open) => !open && setEditQuestionModal(null)}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col">
+          <form onSubmit={handleSaveEditedQuestion} className="flex flex-col flex-1 overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-[#002446]">
+                Edit Soal
+              </DialogTitle>
+            </DialogHeader>
+
+            {editQuestionModal && (
+              <div className="space-y-4 py-4 flex-1 overflow-y-auto pr-1">
+                <div className="space-y-2">
+                  <Label>Pertanyaan</Label>
+                  <Input
+                    value={editQuestionModal.text}
+                    onChange={(e) => setEditQuestionModal({ ...editQuestionModal, text: e.target.value })}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Poin</Label>
+                  <Input
+                    type="number"
+                    value={editQuestionModal.points}
+                    onChange={(e) => setEditQuestionModal({ ...editQuestionModal, points: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+
+                {editQuestionModal.type === QuestionType.MULTIPLE_CHOICE && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-sm font-semibold">Pilihan Jawaban</Label>
+                    <div className="space-y-2">
+                      {editQuestionModal.options.map((opt: any) => (
+                        <div key={opt.id} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="editCorrectKey"
+                            checked={opt.isCorrect}
+                            onChange={() => {
+                              setEditQuestionModal({
+                                ...editQuestionModal,
+                                options: editQuestionModal.options.map((o: any) => ({ ...o, isCorrect: o.id === opt.id }))
+                              });
+                            }}
+                            className="mt-1"
+                          />
+                          <span className="text-sm font-bold w-6">{opt.id}.</span>
+                          <Input
+                            value={opt.text}
+                            onChange={(e) => {
+                              setEditQuestionModal({
+                                ...editQuestionModal,
+                                options: editQuestionModal.options.map((o: any) => o.id === opt.id ? { ...o, text: e.target.value } : o)
+                              });
+                            }}
+                          />
+                          {editQuestionModal.options.length > 2 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditQuestionModal({
+                                  ...editQuestionModal,
+                                  options: editQuestionModal.options.filter((o: any) => o.id !== opt.id)
+                                });
+                              }}
+                              className="h-8 w-8 p-0 text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const nextChar = String.fromCharCode(editQuestionModal.options[editQuestionModal.options.length - 1].id.charCodeAt(0) + 1);
+                          setEditQuestionModal({
+                            ...editQuestionModal,
+                            options: [...editQuestionModal.options, { id: nextChar, text: '', isCorrect: false }]
+                          });
+                        }}
+                        className="text-xs mt-2"
+                      >
+                        + Tambah Opsi
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditQuestionModal(null)}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={loading} className="bg-[#002446] text-white">
+                {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
               </Button>
             </DialogFooter>
           </form>

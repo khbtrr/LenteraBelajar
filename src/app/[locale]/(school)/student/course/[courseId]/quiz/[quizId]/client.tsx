@@ -166,11 +166,9 @@ export function StudentQuizClient({
             )}
 
             <div className="pt-4">
-              <Link href={`/student/course/${courseId}/modules`}>
-                <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
-                  <ArrowLeft className="h-4 w-4" /> Kembali ke Halaman Materi
-                </Button>
-              </Link>
+              <Button onClick={() => window.location.href = `/student/course/${courseId}/quiz/${quizId}`} className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
+                <ArrowLeft className="h-4 w-4" /> Kembali ke Detail Kuis
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getCourseById } from '@/lib/actions/course';
 import { getCourseModules } from '@/lib/actions/module';
+import { getQuizStatusForStudent } from '@/lib/actions/quiz';
 import { StudentCourseModulesClient } from './client';
 
 export default async function StudentCourseModulesPage({
@@ -18,6 +19,20 @@ export default async function StudentCourseModulesPage({
     notFound();
   }
 
+  // Fetch quiz statuses for all quizzes across all modules
+  const quizStatusMap: Record<string, any> = {};
+  const allQuizzes = modules.flatMap((m: any) => m.quizzes || []);
+  await Promise.all(
+    allQuizzes.map(async (quiz: any) => {
+      try {
+        const status = await getQuizStatusForStudent(quiz.id);
+        quizStatusMap[quiz.id] = status;
+      } catch {
+        quizStatusMap[quiz.id] = null;
+      }
+    })
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -32,7 +47,7 @@ export default async function StudentCourseModulesPage({
         </p>
       </div>
 
-      <StudentCourseModulesClient course={course} modules={modules} />
+      <StudentCourseModulesClient course={course} modules={modules} quizStatusMap={quizStatusMap} />
     </div>
   );
 }

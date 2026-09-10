@@ -20,9 +20,11 @@ import { Link } from '@/i18n/navigation';
 export function StudentCourseModulesClient({
   course,
   modules,
+  quizStatusMap,
 }: {
   course: any;
   modules: any[];
+  quizStatusMap: Record<string, any>;
 }) {
   return (
     <div className="space-y-8">
@@ -146,52 +148,107 @@ export function StudentCourseModulesClient({
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {mod.quizzes.map((quiz: any) => (
-                      <Card
-                        key={quiz.id}
-                        className="border border-amber-200 bg-amber-50/30 hover:border-amber-300 transition-colors"
-                      >
-                        <CardHeader className="p-4 pb-2">
-                          <CardTitle className="text-base font-bold text-[#002446]">
-                            {quiz.title}
-                          </CardTitle>
-                          {quiz.description && (
-                            <p className="text-xs text-gray-600 line-clamp-2">
-                              {quiz.description}
-                            </p>
-                          )}
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0 space-y-3">
-                          <div className="flex items-center gap-4 text-xs text-gray-600 pt-2 border-t border-amber-100">
-                            <span>{quiz._count.questions} Soal</span>
-                            {quiz.duration && (
-                              <span className="flex items-center gap-1 font-medium text-[#002446]">
-                                <Clock className="h-3.5 w-3.5 text-[#FF8928]" />
-                                {quiz.duration} Menit
-                              </span>
+                    {mod.quizzes.map((quiz: any) => {
+                      const status = quizStatusMap?.[quiz.id];
+                      const statusType = status?.status || 'NOT_STARTED';
+                      const canAttempt = statusType !== 'EXPIRED' && (
+                        statusType !== 'COMPLETED' || 
+                        status?.maxAttempts === null || 
+                        (status?.submittedCount || 0) < (status?.maxAttempts || 1)
+                      );
+                      const isInProgress = statusType === 'IN_PROGRESS';
+                      
+                      return (
+                        <Card key={quiz.id} className={`border ${statusType === 'EXPIRED' ? 'border-red-200 bg-red-50/30' : statusType === 'COMPLETED' ? 'border-green-200 bg-green-50/20' : 'border-amber-200 bg-amber-50/30'} hover:shadow-md transition-all`}>
+                          <CardHeader className="p-4 pb-2">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base font-bold text-[#002446]">
+                                {quiz.title}
+                              </CardTitle>
+                              {/* Status Badge */}
+                              {statusType === 'NOT_STARTED' && (
+                                <Badge variant="outline" className="text-xs text-gray-500 border-gray-300">Belum Dikerjakan</Badge>
+                              )}
+                              {statusType === 'IN_PROGRESS' && (
+                                <Badge className="text-xs bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">Sedang Dikerjakan</Badge>
+                              )}
+                              {statusType === 'COMPLETED' && status?.passed === true && (
+                                <Badge className="text-xs bg-green-100 text-green-800 border border-green-300">Lulus ✓</Badge>
+                              )}
+                              {statusType === 'COMPLETED' && status?.passed === false && (
+                                <Badge className="text-xs bg-red-100 text-red-800 border border-red-300">Tidak Lulus ✗</Badge>
+                              )}
+                              {statusType === 'COMPLETED' && status?.passed === null && (
+                                <Badge className="text-xs bg-green-100 text-green-800 border border-green-300">Sudah Dikerjakan</Badge>
+                              )}
+                              {statusType === 'EXPIRED' && (
+                                <Badge className="text-xs bg-red-100 text-red-800 border border-red-300">Batas Waktu Habis</Badge>
+                              )}
+                            </div>
+                            {quiz.description && (
+                              <p className="text-xs text-gray-600 line-clamp-2">{quiz.description}</p>
                             )}
-                            {quiz.deadline && (
-                              <span className="flex items-center gap-1 text-gray-500">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {new Date(quiz.deadline).toLocaleDateString('id-ID')}
-                              </span>
-                            )}
-                          </div>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0 space-y-3">
+                            <div className="flex items-center gap-4 text-xs text-gray-600 pt-2 border-t border-gray-100">
+                              <span>{quiz._count.questions} Soal</span>
+                              {quiz.duration && (
+                                <span className="flex items-center gap-1 font-medium text-[#002446]">
+                                  <Clock className="h-3.5 w-3.5 text-[#FF8928]" />
+                                  {quiz.duration} Menit
+                                </span>
+                              )}
+                              {quiz.deadline && (
+                                <span className="flex items-center gap-1 text-gray-500">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {new Date(quiz.deadline).toLocaleDateString('id-ID')}
+                                </span>
+                              )}
+                            </div>
 
-                          <Link
-                            href={`/student/course/${course.id}/quiz/${quiz.id}`}
-                            className="block"
-                          >
-                            <Button
-                              size="sm"
-                              className="w-full bg-[#FF8928] hover:bg-[#FF8928]/90 text-white flex items-center justify-center gap-1.5"
-                            >
-                              Mulai Kerjakan Kuis <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            {/* Score & Attempt Info for completed quizzes */}
+                            {statusType === 'COMPLETED' && status && (
+                              <div className="flex items-center gap-3 text-xs bg-white rounded-md p-2 border">
+                                {status.bestScore !== null && (
+                                  <span className="font-bold text-[#002446]">Nilai Terbaik: <span className={status.passed === true ? 'text-green-700' : status.passed === false ? 'text-red-700' : 'text-[#FF8928]'}>{status.bestScore}/100</span></span>
+                                )}
+                                <span className="text-gray-400">•</span>
+                                <span className="text-gray-600">
+                                  Percobaan: {status.submittedCount}/{status.maxAttempts === null ? '∞' : status.maxAttempts}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Action Button */}
+                            {statusType === 'EXPIRED' ? (
+                              <Button size="sm" disabled className="w-full bg-gray-200 text-gray-500 cursor-not-allowed">
+                                Batas Waktu Habis
+                              </Button>
+                            ) : !canAttempt ? (
+                              <Button size="sm" disabled className="w-full bg-gray-200 text-gray-500 cursor-not-allowed">
+                                Kesempatan Habis ({status?.submittedCount}/{status?.maxAttempts})
+                              </Button>
+                            ) : (
+                              <Link href={`/student/course/${course.id}/quiz/${quiz.id}`} className="block">
+                                <Button
+                                  size="sm"
+                                  className={`w-full flex items-center justify-center gap-1.5 ${
+                                    isInProgress
+                                      ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                      : statusType === 'COMPLETED'
+                                      ? 'bg-white border border-[#002446] text-[#002446] hover:bg-[#002446] hover:text-white'
+                                      : 'bg-[#FF8928] hover:bg-[#FF8928]/90 text-white'
+                                  }`}
+                                >
+                                  {isInProgress ? 'Lanjutkan Kuis' : statusType === 'COMPLETED' ? `Coba Lagi (${status?.submittedCount}/${status?.maxAttempts === null ? '∞' : status?.maxAttempts})` : 'Mulai Kerjakan Kuis'}
+                                  <ArrowRight className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
               )}
