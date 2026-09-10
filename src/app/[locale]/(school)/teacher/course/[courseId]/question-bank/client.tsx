@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from '@/i18n/navigation';
-import { ArrowLeft, Plus, Trash2, Pencil, FileUp, HelpCircle, BookOpen, Search, CheckCircle2, AlertTriangle, Database } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, FileUp, FileDown, HelpCircle, BookOpen, Search, CheckCircle2, AlertTriangle, Database } from 'lucide-react';
 import {
   createQuestionBankCategory,
   updateQuestionBankCategory,
@@ -37,9 +37,30 @@ type Category = {
   questions?: Question[];
 };
 
-export function QuestionBankClient({ courseId, course, initialData = [], initialStats = {} }: any) {
+export function QuestionBankClient({ courseId, course, initialData, initialStats = {} }: any) {
   const router = useRouter();
   
+  // Data state to ensure immediate reactive updates
+  const [bankData, setBankData] = useState<{
+    categories: any[];
+    uncategorized: any[];
+    uncategorizedCount: number;
+  }>({
+    categories: initialData?.categories || (Array.isArray(initialData) ? initialData : []),
+    uncategorized: initialData?.uncategorized || [],
+    uncategorizedCount: initialData?.uncategorizedCount || (initialData?.uncategorized?.length || 0),
+  });
+
+  useEffect(() => {
+    if (initialData) {
+      setBankData({
+        categories: initialData?.categories || (Array.isArray(initialData) ? initialData : []),
+        uncategorized: initialData?.uncategorized || [],
+        uncategorizedCount: initialData?.uncategorizedCount || (initialData?.uncategorized?.length || 0),
+      });
+    }
+  }, [initialData]);
+
   // States
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,8 +77,8 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
   const [questionText, setQuestionText] = useState('');
   const [questionPoints, setQuestionPoints] = useState<number>(10);
   const [questionOptions, setQuestionOptions] = useState<Option[]>([
-    { text: '', isCorrect: true },
-    { text: '', isCorrect: false },
+    { id: 'A', text: '', isCorrect: true },
+    { id: 'B', text: '', isCorrect: false },
   ]);
 
   // Import Modal States
@@ -66,14 +87,17 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
   const [importPreview, setImportPreview] = useState<any[]>([]);
 
   // Computed data
-  const categories = Array.isArray(initialData) ? initialData.filter((c: any) => c.id !== 'uncategorized') : [];
-  const uncategorizedData = Array.isArray(initialData) ? initialData.find((c: any) => c.id === 'uncategorized') : null;
-  const uncategorizedQuestions = uncategorizedData?.questions || [];
+  const categories = bankData.categories || [];
+  const uncategorizedQuestions = bankData.uncategorized || [];
+  const allQuestions = [
+    ...categories.flatMap((c: any) => c.questions || []),
+    ...uncategorizedQuestions,
+  ];
 
   const displayedQuestions = selectedCategoryId === 'uncategorized'
     ? uncategorizedQuestions
     : selectedCategoryId === null 
-      ? Array.isArray(initialData) ? initialData.flatMap((c: any) => c.questions || []) : []
+      ? allQuestions
       : categories.find((c: any) => c.id === selectedCategoryId)?.questions || [];
 
   // Handlers
@@ -81,12 +105,17 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
     if (!categoryName.trim()) return;
     setLoading(true);
     try {
-      await createQuestionBankCategory(courseId, categoryName);
+      const created = await createQuestionBankCategory(courseId, categoryName);
+      setBankData((prev) => ({
+        ...prev,
+        categories: [...(prev.categories || []), { ...created, questions: [], _count: { questions: 0 } }],
+      }));
       setCategoryName('');
       setIsAddingCategory(false);
       router.refresh();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e?.message || 'Gagal membuat kategori');
     } finally {
       setLoading(false);
     }
@@ -97,11 +126,16 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
     setLoading(true);
     try {
       await updateQuestionBankCategory(id, categoryName);
+      setBankData((prev) => ({
+        ...prev,
+        categories: (prev.categories || []).map((c: any) => c.id === id ? { ...c, name: categoryName } : c),
+      }));
       setEditingCategory(null);
       setCategoryName('');
       router.refresh();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e?.message || 'Gagal memperbarui kategori');
     } finally {
       setLoading(false);
     }
@@ -112,10 +146,21 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
     setLoading(true);
     try {
       await deleteQuestionBankCategory(id);
+      setBankData((prev) => {
+        const deletedCat = (prev.categories || []).find((c: any) => c.id === id);
+        const movedQuestions = deletedCat?.questions || [];
+        return {
+          ...prev,
+          categories: (prev.categories || []).filter((c: any) => c.id !== id),
+          uncategorized: [...(prev.uncategorized || []), ...movedQuestions],
+          uncategorizedCount: (prev.uncategorizedCount || 0) + movedQuestions.length,
+        };
+      });
       if (selectedCategoryId === id) setSelectedCategoryId(null);
       router.refresh();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e?.message || 'Gagal menghapus kategori');
     } finally {
       setLoading(false);
     }
@@ -162,14 +207,48 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
       };
 
       if (editingQuestion) {
-        await updateBankQuestion(editingQuestion.id, data);
+        const updated = await updateBankQuestion(editingQuestion.id, data);
+        setBankData((prev) => {
+          const updateItem = (item: any) => (item.id === editingQuestion.id ? { ...item, ...updated } : item);
+          return {
+            ...prev,
+            categories: (prev.categories || []).map((c: any) => ({
+              ...c,
+              questions: (c.questions || []).map(updateItem),
+            })),
+            uncategorized: (prev.uncategorized || []).map(updateItem),
+          };
+        });
       } else {
-        await addQuestionToBank({ courseId, ...data });
+        const created = await addQuestionToBank({ courseId, ...data });
+        setBankData((prev) => {
+          if (data.categoryId) {
+            return {
+              ...prev,
+              categories: (prev.categories || []).map((c: any) =>
+                c.id === data.categoryId
+                  ? {
+                      ...c,
+                      questions: [created, ...(c.questions || [])],
+                      _count: { questions: (c._count?.questions || 0) + 1 },
+                    }
+                  : c
+              ),
+            };
+          } else {
+            return {
+              ...prev,
+              uncategorized: [created, ...(prev.uncategorized || [])],
+              uncategorizedCount: (prev.uncategorizedCount || 0) + 1,
+            };
+          }
+        });
       }
       setIsQuestionModalOpen(false);
       router.refresh();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e?.message || 'Gagal menyimpan soal');
     } finally {
       setLoading(false);
     }
@@ -180,9 +259,28 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
     setLoading(true);
     try {
       await deleteBankQuestion(id);
+      setBankData((prev) => ({
+        ...prev,
+        categories: (prev.categories || []).map((c: any) => ({
+          ...c,
+          questions: (c.questions || []).filter((q: any) => q.id !== id),
+          _count: {
+            questions: Math.max(
+              0,
+              (c._count?.questions || 0) - (c.questions?.some((q: any) => q.id === id) ? 1 : 0)
+            ),
+          },
+        })),
+        uncategorized: (prev.uncategorized || []).filter((q: any) => q.id !== id),
+        uncategorizedCount: Math.max(
+          0,
+          (prev.uncategorizedCount || 0) - (prev.uncategorized?.some((q: any) => q.id === id) ? 1 : 0)
+        ),
+      }));
       router.refresh();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e?.message || 'Gagal menghapus soal');
     } finally {
       setLoading(false);
     }
@@ -277,15 +375,17 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
           <Card className="bg-slate-50">
             <CardContent className="p-4 flex gap-6">
               <div className="text-center">
-                <p className="text-2xl font-bold text-[#002446]">{initialStats?.total || 0}</p>
+                <p className="text-2xl font-bold text-[#002446]">{allQuestions.length}</p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Soal</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-[#FF8928]">{initialStats?.categorized || 0}</p>
+                <p className="text-2xl font-bold text-[#FF8928]">
+                  {categories.reduce((acc: number, c: any) => acc + (c.questions?.length || 0), 0)}
+                </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Berkategori</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-slate-400">{initialStats?.uncategorized || 0}</p>
+                <p className="text-2xl font-bold text-slate-400">{uncategorizedQuestions.length}</p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Belum Kategori</p>
               </div>
             </CardContent>
@@ -597,18 +697,40 @@ export function QuestionBankClient({ courseId, course, initialData = [], initial
             <DialogTitle className="text-xl font-bold text-[#002446]">Impor Soal dari Word</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center">
-              <FileUp className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm text-slate-600 mb-4">Unggah file Microsoft Word (.docx) dengan format yang sesuai.</p>
-              <Input
-                type="file"
-                accept=".docx"
-                className="max-w-xs mx-auto"
-                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                disabled={loading || importPreview.length > 0}
-              />
+            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-4">
+              <div className="flex flex-col items-center justify-center">
+                <FileUp className="w-10 h-10 text-slate-300 mb-2" />
+                <p className="text-sm text-slate-600">Unggah file Microsoft Word (.docx) dengan format yang sesuai.</p>
+              </div>
+
+              {/* Template Download Banner */}
+              <div className="p-3.5 bg-blue-50/90 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+                <div className="text-xs text-slate-700">
+                  <p className="font-bold text-[#002446]">Belum punya format Word yang sesuai?</p>
+                  <p className="text-slate-500 mt-0.5">Unduh template acuan kami dan edit langsung soal Anda di dalamnya.</p>
+                </div>
+                <a
+                  href="/api/quiz-import/template"
+                  download="template-soal-kuis.docx"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md bg-[#002446] text-white hover:bg-[#002446]/90 transition-colors shrink-0 shadow-xs"
+                >
+                  <FileDown className="w-4 h-4 text-[#FF8928]" />
+                  Unduh Template (.docx)
+                </a>
+              </div>
+
+              <div className="pt-2">
+                <Input
+                  type="file"
+                  accept=".docx"
+                  className="max-w-xs mx-auto"
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                  disabled={loading || importPreview.length > 0}
+                />
+              </div>
+
               {importFile && importPreview.length === 0 && (
-                <Button className="mt-4 bg-[#FF8928] hover:bg-[#FF8928]/90 text-white" onClick={handleUploadWord} disabled={loading}>
+                <Button className="mt-2 bg-[#FF8928] hover:bg-[#FF8928]/90 text-white" onClick={handleUploadWord} disabled={loading}>
                   {loading ? 'Memproses...' : 'Pratinjau Impor'}
                 </Button>
               )}

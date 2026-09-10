@@ -83,7 +83,7 @@ export function TeacherCourseModulesClient({
   // Current new question form
   const [qType, setQType] = useState<QuestionType>(QuestionType.MULTIPLE_CHOICE);
   const [qText, setQText] = useState('');
-  const [qPoints, setQPoints] = useState(5);
+  const [qPoints, setQPoints] = useState(10);
   const [mcOptions, setMcOptions] = useState<{ id: string; text: string; isCorrect: boolean }[]>([
     { id: 'A', text: '', isCorrect: true },
     { id: 'B', text: '', isCorrect: false },
@@ -994,13 +994,27 @@ export function TeacherCourseModulesClient({
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Pertanyaan Soal</Label>
-                  <Input
-                    placeholder="Tuliskan butir soal di sini..."
-                    value={qText}
-                    onChange={(e) => setQText(e.target.value)}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="sm:col-span-3 space-y-1.5">
+                    <Label className="text-xs font-semibold text-gray-700">Pertanyaan Soal</Label>
+                    <Input
+                      placeholder="Tuliskan butir soal di sini..."
+                      value={qText}
+                      onChange={(e) => setQText(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-gray-700">Bobot Poin</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={qPoints}
+                      onChange={(e) => setQPoints(Math.max(1, Number(e.target.value) || 1))}
+                      className="font-bold text-[#002446]"
+                    />
+                    <p className="text-[10px] text-gray-500">Default: 10 poin</p>
+                  </div>
                 </div>
 
                 {qType === QuestionType.MULTIPLE_CHOICE && (
@@ -1124,16 +1138,34 @@ export function TeacherCourseModulesClient({
               {/* Daftar Soal yang Telah Dimasukkan */}
               {questions.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-gray-700">
-                    Daftar Soal Tersimpan di Kuis Ini:
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-gray-700">
+                      Daftar Soal Tersimpan di Kuis Ini ({questions.length} Soal):
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Total Akumulasi:</span>
+                      <Badge
+                        className={`text-xs font-bold ${
+                          questions.reduce((sum, q) => sum + (q.points || 0), 0) === 100
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : 'bg-blue-100 text-[#002446] border-blue-300'
+                        }`}
+                      >
+                        {questions.reduce((sum, q) => sum + (q.points || 0), 0)} Poin
+                        {questions.reduce((sum, q) => sum + (q.points || 0), 0) === 100 && ' ✓ Ideal untuk KKM'}
+                      </Badge>
+                    </div>
+                  </div>
                   <div className="divide-y border rounded-lg bg-white">
                     {questions.map((q, idx) => (
                       <div key={idx} className="p-3 text-xs flex items-center justify-between">
                         <div>
                           <span className="font-bold mr-2 text-[#002446]">#{idx + 1}</span>
-                          <Badge variant="outline" className="mr-2 text-[10px]">
+                          <Badge variant="outline" className="mr-1.5 text-[10px]">
                             {q.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+                          </Badge>
+                          <Badge variant="secondary" className="mr-2 text-[10px] bg-slate-100 text-slate-700 font-semibold">
+                            {q.points} Poin
                           </Badge>
                           <span className="text-gray-800">{q.text}</span>
                         </div>
