@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -18,6 +18,8 @@ interface QuizAttemptsClientProps {
       title: string;
       courseId: string;
       courseTitle: string;
+      passingGrade?: number | null;
+      maxAttempts?: number | null;
     };
     questions: Array<{
       id: string;
@@ -152,6 +154,12 @@ export function TeacherQuizAttemptsClient({ data }: QuizAttemptsClientProps) {
           </div>
           <p className="text-sm text-gray-500 pl-10">
             {data.quiz.courseTitle} • {data.questions.length} Soal{' '}
+            {data.quiz.passingGrade !== undefined && data.quiz.passingGrade !== null && (
+              <span className="text-blue-700 font-semibold">• KKM: {data.quiz.passingGrade}{' '}</span>
+            )}
+            {data.quiz.maxAttempts !== undefined && data.quiz.maxAttempts !== null && (
+              <span className="text-purple-700 font-semibold">• Maks: {data.quiz.maxAttempts}x Percobaan{' '}</span>
+            )}
             {hasEssay && <span className="text-amber-700 font-semibold">(Mengandung Soal Essay)</span>}
           </p>
         </div>
@@ -237,15 +245,28 @@ export function TeacherQuizAttemptsClient({ data }: QuizAttemptsClientProps) {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
-                        {att.isGraded ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-medium">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Selesai Dinilai
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-medium">
-                            <Clock className="h-3.5 w-3.5" /> Menunggu Koreksi Essay
-                          </span>
-                        )}
+                        <div className="flex flex-col items-center gap-1">
+                          {att.isGraded ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-medium">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Selesai Dinilai
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-medium">
+                              <Clock className="h-3.5 w-3.5" /> Menunggu Koreksi Essay
+                            </span>
+                          )}
+                          {att.isGraded && att.score !== null && data.quiz.passingGrade !== undefined && data.quiz.passingGrade !== null && (
+                            <span
+                              className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                                att.score >= data.quiz.passingGrade
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {att.score >= data.quiz.passingGrade ? '✓ Lulus' : '✗ Tidak Lulus'}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <Button

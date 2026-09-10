@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
@@ -366,6 +366,8 @@ export async function getQuizAttemptsList(quizId: string) {
       title: quiz.title,
       courseId: quiz.module.courseId,
       courseTitle: quiz.module.course.title,
+      passingGrade: quiz.passingGrade,
+      maxAttempts: quiz.maxAttempts,
     },
     questions: quiz.questions,
     attempts: quiz.attempts,
