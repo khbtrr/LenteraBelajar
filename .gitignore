@@ -41,3 +41,8 @@ next-env.d.ts
 # prisma
 /prisma/*.db
 /prisma/*.db-journal
+
+# archives and test files
+*.zip
+*.docx
+

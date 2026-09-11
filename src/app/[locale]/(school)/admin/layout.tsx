@@ -1,8 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Sidebar } from '@/components/layout/sidebar';
-import { Header } from '@/components/layout/header';
+import { AppLayout } from '@/components/layout/app-layout';
 import {
   LayoutDashboard,
   Calendar,
@@ -38,15 +37,13 @@ export default async function AdminLayout({
   ];
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar items={sidebarItems} title="Admin" />
-      <div className="flex-1 flex flex-col">
-        <Header
-          userName={session.user.name}
-          userRole="Administrator"
-        />
-        <main className="flex-1 p-6">{children}</main>
-      </div>
-    </div>
+    <AppLayout
+      items={sidebarItems}
+      title="Admin Sekolah"
+      userName={session.user.name}
+      userRole="Administrator"
+    >
+      {children}
+    </AppLayout>
   );
 }

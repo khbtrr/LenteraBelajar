@@ -1,8 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Sidebar } from '@/components/layout/sidebar';
-import { Header } from '@/components/layout/header';
+import { AppLayout } from '@/components/layout/app-layout';
 import { LayoutDashboard, BookOpen, PlusCircle } from 'lucide-react';
 
 export default async function TeacherLayout({
@@ -24,12 +23,13 @@ export default async function TeacherLayout({
   ];
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar items={sidebarItems} title="Guru" />
-      <div className="flex-1 flex flex-col">
-        <Header userName={session.user.name} userRole="Guru" />
-        <main className="flex-1 p-6">{children}</main>
-      </div>
-    </div>
+    <AppLayout
+      items={sidebarItems}
+      title="Portal Guru"
+      userName={session.user.name}
+      userRole="Guru"
+    >
+      {children}
+    </AppLayout>
   );
 }

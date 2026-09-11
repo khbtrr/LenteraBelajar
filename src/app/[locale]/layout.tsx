@@ -27,7 +27,7 @@ export default async function LocaleLayout({ children, params }: RootLayoutProps
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className="min-h-screen bg-[#ECEEF0] font-sans antialiased">
+      <body className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-sans antialiased">
         <NextIntlClientProvider messages={messages}>
           <Providers>
             {children}

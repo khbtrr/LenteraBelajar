@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "npx prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
@@ -59,6 +59,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@svgr/webpack": "^8.1.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
