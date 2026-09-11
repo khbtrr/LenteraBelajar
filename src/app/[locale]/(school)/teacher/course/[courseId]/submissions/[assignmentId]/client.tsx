@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Download, FileText, CheckCircle, Clock, AlertCircle, Award, Eye, Calendar, User as UserIcon, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { ArrowLeft, Download, FileText, CheckCircle, CheckCircle2, Clock, AlertCircle, AlertTriangle, Award, Eye, Calendar, User as UserIcon, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { FilePreviewer } from '@/components/assignment/file-previewer';
 
 interface SubmissionsClientProps {
@@ -61,6 +61,11 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
     teacherNote: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [noticeModal, setNoticeModal] = useState<{
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'info' | 'success';
+  } | null>(null);
 
   const submittedCount = students.filter((s) => s.submission !== null).length;
   const gradedCount = students.filter((s) => s.submission?.score !== null && s.submission?.score !== undefined).length;
@@ -133,9 +138,13 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
       );
 
       setSelectedSubmission(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menyimpan nilai');
+      setNoticeModal({
+        title: 'Gagal Menyimpan Nilai',
+        message: err?.message || 'Terjadi kesalahan saat menyimpan nilai. Silakan coba lagi.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -192,9 +201,13 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
       } else {
         setSelectedSubmission(null);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menyimpan nilai');
+      setNoticeModal({
+        title: 'Gagal Menyimpan Nilai',
+        message: err?.message || 'Terjadi kesalahan saat menyimpan nilai. Silakan coba lagi.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -627,6 +640,46 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Notifikasi / Alert Dialog */}
+      <Dialog open={Boolean(noticeModal)} onOpenChange={(open) => !open && setNoticeModal(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200 text-center">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div
+              className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${
+                noticeModal?.type === 'warning'
+                  ? 'bg-amber-100 text-amber-600'
+                  : noticeModal?.type === 'success'
+                  ? 'bg-emerald-100 text-emerald-600'
+                  : 'bg-red-100 text-red-600'
+              }`}
+            >
+              {noticeModal?.type === 'warning' ? (
+                <AlertTriangle className="w-6 h-6" />
+              ) : noticeModal?.type === 'success' ? (
+                <CheckCircle2 className="w-6 h-6" />
+              ) : (
+                <AlertCircle className="w-6 h-6" />
+              )}
+            </div>
+            <DialogTitle className="text-lg font-bold text-[#002446]">
+              {noticeModal?.title}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              {noticeModal?.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setNoticeModal(null)}
+              className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
+            >
+              Mengerti
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -15,13 +15,14 @@ import {
   Clock,
   ArrowLeft,
   AlertCircle,
+  AlertTriangle,
   Paperclip,
   Eye,
   Download,
 } from 'lucide-react';
 import { submitAssignment } from '@/lib/actions/assignment';
 import { Link } from '@/i18n/navigation';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { FilePreviewer } from '@/components/assignment/file-previewer';
 
 export function StudentAssignmentClient({
@@ -42,6 +43,11 @@ export function StudentAssignmentClient({
     size?: number;
     title: string;
   } | null>(null);
+  const [noticeModal, setNoticeModal] = useState<{
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'info' | 'success';
+  } | null>(null);
 
   const allowedExts = (assignment.allowedTypes || 'pdf,docx,zip,png,jpg,jpeg')
     .split(',')
@@ -59,9 +65,11 @@ export function StudentAssignmentClient({
 
     const fileExt = (selected.name.split('.').pop() || '').toLowerCase();
     if (allowedExts.length > 0 && !allowedExts.includes(fileExt)) {
-      alert(
-        `Format berkas ".${fileExt}" tidak diizinkan!\nTugas ini hanya menerima format: ${allowedExts.join(', ').toUpperCase()}`
-      );
+      setNoticeModal({
+        title: 'Format Berkas Tidak Diizinkan',
+        message: `Format berkas ".${fileExt}" tidak diizinkan. Tugas ini hanya menerima format berkas: ${allowedExts.join(', ').toUpperCase()}`,
+        type: 'warning',
+      });
       e.target.value = '';
       setFile(null);
       return;
@@ -69,7 +77,11 @@ export function StudentAssignmentClient({
 
     const maxMb = assignment.maxFileSize || 25;
     if (selected.size > maxMb * 1024 * 1024) {
-      alert(`Ukuran berkas melebihi batas maksimal ${maxMb}MB.`);
+      setNoticeModal({
+        title: 'Ukuran Berkas Terlalu Besar',
+        message: `Ukuran berkas (${(selected.size / (1024 * 1024)).toFixed(1)}MB) melebihi batas maksimal yang ditentukan yaitu ${maxMb}MB.`,
+        type: 'warning',
+      });
       e.target.value = '';
       setFile(null);
       return;
@@ -116,7 +128,11 @@ export function StudentAssignmentClient({
       setSuccessMsg('Tugas berhasil dikumpulkan!');
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Gagal mengumpulkan tugas');
+      setNoticeModal({
+        title: 'Gagal Mengumpulkan Tugas',
+        message: err?.message || 'Terjadi kesalahan saat mengunggah berkas tugas. Silakan coba lagi.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -406,6 +422,46 @@ export function StudentAssignmentClient({
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Notifikasi / Alert Dialog */}
+      <Dialog open={Boolean(noticeModal)} onOpenChange={(open) => !open && setNoticeModal(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200 text-center">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div
+              className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${
+                noticeModal?.type === 'warning'
+                  ? 'bg-amber-100 text-amber-600'
+                  : noticeModal?.type === 'success'
+                  ? 'bg-emerald-100 text-emerald-600'
+                  : 'bg-red-100 text-red-600'
+              }`}
+            >
+              {noticeModal?.type === 'warning' ? (
+                <AlertTriangle className="w-6 h-6" />
+              ) : noticeModal?.type === 'success' ? (
+                <CheckCircle2 className="w-6 h-6" />
+              ) : (
+                <AlertCircle className="w-6 h-6" />
+              )}
+            </div>
+            <DialogTitle className="text-lg font-bold text-[#002446]">
+              {noticeModal?.title}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              {noticeModal?.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setNoticeModal(null)}
+              className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
+            >
+              Mengerti
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
