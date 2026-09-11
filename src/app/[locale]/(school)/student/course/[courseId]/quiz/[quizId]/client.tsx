@@ -234,15 +234,15 @@ export function StudentQuizClient({
                   }`}
                 >
                   <div
-                    className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold border ${
+                    className={`flex items-center justify-center h-5 w-5 rounded-full border transition-all shrink-0 ${
                       isSelected
-                        ? 'bg-[#002446] text-white border-[#002446]'
-                        : 'bg-white text-gray-600 border-gray-300'
+                        ? 'border-[#002446] bg-[#002446]'
+                        : 'border-gray-400 bg-white'
                     }`}
                   >
-                    {opt.id}
+                    {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
                   </div>
-                  <span className="text-sm">{opt.text}</span>
+                  <span className="text-sm flex-1 leading-relaxed">{opt.text}</span>
                 </div>
               );
             })}
