@@ -37,14 +37,79 @@ import {
   FolderOpen,
   AlertTriangle,
   AlertCircle,
+  Paperclip,
+  Upload,
+  X,
+  Edit,
 } from 'lucide-react';
 import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
 import { createQuiz, deleteQuiz, addQuizQuestion, updateQuizQuestion, getQuizWithQuestions } from '@/lib/actions/quiz';
 import { getQuestionBankByCategory } from '@/lib/actions/question-bank';
-import { createAssignment, deleteAssignment } from '@/lib/actions/assignment';
+import { createAssignment, updateAssignment, deleteAssignment } from '@/lib/actions/assignment';
 import { RichTextEditor } from '@/components/editor/rich-text-editor';
 import { ContentType, QuestionType } from '@prisma/client';
 import { Link } from '@/i18n/navigation';
+
+const ASSIGNMENT_FILE_CATEGORIES = [
+  { id: 'pdf', label: 'Dokumen PDF (.pdf)', exts: ['pdf'] },
+  { id: 'image', label: 'Gambar (.jpg, .png, .jpeg, .webp)', exts: ['jpg', 'jpeg', 'png', 'webp'] },
+  { id: 'office', label: 'Dokumen Office (.docx, .xlsx, .pptx)', exts: ['docx', 'xlsx', 'pptx'] },
+  { id: 'archive', label: 'Berkas Arsip (.zip, .rar)', exts: ['zip', 'rar'] },
+];
+
+function buildAllowedTypesString(categories: string[], custom: string): string {
+  const exts = new Set<string>();
+  for (const catId of categories) {
+    const found = ASSIGNMENT_FILE_CATEGORIES.find((c) => c.id === catId);
+    if (found) {
+      found.exts.forEach((e) => exts.add(e.toLowerCase().trim()));
+    }
+  }
+  if (custom) {
+    custom
+      .split(',')
+      .map((s) => s.trim().replace(/^\./, '').toLowerCase())
+      .filter(Boolean)
+      .forEach((e) => exts.add(e));
+  }
+  return Array.from(exts).join(',');
+}
+
+function parseAllowedTypes(allowedString?: string | null): { categories: string[]; custom: string } {
+  if (!allowedString) {
+    return { categories: ['pdf', 'office', 'archive'], custom: '' };
+  }
+  const allExts = allowedString
+    .split(',')
+    .map((s) => s.trim().replace(/^\./, '').toLowerCase())
+    .filter(Boolean);
+  const categories: string[] = [];
+  const matchedExts = new Set<string>();
+
+  for (const cat of ASSIGNMENT_FILE_CATEGORIES) {
+    const hasAny = cat.exts.some((e) => allExts.includes(e));
+    if (hasAny) {
+      categories.push(cat.id);
+      cat.exts.forEach((e) => matchedExts.add(e));
+    }
+  }
+
+  const customExts = allExts.filter((e) => !matchedExts.has(e)).join(', ');
+  return { categories, custom: customExts };
+}
+
+function formatDatetimeLocal(date?: Date | string | null) {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
 
 export function TeacherCourseModulesClient({
   course,
@@ -159,13 +224,28 @@ export function TeacherCourseModulesClient({
     type?: 'error' | 'warning' | 'info' | 'success';
   } | null>(null);
 
-  // Assignment Modal State
+  // Assignment Modal State (Create)
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignTitle, setAssignTitle] = useState('');
   const [assignDesc, setAssignDesc] = useState('');
   const [assignDeadline, setAssignDeadline] = useState('');
   const [assignMaxScore, setAssignMaxScore] = useState(100);
-  const [assignAllowedTypes, setAssignAllowedTypes] = useState('pdf,docx,zip');
+  const [assignCategories, setAssignCategories] = useState<string[]>(['pdf', 'office', 'archive']);
+  const [assignCustomExts, setAssignCustomExts] = useState('');
+  const [assignFile, setAssignFile] = useState<File | null>(null);
+
+  // Assignment Modal State (Edit)
+  const [editingAssignment, setEditingAssignment] = useState<any | null>(null);
+  const [editAssignTitle, setEditAssignTitle] = useState('');
+  const [editAssignDesc, setEditAssignDesc] = useState('');
+  const [editAssignDeadline, setEditAssignDeadline] = useState('');
+  const [editAssignMaxScore, setEditAssignMaxScore] = useState(100);
+  const [editAssignCategories, setEditAssignCategories] = useState<string[]>([]);
+  const [editAssignCustomExts, setEditAssignCustomExts] = useState('');
+  const [editAssignExistingFile, setEditAssignExistingFile] = useState<{ url: string; name: string; size?: number } | null>(null);
+  const [editAssignNewFile, setEditAssignNewFile] = useState<File | null>(null);
+  const [editAssignRemoveFile, setEditAssignRemoveFile] = useState(false);
+  const [editAssignLoading, setEditAssignLoading] = useState(false);
 
   // 1. Module handlers
   const handleCreateModule = async (e: React.FormEvent) => {
@@ -562,13 +642,40 @@ export function TeacherCourseModulesClient({
     if (!activeModuleId || !assignTitle.trim()) return;
     setLoading(true);
     try {
+      let fileUrl: string | undefined = undefined;
+      let fileName: string | undefined = undefined;
+      let fileSize: number | undefined = undefined;
+
+      if (assignFile) {
+        const formData = new FormData();
+        formData.append('file', assignFile);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) {
+          const errJson = await res.json();
+          throw new Error(errJson.error || 'Gagal mengunggah berkas lampiran guru');
+        }
+        const fileData = await res.json();
+        fileUrl = fileData.url;
+        fileName = fileData.fileName;
+        fileSize = fileData.fileSize;
+      }
+
+      const finalAllowedTypes =
+        buildAllowedTypesString(assignCategories, assignCustomExts) || 'pdf,docx,zip';
+
       const created = await createAssignment({
         moduleId: activeModuleId,
         title: assignTitle,
         description: assignDesc,
         deadline: assignDeadline || undefined,
         maxScore: Number(assignMaxScore),
-        allowedTypes: assignAllowedTypes,
+        allowedTypes: finalAllowedTypes,
+        fileUrl,
+        fileName,
+        fileSize,
       });
 
       setModules((prev) =>
@@ -589,6 +696,10 @@ export function TeacherCourseModulesClient({
       setAssignTitle('');
       setAssignDesc('');
       setAssignDeadline('');
+      setAssignMaxScore(100);
+      setAssignCategories(['pdf', 'office', 'archive']);
+      setAssignCustomExts('');
+      setAssignFile(null);
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
@@ -598,6 +709,106 @@ export function TeacherCourseModulesClient({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenEditAssignment = (assign: any) => {
+    const { categories, custom } = parseAllowedTypes(assign.allowedTypes);
+    setEditingAssignment(assign);
+    setEditAssignTitle(assign.title || '');
+    setEditAssignDesc(assign.description || '');
+    setEditAssignDeadline(formatDatetimeLocal(assign.deadline));
+    setEditAssignMaxScore(assign.maxScore || 100);
+    setEditAssignCategories(categories);
+    setEditAssignCustomExts(custom);
+    setEditAssignExistingFile(
+      assign.fileUrl
+        ? {
+            url: assign.fileUrl,
+            name: assign.fileName || 'Berkas Lampiran Guru',
+            size: assign.fileSize,
+          }
+        : null
+    );
+    setEditAssignNewFile(null);
+    setEditAssignRemoveFile(false);
+  };
+
+  const handleUpdateAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAssignment || !editAssignTitle.trim()) return;
+    setEditAssignLoading(true);
+    try {
+      let fileUrl: string | null | undefined = undefined;
+      let fileName: string | null | undefined = undefined;
+      let fileSize: number | null | undefined = undefined;
+
+      if (editAssignNewFile) {
+        const formData = new FormData();
+        formData.append('file', editAssignNewFile);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) {
+          const errJson = await res.json();
+          throw new Error(errJson.error || 'Gagal mengunggah berkas lampiran');
+        }
+        const fileData = await res.json();
+        fileUrl = fileData.url;
+        fileName = fileData.fileName;
+        fileSize = fileData.fileSize;
+      } else if (editAssignRemoveFile) {
+        fileUrl = null;
+        fileName = null;
+        fileSize = null;
+      }
+
+      const finalAllowedTypes =
+        buildAllowedTypesString(editAssignCategories, editAssignCustomExts) || 'pdf,docx,zip';
+
+      const updated = await updateAssignment({
+        id: editingAssignment.id,
+        title: editAssignTitle,
+        description: editAssignDesc,
+        deadline: editAssignDeadline ? new Date(editAssignDeadline).toISOString() : null,
+        maxScore: Number(editAssignMaxScore),
+        allowedTypes: finalAllowedTypes,
+        fileUrl,
+        fileName,
+        fileSize,
+      });
+
+      setModules((prev) =>
+        prev.map((m) =>
+          m.id === editingAssignment.moduleId
+            ? {
+                ...m,
+                assignments: m.assignments.map((a: any) =>
+                  a.id === editingAssignment.id
+                    ? { ...a, ...updated, _count: a._count }
+                    : a
+                ),
+              }
+            : m
+        )
+      );
+
+      setEditingAssignment(null);
+      setNoticeModal({
+        title: 'Penugasan Diperbarui',
+        message: 'Perubahan penugasan dan batas waktu pengumpulan berhasil disimpan.',
+        type: 'success',
+      });
+    } catch (err: any) {
+      console.error(err);
+      setNoticeModal({
+        title: 'Gagal Memperbarui Penugasan',
+        message: err?.message || 'Terjadi kesalahan saat memperbarui penugasan.',
+        type: 'error',
+      });
+    } finally {
+      setEditAssignLoading(false);
     }
   };
 
@@ -973,23 +1184,49 @@ export function TeacherCourseModulesClient({
                       {mod.assignments.map((a: any) => (
                         <div
                           key={a.id}
-                          className="flex items-center justify-between p-3 rounded-md bg-purple-50/40 border border-purple-200/70"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-md bg-purple-50/40 border border-purple-200/70 gap-3"
                         >
                           <div>
                             <div className="font-semibold text-sm text-[#002446]">{a.title}</div>
-                            <div className="text-xs text-gray-600 flex items-center gap-3 mt-1">
+                            <div className="text-xs text-gray-600 flex flex-wrap items-center gap-3 mt-1">
                               <span>Skor Max: {a.maxScore}</span>
                               <span>Terkumpul: {a._count.submissions} Siswa</span>
                               {a.deadline && (
                                 <span className="flex items-center gap-1 text-purple-700 font-medium">
                                   <Calendar className="h-3 w-3" /> Deadline:{' '}
-                                  {new Date(a.deadline).toLocaleDateString('id-ID')}
+                                  {new Date(a.deadline).toLocaleDateString('id-ID', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
                                 </span>
+                              )}
+                              {a.fileName && (
+                                <a
+                                  href={a.fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline bg-blue-50 px-1.5 py-0.5 rounded"
+                                  title="Lampiran Soal Guru"
+                                >
+                                  <Paperclip className="h-3 w-3" />
+                                  <span className="truncate max-w-[120px]">{a.fileName}</span>
+                                </a>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenEditAssignment(a)}
+                              className="h-7 text-xs border-purple-300 text-purple-700 hover:bg-purple-100 flex items-center gap-1"
+                            >
+                              <Edit className="h-3 w-3" /> Edit
+                            </Button>
                             <Link href={`/teacher/course/${course.id}/submissions/${a.id}`}>
                               <Button
                                 size="sm"
@@ -1831,17 +2068,20 @@ export function TeacherCourseModulesClient({
 
       {/* Modal 4: Buat Penugasan */}
       <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleSaveAssignment}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
                 <ClipboardList className="h-5 w-5 text-purple-600" /> Buat Penugasan Siswa
               </DialogTitle>
+              <DialogDescription className="text-xs text-gray-500">
+                Berikan instruksi tugas, batas waktu pengumpulan, jenis file yang diterima, serta lampiran lembar soal.
+              </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="asTitle">Judul Tugas</Label>
+            <div className="space-y-4 py-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="asTitle" className="text-xs font-semibold">Judul Tugas</Label>
                 <Input
                   id="asTitle"
                   placeholder="misal: Tugas Praktikum / Analisis Kasus Bab 1"
@@ -1851,22 +2091,60 @@ export function TeacherCourseModulesClient({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="asDesc">Instruksi & Kriteria Penugasan</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="asDesc" className="text-xs font-semibold">Instruksi & Kriteria Penugasan</Label>
                 <textarea
                   id="asDesc"
-                  rows={4}
-                  placeholder="Tuliskan petunjuk lengkap pengumpulan tugas, format berkas yang diminta, dan rubrik penilaian..."
+                  rows={3}
+                  placeholder="Tuliskan petunjuk lengkap pengumpulan tugas, kriteria pengerjaan, dan rubrik penilaian..."
                   value={assignDesc}
                   onChange={(e) => setAssignDesc(e.target.value)}
-                  className="w-full p-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                  className="w-full p-2.5 rounded-md border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#002446]"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="asDeadline">Batas Waktu Pengumpulan</Label>
+              {/* Lampiran Berkas Guru */}
+              <div className="space-y-1.5 p-3 bg-purple-50/50 rounded-lg border border-purple-200">
+                <Label className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                  <Paperclip className="h-3.5 w-3.5 text-purple-600" /> Lampiran Berkas dari Guru (Opsional)
+                </Label>
+                <p className="text-[11px] text-gray-500">
+                  Unggah berkas lembar soal, studi kasus, atau panduan tugas (PDF, Word, Gambar, dll).
+                </p>
+
+                {assignFile ? (
+                  <div className="flex items-center justify-between p-2 bg-white rounded border border-purple-200 mt-2 text-xs">
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText className="h-4 w-4 text-purple-600 shrink-0" />
+                      <span className="font-medium truncate text-gray-800">{assignFile.name}</span>
+                      <span className="text-[10px] text-gray-400 shrink-0">
+                        ({(assignFile.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setAssignFile(null)}
+                      className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Input
+                    type="file"
+                    onChange={(e) => setAssignFile(e.target.files?.[0] || null)}
+                    className="text-xs bg-white h-9 mt-1"
+                  />
+                )}
+              </div>
+
+              {/* Batas Waktu & Nilai Maksimal */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="asDeadline" className="text-xs font-semibold">Batas Waktu Pengumpulan</Label>
                   <Input
                     id="asDeadline"
                     type="datetime-local"
@@ -1876,28 +2154,310 @@ export function TeacherCourseModulesClient({
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="asScore">Nilai Maksimal</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="asScore" className="text-xs font-semibold">Nilai Maksimal</Label>
                   <Input
                     id="asScore"
                     type="number"
+                    min={1}
                     value={assignMaxScore}
                     onChange={(e) => setAssignMaxScore(Number(e.target.value))}
                     required
                   />
                 </div>
               </div>
+
+              {/* Pengaturan Jenis Berkas Siswa */}
+              <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-gray-800">
+                    Jenis Berkas yang Diizinkan untuk Siswa:
+                  </Label>
+                  <span className="text-[10px] text-gray-500">Pilih kategori yang diperbolehkan</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {ASSIGNMENT_FILE_CATEGORIES.map((cat) => {
+                    const checked = assignCategories.includes(cat.id);
+                    return (
+                      <label
+                        key={cat.id}
+                        className={`flex items-center gap-2 p-2 rounded border text-xs cursor-pointer transition-colors ${
+                          checked
+                            ? 'bg-blue-50/70 border-blue-300 text-[#002446] font-medium'
+                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAssignCategories([...assignCategories, cat.id]);
+                            } else {
+                              setAssignCategories(assignCategories.filter((id) => id !== cat.id));
+                            }
+                          }}
+                          className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                        />
+                        <span>{cat.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2 border-t mt-2">
+                  <Label htmlFor="asCustomExts" className="text-[11px] text-gray-500 block mb-1">
+                    Ekstensi Tambahan Kustom (opsional, pisahkan koma):
+                  </Label>
+                  <Input
+                    id="asCustomExts"
+                    placeholder="misal: txt, csv, ipynb"
+                    value={assignCustomExts}
+                    onChange={(e) => setAssignCustomExts(e.target.value)}
+                    className="text-xs h-8 bg-white"
+                  />
+                </div>
+              </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsAssignModalOpen(false)}>
                 Batal
               </Button>
-              <Button type="submit" disabled={loading} className="bg-[#002446] text-white">
+              <Button type="submit" disabled={loading} className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium text-xs">
                 {loading ? 'Menyimpan...' : 'Simpan Tugas'}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal 5: Edit Penugasan */}
+      <Dialog open={Boolean(editingAssignment)} onOpenChange={(open) => !open && setEditingAssignment(null)}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          {editingAssignment && (
+            <form onSubmit={handleUpdateAssignment}>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
+                  <Edit className="h-5 w-5 text-purple-600" /> Edit Penugasan
+                </DialogTitle>
+                <DialogDescription className="text-xs text-gray-500">
+                  Ubah judul, instruksi, perpanjang batas waktu pengumpulan tugas, atau kelola berkas lampiran guru.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="editAsTitle" className="text-xs font-semibold">Judul Tugas</Label>
+                  <Input
+                    id="editAsTitle"
+                    value={editAssignTitle}
+                    onChange={(e) => setEditAssignTitle(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="editAsDesc" className="text-xs font-semibold">Instruksi & Kriteria Penugasan</Label>
+                  <textarea
+                    id="editAsDesc"
+                    rows={3}
+                    value={editAssignDesc}
+                    onChange={(e) => setEditAssignDesc(e.target.value)}
+                    className="w-full p-2.5 rounded-md border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                    required
+                  />
+                </div>
+
+                {/* Lampiran Berkas Guru */}
+                <div className="space-y-1.5 p-3 bg-purple-50/50 rounded-lg border border-purple-200">
+                  <Label className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                    <Paperclip className="h-3.5 w-3.5 text-purple-600" /> Berkas Lampiran Soal Guru
+                  </Label>
+
+                  {editAssignExistingFile && !editAssignRemoveFile && !editAssignNewFile && (
+                    <div className="flex items-center justify-between p-2 bg-white rounded border border-purple-200 text-xs mt-1">
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText className="h-4 w-4 text-purple-600 shrink-0" />
+                        <a
+                          href={editAssignExistingFile.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-medium truncate text-blue-600 hover:underline"
+                          title="Buka lampiran"
+                        >
+                          {editAssignExistingFile.name}
+                        </a>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditAssignRemoveFile(true)}
+                        className="h-6 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        Hapus Berkas
+                      </Button>
+                    </div>
+                  )}
+
+                  {editAssignRemoveFile && !editAssignNewFile && (
+                    <div className="p-2 bg-amber-50 rounded border border-amber-200 text-xs text-amber-800 flex items-center justify-between mt-1">
+                      <span>Lampiran lama akan dihapus setelah Anda menyimpan.</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditAssignRemoveFile(false)}
+                        className="h-6 px-2 text-xs text-amber-900 underline"
+                      >
+                        Batal Hapus
+                      </Button>
+                    </div>
+                  )}
+
+                  {editAssignNewFile ? (
+                    <div className="flex items-center justify-between p-2 bg-white rounded border border-purple-200 mt-2 text-xs">
+                      <div className="flex items-center gap-2 truncate">
+                        <Upload className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span className="font-medium truncate text-gray-800">{editAssignNewFile.name}</span>
+                        <span className="text-[10px] text-gray-400 shrink-0">
+                          ({(editAssignNewFile.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditAssignNewFile(null)}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="pt-1">
+                      <Label htmlFor="editAsNewFile" className="text-[11px] text-gray-600 block mb-1">
+                        {editAssignExistingFile && !editAssignRemoveFile ? 'Ganti dengan berkas baru:' : 'Unggah berkas lampiran baru:'}
+                      </Label>
+                      <Input
+                        id="editAsNewFile"
+                        type="file"
+                        onChange={(e) => {
+                          setEditAssignNewFile(e.target.files?.[0] || null);
+                          if (e.target.files?.[0]) setEditAssignRemoveFile(false);
+                        }}
+                        className="text-xs bg-white h-9"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Batas Waktu & Nilai Maksimal */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="editAsDeadline" className="text-xs font-semibold text-purple-900 flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5 text-purple-600" /> Batas Waktu (Deadline)
+                    </Label>
+                    <Input
+                      id="editAsDeadline"
+                      type="datetime-local"
+                      value={editAssignDeadline}
+                      onChange={(e) => setEditAssignDeadline(e.target.value)}
+                      required
+                      className="border-purple-300 focus:ring-purple-600"
+                    />
+                    <p className="text-[10px] text-gray-500 leading-tight">
+                      Ubah tanggal & jam ini untuk memberikan kelonggaran waktu bagi siswa.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="editAsScore" className="text-xs font-semibold">Nilai Maksimal</Label>
+                    <Input
+                      id="editAsScore"
+                      type="number"
+                      min={1}
+                      value={editAssignMaxScore}
+                      onChange={(e) => setEditAssignMaxScore(Number(e.target.value))}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Pengaturan Jenis Berkas Siswa */}
+                <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-gray-800">
+                      Jenis Berkas yang Diizinkan untuk Siswa:
+                    </Label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    {ASSIGNMENT_FILE_CATEGORIES.map((cat) => {
+                      const checked = editAssignCategories.includes(cat.id);
+                      return (
+                        <label
+                          key={cat.id}
+                          className={`flex items-center gap-2 p-2 rounded border text-xs cursor-pointer transition-colors ${
+                            checked
+                              ? 'bg-blue-50/70 border-blue-300 text-[#002446] font-medium'
+                              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditAssignCategories([...editAssignCategories, cat.id]);
+                              } else {
+                                setEditAssignCategories(editAssignCategories.filter((id) => id !== cat.id));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                          />
+                          <span>{cat.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 border-t mt-2">
+                    <Label htmlFor="editAsCustomExts" className="text-[11px] text-gray-500 block mb-1">
+                      Ekstensi Tambahan Kustom (opsional, pisahkan koma):
+                    </Label>
+                    <Input
+                      id="editAsCustomExts"
+                      placeholder="misal: txt, csv, ipynb"
+                      value={editAssignCustomExts}
+                      onChange={(e) => setEditAssignCustomExts(e.target.value)}
+                      className="text-xs h-8 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingAssignment(null)}
+                  disabled={editAssignLoading}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={editAssignLoading}
+                  className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium text-xs"
+                >
+                  {editAssignLoading ? 'Menyimpan Perubahan...' : 'Simpan Perubahan'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 

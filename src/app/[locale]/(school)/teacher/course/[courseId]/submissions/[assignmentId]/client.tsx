@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Download, FileText, CheckCircle, Clock, AlertCircle, Award } from 'lucide-react';
+import { ArrowLeft, Download, FileText, CheckCircle, Clock, AlertCircle, Award, Eye, Calendar, User as UserIcon } from 'lucide-react';
+import { FilePreviewer } from '@/components/assignment/file-previewer';
 
 interface SubmissionsClientProps {
   data: {
@@ -48,6 +49,13 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
   const [selectedSubmission, setSelectedSubmission] = useState<{
     id: string;
     studentName: string;
+    studentEmail: string;
+    studentNis: string | null;
+    fileUrl: string;
+    fileName: string;
+    fileSize: number;
+    submittedAt: Date;
+    isLate: boolean;
     score: number;
     teacherNote: string;
   } | null>(null);
@@ -58,9 +66,21 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
 
   const handleOpenGradeModal = (item: (typeof students)[0]) => {
     if (!item.submission) return;
+    const isLate =
+      data.assignment.deadline && item.submission
+        ? new Date(item.submission.submittedAt) > new Date(data.assignment.deadline)
+        : false;
+
     setSelectedSubmission({
       id: item.submission.id,
       studentName: item.student.name,
+      studentEmail: item.student.email,
+      studentNis: item.student.nis,
+      fileUrl: item.submission.fileUrl,
+      fileName: item.submission.fileName,
+      fileSize: item.submission.fileSize,
+      submittedAt: item.submission.submittedAt,
+      isLate: Boolean(isLate),
       score: item.submission.score ?? data.assignment.maxScore,
       teacherNote: item.submission.teacherNote ?? '',
     });
@@ -213,18 +233,27 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                       </td>
                       <td className="py-3.5 px-4">
                         {sub ? (
-                          <a
-                            href={sub.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                          >
-                            <FileText className="h-4 w-4" />
-                            <span className="truncate max-w-[150px]" title={sub.fileName}>
-                              {sub.fileName}
-                            </span>
-                            <Download className="h-3 w-3 text-gray-400" />
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenGradeModal(item)}
+                              className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium text-left group"
+                              title="Klik untuk pratinjau dan beri nilai"
+                            >
+                              <FileText className="h-4 w-4 shrink-0 text-blue-500 group-hover:text-blue-700" />
+                              <span className="truncate max-w-[130px] font-medium" title={sub.fileName}>
+                                {sub.fileName}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenGradeModal(item)}
+                              className="inline-flex items-center gap-1 text-[11px] bg-blue-50 text-blue-700 hover:bg-blue-100 px-1.5 py-0.5 rounded transition-colors shrink-0"
+                              title="Buka pratinjau berkas"
+                            >
+                              <Eye className="h-3 w-3" /> Pratinjau
+                            </button>
+                          </div>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
                             <AlertCircle className="h-3.5 w-3.5" /> Belum Mengumpulkan
@@ -292,74 +321,160 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
         </CardContent>
       </Card>
 
-      {/* Grade Dialog */}
-      <Dialog open={selectedSubmission !== null} onOpenChange={(open) => !open && setSelectedSubmission(null)}>
-        <DialogContent className="sm:max-w-md">
+      {/* Integrated Preview & Grade Dialog */}
+      <Dialog
+        open={selectedSubmission !== null}
+        onOpenChange={(open) => !open && setSelectedSubmission(null)}
+      >
+        <DialogContent className="max-w-6xl w-[96vw] h-[92vh] max-h-[92vh] flex flex-col p-0 overflow-hidden bg-white gap-0">
           {selectedSubmission && (
-            <form onSubmit={handleSaveGrade}>
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold text-[#002446]">
-                  Penilaian: {selectedSubmission.studentName}
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="score">
-                    Nilai Angka (Maksimal: {data.assignment.maxScore})
-                  </Label>
-                  <Input
-                    id="score"
-                    type="number"
-                    min={0}
-                    max={data.assignment.maxScore}
-                    value={selectedSubmission.score}
-                    onChange={(e) =>
-                      setSelectedSubmission({
-                        ...selectedSubmission,
-                        score: Number(e.target.value),
-                      })
-                    }
-                    required
-                    className="font-bold text-lg"
-                  />
+            <>
+              {/* Modal Top Header */}
+              <div className="px-6 py-3.5 bg-[#002446] text-white flex items-center justify-between shrink-0 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-bold text-white uppercase">
+                    {selectedSubmission.studentName.charAt(0)}
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                      {selectedSubmission.studentName}
+                      {selectedSubmission.studentNis && (
+                        <span className="text-xs font-normal text-slate-300 font-mono">
+                          (NIS: {selectedSubmission.studentNis})
+                        </span>
+                      )}
+                      {selectedSubmission.isLate ? (
+                        <span className="text-[10px] bg-red-500/80 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                          Terlambat
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-emerald-500/80 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                          Tepat Waktu
+                        </span>
+                      )}
+                    </h2>
+                    <p className="text-xs text-slate-300">
+                      Tugas: {data.assignment.title} • Dikumpulkan: {new Date(selectedSubmission.submittedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="note">Catatan Evaluasi / Feedback Guru (Opsional)</Label>
-                  <Textarea
-                    id="note"
-                    placeholder="Tuliskan evaluasi atau perbaikan yang perlu diperhatikan siswa..."
-                    rows={4}
-                    value={selectedSubmission.teacherNote}
-                    onChange={(e) =>
-                      setSelectedSubmission({
-                        ...selectedSubmission,
-                        teacherNote: e.target.value,
-                      })
-                    }
-                  />
+                <div className="flex items-center gap-2 pr-6">
+                  <span className="text-xs text-slate-300 hidden sm:inline">
+                    Skor Maksimal: <strong>{data.assignment.maxScore}</strong>
+                  </span>
                 </div>
               </div>
 
-              <DialogFooter className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSelectedSubmission(null)}
-                  disabled={loading}
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-medium"
-                >
-                  {loading ? 'Menyimpan...' : 'Simpan Nilai'}
-                </Button>
-              </DialogFooter>
-            </form>
+              {/* Modal Body: Split 2 Columns */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
+                {/* Left Column: File Previewer */}
+                <div className="lg:col-span-7 xl:col-span-8 bg-slate-950 p-2 sm:p-4 flex flex-col overflow-hidden h-[42vh] lg:h-full">
+                  <FilePreviewer
+                    fileUrl={selectedSubmission.fileUrl}
+                    fileName={selectedSubmission.fileName}
+                    fileSize={selectedSubmission.fileSize}
+                    className="h-full"
+                  />
+                </div>
+
+                {/* Right Column: Grading & Feedback Form */}
+                <div className="lg:col-span-5 xl:col-span-4 bg-white flex flex-col justify-between overflow-y-auto border-t lg:border-t-0 lg:border-l border-gray-200">
+                  <form onSubmit={handleSaveGrade} className="p-5 sm:p-6 flex flex-col justify-between h-full space-y-4">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
+                          Form Penilaian Guru
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Periksa berkas di sisi kiri, lalu masukkan nilai dan catatan evaluasi untuk siswa.
+                        </p>
+                      </div>
+
+                      {/* Quick Score helper buttons */}
+                      <div className="space-y-1.5 pt-2 border-t">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="score" className="text-xs font-bold text-gray-700">
+                            Nilai Angka (Maks: {data.assignment.maxScore})
+                          </Label>
+                          <div className="flex items-center gap-1">
+                            {[100, 90, 85, 75].map((preset) => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedSubmission({
+                                    ...selectedSubmission,
+                                    score: Math.min(preset, data.assignment.maxScore),
+                                  })
+                                }
+                                className="text-[10px] font-semibold px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                              >
+                                {preset}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <Input
+                          id="score"
+                          type="number"
+                          min={0}
+                          max={data.assignment.maxScore}
+                          value={selectedSubmission.score}
+                          onChange={(e) =>
+                            setSelectedSubmission({
+                              ...selectedSubmission,
+                              score: Number(e.target.value),
+                            })
+                          }
+                          required
+                          className="font-bold text-xl h-11 text-[#002446]"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="note" className="text-xs font-bold text-gray-700">
+                          Catatan Evaluasi / Umpan Balik Guru (Opsional)
+                        </Label>
+                        <Textarea
+                          id="note"
+                          placeholder="Tuliskan catatan perbaikan, apresiasi, atau poin evaluasi terhadap tugas siswa ini..."
+                          rows={6}
+                          value={selectedSubmission.teacherNote}
+                          onChange={(e) =>
+                            setSelectedSubmission({
+                              ...selectedSubmission,
+                              teacherNote: e.target.value,
+                            })
+                          }
+                          className="text-xs resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setSelectedSubmission(null)}
+                        disabled={loading}
+                        className="text-xs"
+                      >
+                        Batal
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={loading}
+                        className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-semibold text-xs shadow-sm"
+                      >
+                        {loading ? 'Menyimpan...' : 'Simpan Nilai'}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

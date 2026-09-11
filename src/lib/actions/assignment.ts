@@ -41,6 +41,9 @@ export async function createAssignment(data: {
   maxScore?: number;
   maxFileSize?: number;
   allowedTypes?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
 }) {
   await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
 
@@ -55,12 +58,50 @@ export async function createAssignment(data: {
       maxScore: Number(data.maxScore || 100),
       maxFileSize: data.maxFileSize ? Number(data.maxFileSize) : 25,
       allowedTypes: data.allowedTypes || 'pdf,docx,zip,pptx,xlsx',
+      fileUrl: data.fileUrl || null,
+      fileName: data.fileName || null,
+      fileSize: data.fileSize || null,
       isPublished: true,
       order: count,
     },
   });
 
   revalidatePath('/[locale]/teacher/course/[courseId]/modules', 'page');
+  return assignment;
+}
+
+export async function updateAssignment(data: {
+  id: string;
+  title: string;
+  description?: string;
+  deadline?: string | null;
+  maxScore?: number;
+  maxFileSize?: number;
+  allowedTypes?: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+}) {
+  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+
+  const assignment = await db.assignment.update({
+    where: { id: data.id },
+    data: {
+      title: data.title,
+      description: data.description || null,
+      deadline: data.deadline ? new Date(data.deadline) : null,
+      maxScore: Number(data.maxScore || 100),
+      maxFileSize: data.maxFileSize ? Number(data.maxFileSize) : 25,
+      allowedTypes: data.allowedTypes || 'pdf,docx,zip,pptx,xlsx',
+      fileUrl: data.fileUrl !== undefined ? data.fileUrl : undefined,
+      fileName: data.fileName !== undefined ? data.fileName : undefined,
+      fileSize: data.fileSize !== undefined ? data.fileSize : undefined,
+    },
+  });
+
+  revalidatePath('/[locale]/teacher/course/[courseId]/modules', 'page');
+  revalidatePath('/[locale]/teacher/course/[courseId]/submissions/[assignmentId]', 'page');
+  revalidatePath('/[locale]/student/course/[courseId]/assignment/[assignmentId]', 'page');
   return assignment;
 }
 

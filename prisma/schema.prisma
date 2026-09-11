@@ -337,6 +337,9 @@ model Assignment {
   maxScore     Float    @default(100)
   isPublished  Boolean  @default(false)
   order        Int      @default(0)
+  fileUrl      String?
+  fileName     String?
+  fileSize     Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
