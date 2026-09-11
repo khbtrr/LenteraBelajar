@@ -467,7 +467,13 @@ export async function submitQuizAttempt(
   });
 
   if (!attempt) throw new Error('Attempt not found');
-  if (attempt.submittedAt) throw new Error('Kuis sudah pernah dikumpulkan');
+  if (attempt.submittedAt) {
+    return {
+      success: true,
+      score: attempt.score,
+      isGraded: attempt.isGraded,
+    };
+  }
 
   let totalScore = 0;
   let totalPoints = 0;
@@ -480,6 +486,11 @@ export async function submitQuizAttempt(
   } else {
      activeQuestions = attempt.quiz.questions;
   }
+
+  // Delete partial answers if re-submitting before inserting new answers
+  await db.quizAnswer.deleteMany({
+    where: { attemptId: attempt.id },
+  });
 
   for (const q of activeQuestions) {
     totalPoints += q.points;
