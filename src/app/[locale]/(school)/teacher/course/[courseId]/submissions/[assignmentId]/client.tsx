@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Download, FileText, CheckCircle, Clock, AlertCircle, Award, Eye, Calendar, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Download, FileText, CheckCircle, Clock, AlertCircle, Award, Eye, Calendar, User as UserIcon, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { FilePreviewer } from '@/components/assignment/file-previewer';
 
 interface SubmissionsClientProps {
@@ -48,6 +48,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
   const [students, setStudents] = useState(data.enrolledStudents);
   const [selectedSubmission, setSelectedSubmission] = useState<{
     id: string;
+    studentId: string;
     studentName: string;
     studentEmail: string;
     studentNis: string | null;
@@ -64,6 +65,14 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
   const submittedCount = students.filter((s) => s.submission !== null).length;
   const gradedCount = students.filter((s) => s.submission?.score !== null && s.submission?.score !== undefined).length;
 
+  const submittedStudents = students.filter((s) => s.submission !== null);
+  const currentSubmittedIndex = submittedStudents.findIndex(
+    (s) => s.student.id === selectedSubmission?.studentId
+  );
+  const hasPrevStudent = currentSubmittedIndex > 0;
+  const hasNextStudent =
+    currentSubmittedIndex >= 0 && currentSubmittedIndex < submittedStudents.length - 1;
+
   const handleOpenGradeModal = (item: (typeof students)[0]) => {
     if (!item.submission) return;
     const isLate =
@@ -73,6 +82,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
 
     setSelectedSubmission({
       id: item.submission.id,
+      studentId: item.student.id,
       studentName: item.student.name,
       studentEmail: item.student.email,
       studentNis: item.student.nis,
@@ -84,6 +94,14 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
       score: item.submission.score ?? data.assignment.maxScore,
       teacherNote: item.submission.teacherNote ?? '',
     });
+  };
+
+  const handleNavigateStudent = (direction: 'prev' | 'next') => {
+    if (currentSubmittedIndex === -1) return;
+    const targetIndex = direction === 'prev' ? currentSubmittedIndex - 1 : currentSubmittedIndex + 1;
+    if (targetIndex >= 0 && targetIndex < submittedStudents.length) {
+      handleOpenGradeModal(submittedStudents[targetIndex]);
+    }
   };
 
   const handleSaveGrade = async (e: React.FormEvent) => {
@@ -115,6 +133,65 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
       );
 
       setSelectedSubmission(null);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyimpan nilai');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveAndNext = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!selectedSubmission) return;
+
+    setLoading(true);
+    try {
+      await gradeAssignmentSubmission(selectedSubmission.id, {
+        score: Number(selectedSubmission.score),
+        teacherNote: selectedSubmission.teacherNote,
+      });
+
+      const updatedStudents = students.map((item) => {
+        if (item.submission?.id === selectedSubmission.id) {
+          return {
+            ...item,
+            submission: {
+              ...item.submission,
+              score: Number(selectedSubmission.score),
+              teacherNote: selectedSubmission.teacherNote,
+              gradedAt: new Date(),
+            },
+          };
+        }
+        return item;
+      });
+      setStudents(updatedStudents);
+
+      if (hasNextStudent) {
+        const nextStudent = submittedStudents[currentSubmittedIndex + 1];
+        const isLate =
+          data.assignment.deadline && nextStudent.submission
+            ? new Date(nextStudent.submission.submittedAt) > new Date(data.assignment.deadline)
+            : false;
+
+        setSelectedSubmission({
+          id: nextStudent.submission!.id,
+          studentId: nextStudent.student.id,
+          studentName: nextStudent.student.name,
+          studentEmail: nextStudent.student.email,
+          studentNis: nextStudent.student.nis,
+          fileUrl: nextStudent.submission!.fileUrl,
+          fileName: nextStudent.submission!.fileName,
+          fileSize: nextStudent.submission!.fileSize,
+          submittedAt: nextStudent.submission!.submittedAt,
+          isLate: Boolean(isLate),
+          score: nextStudent.submission!.score ?? data.assignment.maxScore,
+          teacherNote: nextStudent.submission!.teacherNote ?? '',
+        });
+      } else {
+        setSelectedSubmission(null);
+      }
     } catch (err) {
       console.error(err);
       alert('Gagal menyimpan nilai');
@@ -330,38 +407,88 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
           {selectedSubmission && (
             <>
               {/* Modal Top Header */}
-              <div className="px-6 py-3.5 bg-[#002446] text-white flex items-center justify-between shrink-0 border-b">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-bold text-white uppercase">
+              <div className="px-4 sm:px-6 py-3 bg-[#002446] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 border-b">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-bold text-white uppercase shrink-0">
                     {selectedSubmission.studentName.charAt(0)}
                   </div>
-                  <div>
-                    <h2 className="text-base font-bold text-white flex items-center gap-2">
-                      {selectedSubmission.studentName}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-base font-bold text-white truncate">
+                        {selectedSubmission.studentName}
+                      </h2>
                       {selectedSubmission.studentNis && (
                         <span className="text-xs font-normal text-slate-300 font-mono">
-                          (NIS: {selectedSubmission.studentNis})
+                          ({selectedSubmission.studentNis})
                         </span>
                       )}
                       {selectedSubmission.isLate ? (
-                        <span className="text-[10px] bg-red-500/80 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                        <span className="text-[10px] bg-red-500/80 text-white font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
                           Terlambat
                         </span>
                       ) : (
-                        <span className="text-[10px] bg-emerald-500/80 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                        <span className="text-[10px] bg-emerald-500/80 text-white font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
                           Tepat Waktu
                         </span>
                       )}
-                    </h2>
-                    <p className="text-xs text-slate-300">
+                    </div>
+                    <p className="text-[11px] text-slate-300 truncate">
                       Tugas: {data.assignment.title} • Dikumpulkan: {new Date(selectedSubmission.submittedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pr-6">
-                  <span className="text-xs text-slate-300 hidden sm:inline">
-                    Skor Maksimal: <strong>{data.assignment.maxScore}</strong>
+                {/* Navigation & Selector across students */}
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                  {submittedStudents.length > 1 && (
+                    <div className="flex items-center gap-1 bg-slate-800/90 p-1 rounded-lg border border-slate-700 text-xs">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!hasPrevStudent || loading}
+                        onClick={() => handleNavigateStudent('prev')}
+                        className="h-7 w-7 p-0 text-slate-200 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                        title="Siswa Sebelumnya"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+
+                      {/* Dropdown to jump directly to any student */}
+                      <select
+                        value={selectedSubmission.studentId}
+                        onChange={(e) => {
+                          const target = submittedStudents.find(
+                            (s) => s.student.id === e.target.value
+                          );
+                          if (target) handleOpenGradeModal(target);
+                        }}
+                        className="bg-slate-900 text-white text-xs border border-slate-700 rounded px-2 py-1 max-w-[160px] sm:max-w-[200px] truncate focus:outline-none focus:ring-1 focus:ring-[#FF8928]"
+                        title="Pilih Siswa"
+                      >
+                        {submittedStudents.map((item, idx) => (
+                          <option key={item.student.id} value={item.student.id}>
+                            {idx + 1}. {item.student.name} {item.submission?.score !== null ? `(${item.submission?.score} poin)` : '(Belum dinilai)'}
+                          </option>
+                        ))}
+                      </select>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!hasNextStudent || loading}
+                        onClick={() => handleNavigateStudent('next')}
+                        className="h-7 w-7 p-0 text-slate-200 hover:text-white hover:bg-slate-700 disabled:opacity-30"
+                        title="Siswa Berikutnya"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  <span className="text-xs text-slate-300 hidden md:inline ml-1">
+                    Skor Maks: <strong>{data.assignment.maxScore}</strong>
                   </span>
                 </div>
               </div>
@@ -453,7 +580,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t flex items-center justify-end gap-2">
+                    <div className="pt-4 border-t flex flex-wrap items-center justify-between gap-2">
                       <Button
                         type="button"
                         variant="outline"
@@ -461,15 +588,39 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                         disabled={loading}
                         className="text-xs"
                       >
-                        Batal
+                        Tutup
                       </Button>
-                      <Button
-                        type="submit"
-                        disabled={loading}
-                        className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-semibold text-xs shadow-sm"
-                      >
-                        {loading ? 'Menyimpan...' : 'Simpan Nilai'}
-                      </Button>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="submit"
+                          disabled={loading}
+                          className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium text-xs shadow-sm"
+                        >
+                          {loading ? 'Menyimpan...' : 'Simpan Nilai'}
+                        </Button>
+
+                        {hasNextStudent ? (
+                          <Button
+                            type="button"
+                            disabled={loading}
+                            onClick={handleSaveAndNext}
+                            className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-semibold text-xs shadow-sm flex items-center gap-1.5"
+                          >
+                            <span>Simpan & Lanjut</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            disabled={loading}
+                            onClick={handleSaveAndNext}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm flex items-center gap-1.5"
+                          >
+                            <span>Simpan & Selesai</span>
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </form>
                 </div>
