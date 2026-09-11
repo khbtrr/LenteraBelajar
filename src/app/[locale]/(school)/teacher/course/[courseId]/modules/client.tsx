@@ -28,6 +28,7 @@ import {
   Calendar,
   Layers,
   CheckCircle,
+  CheckCircle2,
   Database,
   CheckSquare,
   Square,
@@ -35,6 +36,7 @@ import {
   ChevronRight,
   FolderOpen,
   AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
 import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
 import { createQuiz, deleteQuiz, addQuizQuestion, updateQuizQuestion, getQuizWithQuestions } from '@/lib/actions/quiz';
@@ -122,6 +124,41 @@ export function TeacherCourseModulesClient({
   const [deleteQuizLoading, setDeleteQuizLoading] = useState(false);
   const [deleteQuizError, setDeleteQuizError] = useState<string | null>(null);
 
+  // Delete Module Confirmation Modal State
+  const [moduleToDelete, setModuleToDelete] = useState<{
+    id: string;
+    title: string;
+    contentsCount: number;
+    quizzesCount: number;
+    assignmentsCount: number;
+  } | null>(null);
+  const [deleteModuleLoading, setDeleteModuleLoading] = useState(false);
+
+  // Delete Content Confirmation Modal State
+  const [contentToDelete, setContentToDelete] = useState<{
+    moduleId: string;
+    id: string;
+    title: string;
+    type: string;
+  } | null>(null);
+  const [deleteContentLoading, setDeleteContentLoading] = useState(false);
+
+  // Delete Assignment Confirmation Modal State
+  const [assignmentToDelete, setAssignmentToDelete] = useState<{
+    moduleId: string;
+    id: string;
+    title: string;
+    submissionsCount: number;
+  } | null>(null);
+  const [deleteAssignmentLoading, setDeleteAssignmentLoading] = useState(false);
+
+  // General Notice Modal State
+  const [noticeModal, setNoticeModal] = useState<{
+    title: string;
+    message: string;
+    type?: 'error' | 'warning' | 'info' | 'success';
+  } | null>(null);
+
   // Assignment Modal State
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignTitle, setAssignTitle] = useState('');
@@ -143,25 +180,34 @@ export function TeacherCourseModulesClient({
       ]);
       setModuleTitle('');
       setIsModuleModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat modul');
+      setNoticeModal({
+        title: 'Gagal Membuat Modul',
+        message: err?.message || 'Terjadi kesalahan saat membuat bab modul.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteModule = async (id: string) => {
-    if (!confirm('Hapus modul ini beserta seluruh materi, kuis, dan tugas di dalamnya?')) return;
-    setLoading(true);
+  const handleConfirmDeleteModule = async () => {
+    if (!moduleToDelete) return;
+    setDeleteModuleLoading(true);
     try {
-      await deleteModule(id);
-      setModules((prev) => prev.filter((m) => m.id !== id));
-    } catch (err) {
+      await deleteModule(moduleToDelete.id);
+      setModules((prev) => prev.filter((m) => m.id !== moduleToDelete.id));
+      setModuleToDelete(null);
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menghapus modul');
+      setNoticeModal({
+        title: 'Gagal Menghapus Modul',
+        message: err?.message || 'Terjadi kesalahan saat menghapus bab modul.',
+        type: 'error',
+      });
     } finally {
-      setLoading(false);
+      setDeleteModuleLoading(false);
     }
   };
 
@@ -177,7 +223,11 @@ export function TeacherCourseModulesClient({
 
       if (contentType === ContentType.FILE) {
         if (!contentFile) {
-          alert('Silakan pilih berkas dokumen terlebih dahulu');
+          setNoticeModal({
+            title: 'Berkas Belum Dipilih',
+            message: 'Silakan pilih berkas dokumen terlebih dahulu sebelum menyimpan.',
+            type: 'warning',
+          });
           setLoading(false);
           return;
         }
@@ -224,25 +274,38 @@ export function TeacherCourseModulesClient({
       setVideoUrl('');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Gagal menyimpan konten materi');
+      setNoticeModal({
+        title: 'Gagal Menyimpan Materi',
+        message: err?.message || 'Terjadi kesalahan saat menyimpan konten materi pembelajaran.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteContent = async (moduleId: string, contentId: string) => {
-    if (!confirm('Hapus materi ini?')) return;
+  const handleConfirmDeleteContent = async () => {
+    if (!contentToDelete) return;
+    setDeleteContentLoading(true);
     try {
-      await deleteContent(contentId);
+      await deleteContent(contentToDelete.id);
       setModules((prev) =>
         prev.map((m) =>
-          m.id === moduleId
-            ? { ...m, contents: m.contents.filter((c: any) => c.id !== contentId) }
+          m.id === contentToDelete.moduleId
+            ? { ...m, contents: m.contents.filter((c: any) => c.id !== contentToDelete.id) }
             : m
         )
       );
-    } catch (err) {
+      setContentToDelete(null);
+    } catch (err: any) {
       console.error(err);
+      setNoticeModal({
+        title: 'Gagal Menghapus Materi',
+        message: err?.message || 'Terjadi kesalahan saat menghapus materi pembelajaran.',
+        type: 'error',
+      });
+    } finally {
+      setDeleteContentLoading(false);
     }
   };
 
@@ -253,12 +316,20 @@ export function TeacherCourseModulesClient({
     if (qType === QuestionType.MULTIPLE_CHOICE) {
       const validOptions = mcOptions.filter((o) => o.text.trim());
       if (validOptions.length < 2) {
-        alert('Minimal sediakan 2 Pilihan Jawaban');
+        setNoticeModal({
+          title: 'Pilihan Jawaban Kurang',
+          message: 'Minimal sediakan 2 Pilihan Jawaban dengan teks yang terisi.',
+          type: 'warning',
+        });
         return;
       }
       const hasCorrect = validOptions.some((o) => o.isCorrect);
       if (!hasCorrect) {
-        alert('Pilih setidaknya 1 jawaban yang benar');
+        setNoticeModal({
+          title: 'Kunci Jawaban Belum Dipilih',
+          message: 'Pilih setidaknya 1 jawaban yang benar dengan menandai bulatan opsi.',
+          type: 'warning',
+        });
         return;
       }
       
@@ -290,7 +361,11 @@ export function TeacherCourseModulesClient({
       setBankData(data);
     } catch (err) {
       console.error('Failed to fetch bank data:', err);
-      alert('Gagal memuat data bank soal');
+      setNoticeModal({
+        title: 'Gagal Memuat Bank Soal',
+        message: 'Gagal memuat data dari Bank Soal. Silakan coba lagi.',
+        type: 'error',
+      });
     } finally {
       setBankLoading(false);
     }
@@ -446,9 +521,13 @@ export function TeacherCourseModulesClient({
       setQuestions([]);
       setQuizMaxAttempts('1');
       setQuizPassingGrade('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat kuis');
+      setNoticeModal({
+        title: 'Gagal Membuat Kuis',
+        message: err?.message || 'Terjadi kesalahan saat membuat kuis baru.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -510,27 +589,40 @@ export function TeacherCourseModulesClient({
       setAssignTitle('');
       setAssignDesc('');
       setAssignDeadline('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat penugasan');
+      setNoticeModal({
+        title: 'Gagal Membuat Penugasan',
+        message: err?.message || 'Terjadi kesalahan saat membuat penugasan.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteAssignment = async (moduleId: string, assignId: string) => {
-    if (!confirm('Hapus penugasan ini?')) return;
+  const handleConfirmDeleteAssignment = async () => {
+    if (!assignmentToDelete) return;
+    setDeleteAssignmentLoading(true);
     try {
-      await deleteAssignment(assignId);
+      await deleteAssignment(assignmentToDelete.id);
       setModules((prev) =>
         prev.map((m) =>
-          m.id === moduleId
-            ? { ...m, assignments: m.assignments.filter((a: any) => a.id !== assignId) }
+          m.id === assignmentToDelete.moduleId
+            ? { ...m, assignments: m.assignments.filter((a: any) => a.id !== assignmentToDelete.id) }
             : m
         )
       );
-    } catch (err) {
+      setAssignmentToDelete(null);
+    } catch (err: any) {
       console.error(err);
+      setNoticeModal({
+        title: 'Gagal Menghapus Tugas',
+        message: err?.message || 'Terjadi kesalahan saat menghapus penugasan.',
+        type: 'error',
+      });
+    } finally {
+      setDeleteAssignmentLoading(false);
     }
   };
 
@@ -539,9 +631,13 @@ export function TeacherCourseModulesClient({
     try {
       const data = await getQuizWithQuestions(quizId);
       setEditingQuiz(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal memuat kuis');
+      setNoticeModal({
+        title: 'Gagal Memuat Kuis',
+        message: err?.message || 'Tidak dapat memuat butir soal kuis.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -557,7 +653,11 @@ export function TeacherCourseModulesClient({
       if (editQuestionModal.type === QuestionType.MULTIPLE_CHOICE) {
          const validOptions = editQuestionModal.options.filter((o) => o.text.trim());
          if (validOptions.length < 2) {
-           alert('Minimal 2 Pilihan Jawaban');
+           setNoticeModal({
+             title: 'Pilihan Jawaban Kurang',
+             message: 'Minimal sediakan 2 Pilihan Jawaban dengan teks yang terisi.',
+             type: 'warning',
+           });
            setLoading(false);
            return;
          }
@@ -566,7 +666,11 @@ export function TeacherCourseModulesClient({
       
       const questionId = editQuestionModal.id || editQuestionModal.questionId;
       if (!questionId) {
-        alert('ID soal tidak valid');
+        setNoticeModal({
+          title: 'Soal Tidak Valid',
+          message: 'ID butir soal tidak ditemukan atau tidak valid.',
+          type: 'error',
+        });
         setLoading(false);
         return;
       }
@@ -577,13 +681,21 @@ export function TeacherCourseModulesClient({
         options: opts
       });
       
-      alert('Berhasil menyimpan soal');
+      setNoticeModal({
+        title: 'Berhasil Disimpan',
+        message: 'Perubahan butir soal kuis berhasil disimpan.',
+        type: 'success',
+      });
       setEditQuestionModal(null);
       const data = await getQuizWithQuestions(editingQuiz.id);
       setEditingQuiz(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menyimpan soal');
+      setNoticeModal({
+        title: 'Gagal Menyimpan Soal',
+        message: err?.message || 'Terjadi kesalahan saat memperbarui butir soal.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -681,7 +793,15 @@ export function TeacherCourseModulesClient({
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => handleDeleteModule(mod.id)}
+                    onClick={() =>
+                      setModuleToDelete({
+                        id: mod.id,
+                        title: mod.title,
+                        contentsCount: mod.contents.length,
+                        quizzesCount: mod.quizzes.length,
+                        assignmentsCount: mod.assignments.length,
+                      })
+                    }
                     className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 ml-2"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -741,7 +861,14 @@ export function TeacherCourseModulesClient({
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDeleteContent(mod.id, c.id)}
+                              onClick={() =>
+                                setContentToDelete({
+                                  moduleId: mod.id,
+                                  id: c.id,
+                                  title: c.title,
+                                  type: c.type,
+                                })
+                              }
                               className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -875,7 +1002,14 @@ export function TeacherCourseModulesClient({
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDeleteAssignment(mod.id, a.id)}
+                              onClick={() =>
+                                setAssignmentToDelete({
+                                  moduleId: mod.id,
+                                  id: a.id,
+                                  title: a.title,
+                                  submissionsCount: a._count.submissions,
+                                })
+                              }
                               className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -2044,6 +2178,179 @@ export function TeacherCourseModulesClient({
               className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
             >
               {deleteQuizLoading ? 'Menghapus...' : 'Hapus Kuis'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Konfirmasi Hapus Modul */}
+      <Dialog open={Boolean(moduleToDelete)} onOpenChange={(open) => !open && setModuleToDelete(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              Hapus Bab Modul?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus bab modul <strong>{moduleToDelete?.title}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2 text-left">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+            <div>
+              <strong>Peringatan Penghapusan:</strong>
+              <p className="mt-0.5">
+                Seluruh isi bab ini ({moduleToDelete?.contentsCount || 0} materi, {moduleToDelete?.quizzesCount || 0} kuis, {moduleToDelete?.assignmentsCount || 0} tugas) akan ikut dihapus secara permanen.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteModuleLoading}
+              onClick={() => setModuleToDelete(null)}
+              className="w-full sm:w-1/2"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={deleteModuleLoading}
+              onClick={handleConfirmDeleteModule}
+              className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              {deleteModuleLoading ? 'Menghapus...' : 'Hapus Modul'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Konfirmasi Hapus Materi */}
+      <Dialog open={Boolean(contentToDelete)} onOpenChange={(open) => !open && setContentToDelete(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              Hapus Materi?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus materi <strong>{contentToDelete?.title}</strong>? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteContentLoading}
+              onClick={() => setContentToDelete(null)}
+              className="w-full sm:w-1/2"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={deleteContentLoading}
+              onClick={handleConfirmDeleteContent}
+              className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              {deleteContentLoading ? 'Menghapus...' : 'Hapus Materi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Konfirmasi Hapus Tugas */}
+      <Dialog open={Boolean(assignmentToDelete)} onOpenChange={(open) => !open && setAssignmentToDelete(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              Hapus Penugasan?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus tugas <strong>{assignmentToDelete?.title}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+
+          {assignmentToDelete?.submissionsCount !== undefined && assignmentToDelete.submissionsCount > 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2 text-left">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+              <div>
+                <strong>Peringatan Pengumpulan Siswa:</strong>
+                <p className="mt-0.5">
+                  Tugas ini memiliki <strong>{assignmentToDelete.submissionsCount}</strong> pengumpulan berkas dari siswa yang juga akan ikut dihapus.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteAssignmentLoading}
+              onClick={() => setAssignmentToDelete(null)}
+              className="w-full sm:w-1/2"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={deleteAssignmentLoading}
+              onClick={handleConfirmDeleteAssignment}
+              className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              {deleteAssignmentLoading ? 'Menghapus...' : 'Hapus Tugas'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Notifikasi / Alert Dialog */}
+      <Dialog open={Boolean(noticeModal)} onOpenChange={(open) => !open && setNoticeModal(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200 text-center">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div
+              className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${
+                noticeModal?.type === 'warning'
+                  ? 'bg-amber-100 text-amber-600'
+                  : noticeModal?.type === 'success'
+                  ? 'bg-emerald-100 text-emerald-600'
+                  : 'bg-red-100 text-red-600'
+              }`}
+            >
+              {noticeModal?.type === 'warning' ? (
+                <AlertTriangle className="w-6 h-6" />
+              ) : noticeModal?.type === 'success' ? (
+                <CheckCircle2 className="w-6 h-6" />
+              ) : (
+                <AlertCircle className="w-6 h-6" />
+              )}
+            </div>
+            <DialogTitle className="text-lg font-bold text-[#002446]">
+              {noticeModal?.title}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              {noticeModal?.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setNoticeModal(null)}
+              className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
+            >
+              Tutup
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from '@/i18n/navigation';
-import { ArrowLeft, Plus, Trash2, Pencil, FileUp, FileDown, HelpCircle, BookOpen, Search, CheckCircle2, AlertTriangle, Database } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, FileUp, FileDown, HelpCircle, BookOpen, Search, CheckCircle2, AlertTriangle, Database, AlertCircle } from 'lucide-react';
 import {
   createQuestionBankCategory,
   updateQuestionBankCategory,
@@ -87,6 +87,11 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
+  // Confirmation & Alert Modal States (replaces window.confirm & window.alert)
+  const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string; count: number } | null>(null);
+  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
+  const [noticeModal, setNoticeModal] = useState<{ title: string; message: string; type?: 'error' | 'warning' | 'info' | 'success' } | null>(null);
+
   // Computed data
   const categories = bankData.categories || [];
   const uncategorizedQuestions = bankData.uncategorized || [];
@@ -116,7 +121,11 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      alert(e?.message || 'Gagal membuat kategori');
+      setNoticeModal({
+        title: 'Gagal Menambahkan Kategori',
+        message: e?.message || 'Terjadi kesalahan saat menambahkan kategori.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -136,14 +145,19 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      alert(e?.message || 'Gagal memperbarui kategori');
+      setNoticeModal({
+        title: 'Gagal Memperbarui Kategori',
+        message: e?.message || 'Terjadi kesalahan saat memperbarui kategori.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus kategori ini? Soal di dalamnya akan menjadi Belum Berkategori.')) return;
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    const id = categoryToDelete.id;
     setLoading(true);
     try {
       await deleteQuestionBankCategory(id);
@@ -158,10 +172,15 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
         };
       });
       if (selectedCategoryId === id) setSelectedCategoryId(null);
+      setCategoryToDelete(null);
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      alert(e?.message || 'Gagal menghapus kategori');
+      setNoticeModal({
+        title: 'Gagal Menghapus Kategori',
+        message: e?.message || 'Terjadi kesalahan saat menghapus kategori.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -249,14 +268,19 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      alert(e?.message || 'Gagal menyimpan soal');
+      setNoticeModal({
+        title: 'Gagal Menyimpan Soal',
+        message: e?.message || 'Terjadi kesalahan saat menyimpan butir soal.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteQuestion = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus soal ini?')) return;
+  const confirmDeleteQuestion = async () => {
+    if (!questionToDelete) return;
+    const id = questionToDelete;
     setLoading(true);
     try {
       await deleteBankQuestion(id);
@@ -278,10 +302,15 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
           (prev.uncategorizedCount || 0) - (prev.uncategorized?.some((q: any) => q.id === id) ? 1 : 0)
         ),
       }));
+      setQuestionToDelete(null);
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      alert(e?.message || 'Gagal menghapus soal');
+      setNoticeModal({
+        title: 'Gagal Menghapus Soal',
+        message: e?.message || 'Terjadi kesalahan saat menghapus butir soal.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -329,7 +358,11 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       const res = await fetch('/api/quiz-import', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'Gagal memproses file Word');
+        setNoticeModal({
+          title: 'Gagal Memproses File',
+          message: data.error || 'Terjadi kesalahan saat memproses file dokumen Word.',
+          type: 'error',
+        });
         return;
       }
 
@@ -340,11 +373,19 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       if (data.questions && data.questions.length > 0) {
         setImportPreview(data.questions);
       } else {
-        alert('Tidak ada butir soal yang berhasil terbaca dari dokumen. Pastikan penulisan nomor soal diawali angka dan titik (misal: 1. Pertanyaan...)');
+        setNoticeModal({
+          title: 'Soal Tidak Ditemukan',
+          message: 'Tidak ada butir soal yang berhasil terbaca dari dokumen. Pastikan penulisan nomor soal diawali angka dan titik (misal: 1. Pertanyaan...)',
+          type: 'warning',
+        });
       }
     } catch (e: any) {
       console.error(e);
-      alert(e?.message || 'Terjadi kesalahan saat memproses file');
+      setNoticeModal({
+        title: 'Kesalahan Sistem',
+        message: e?.message || 'Terjadi kesalahan saat mengunggah dan memproses file.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -496,7 +537,14 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 text-slate-500 hover:text-red-600"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCategoryToDelete({
+                                id: cat.id,
+                                name: cat.name,
+                                count: cat.questions?.length || 0,
+                              });
+                            }}
                             disabled={loading}
                           >
                             <Trash2 className="w-3 h-3" />
@@ -580,7 +628,7 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-[#002446] hover:bg-slate-100" onClick={() => openEditQuestion(q)} disabled={loading}>
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeleteQuestion(q.id)} disabled={loading}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50" onClick={() => setQuestionToDelete(q.id)} disabled={loading}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -803,6 +851,130 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
             </Button>
             <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white" onClick={handleConfirmImport} disabled={loading || importPreview.length === 0}>
               {loading ? 'Mengimpor...' : `Konfirmasi Impor (${importPreview.length} Soal)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Konfirmasi Hapus Kategori */}
+      <Dialog open={Boolean(categoryToDelete)} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              Hapus Kategori Bank Soal?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus kategori <strong>&quot;{categoryToDelete?.name}&quot;</strong>?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2 text-left">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+            <div>
+              <strong>Informasi Soal:</strong>
+              <p className="mt-0.5">
+                Butir soal ({categoryToDelete?.count || 0} butir) di dalam kategori ini tidak akan terhapus, melainkan otomatis dialihkan ke kategori <strong>&quot;Belum Berkategori&quot;</strong>.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading}
+              onClick={() => setCategoryToDelete(null)}
+              className="w-full sm:w-1/2"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={loading}
+              onClick={confirmDeleteCategory}
+              className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              {loading ? 'Menghapus...' : 'Hapus Kategori'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Konfirmasi Hapus Butir Soal */}
+      <Dialog open={Boolean(questionToDelete)} onOpenChange={(open) => !open && setQuestionToDelete(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              Hapus Butir Soal?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus butir soal ini dari Bank Soal? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading}
+              onClick={() => setQuestionToDelete(null)}
+              className="w-full sm:w-1/2"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={loading}
+              onClick={confirmDeleteQuestion}
+              className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              {loading ? 'Menghapus...' : 'Hapus Soal'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Notice / Alert Dialog Modal */}
+      <Dialog open={Boolean(noticeModal)} onOpenChange={(open) => !open && setNoticeModal(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200 text-center">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div
+              className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${
+                noticeModal?.type === 'warning'
+                  ? 'bg-amber-100 text-amber-600'
+                  : noticeModal?.type === 'success'
+                  ? 'bg-emerald-100 text-emerald-600'
+                  : 'bg-red-100 text-red-600'
+              }`}
+            >
+              {noticeModal?.type === 'warning' ? (
+                <AlertTriangle className="w-6 h-6" />
+              ) : noticeModal?.type === 'success' ? (
+                <CheckCircle2 className="w-6 h-6" />
+              ) : (
+                <AlertCircle className="w-6 h-6" />
+              )}
+            </div>
+            <DialogTitle className="text-lg font-bold text-[#002446]">
+              {noticeModal?.title}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              {noticeModal?.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setNoticeModal(null)}
+              className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
+            >
+              Tutup
             </Button>
           </DialogFooter>
         </DialogContent>
