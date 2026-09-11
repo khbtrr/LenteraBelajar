@@ -87,6 +87,31 @@ export async function createQuiz(data: {
 export async function deleteQuiz(quizId: string) {
   await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
 
+  // Find all attempt IDs for this quiz to clean up answers first
+  const attempts = await db.quizAttempt.findMany({
+    where: { quizId },
+    select: { id: true },
+  });
+  const attemptIds = attempts.map((a) => a.id);
+
+  if (attemptIds.length > 0) {
+    await db.quizAnswer.deleteMany({
+      where: { attemptId: { in: attemptIds } },
+    });
+  }
+
+  await db.quizAttempt.deleteMany({
+    where: { quizId },
+  });
+
+  await db.quizBankSelection.deleteMany({
+    where: { quizId },
+  });
+
+  await db.quizQuestion.deleteMany({
+    where: { quizId },
+  });
+
   const deleted = await db.quiz.delete({
     where: { id: quizId },
   });

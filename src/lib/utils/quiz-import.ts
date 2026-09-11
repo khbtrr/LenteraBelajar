@@ -65,6 +65,7 @@ export async function parseDocxQuestions(
   // Track shared reading passages (Wacana / Cerita)
   let activePassage: string | null = null;
   let isInPassageBlock = false;
+  let passageTargetRange: { start: number; end: number } | null = null;
 
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
@@ -72,24 +73,43 @@ export async function parseDocxQuestions(
     // Extract plain text for regex matching (strip html tags)
     const textOnly = block.replace(/<[^>]+>/g, '').trim();
 
-    // Check for story passage tags: [Cerita] or [Wacana]
-    if (textOnly.match(/^\[(?:Cerita|Wacana)\]/i)) {
-      isInPassageBlock = true;
-      const cleanBlock = block.replace(/^\s*(?:<[^>]+>)*\s*\[(?:Cerita|Wacana)\]/i, '').trim();
-      activePassage = cleanBlock;
-      // Check if closed in same block
-      if (textOnly.match(/\[\/(?:Cerita|Wacana)\]/i)) {
-        isInPassageBlock = false;
-        activePassage = activePassage.replace(/\[\/(?:Cerita|Wacana)\]/gi, '').trim();
+    // Check for closing passage tags: [/Cerita], [/Wacana], [Selesai Cerita], [Akhir Wacana]
+    if (textOnly.match(/^\[\/(?:Cerita|Wacana)\]|^\[(?:Selesai|Akhir)\s*(?:Cerita|Wacana)\]/i)) {
+      isInPassageBlock = false;
+      if (!passageTargetRange) {
+        activePassage = null;
       }
       continue;
     }
 
-    if (textOnly.match(/\[\/(?:Cerita|Wacana)\]/i)) {
-      isInPassageBlock = false;
-      const cleanBlock = block.replace(/\[\/(?:Cerita|Wacana)\]/gi, '').trim();
-      if (cleanBlock) {
-        activePassage = activePassage ? `${activePassage}<br/>${cleanBlock}` : cleanBlock;
+    // Check for story passage tag or header with optional range:
+    // Examples: [Cerita: 5-7], [Wacana: 5-7], [Cerita untuk soal 5-7], [Wacana untuk soal no 5 s/d 7], [Cerita]
+    const bracketPassageMatch = textOnly.match(/^\[(?:Cerita|Wacana)(?:(?:\s+untuk\s+soal)?(?:\s+no(?:mor)?)?[\s:]*(\d+)\s*(?:-|sampai|s\/d|hingga)\s*(\d+))?\]/i);
+    const naturalPassageMatch = textOnly.match(/^(?:Wacana|Bacaan|Cerita)\s+untuk\s+soal\s+(?:no(?:mor)?\s*)?(\d+)\s*(?:-|sampai|s\/d|hingga)\s*(\d+)[\s:]*/i);
+
+    if (bracketPassageMatch || naturalPassageMatch) {
+      isInPassageBlock = true;
+      const match = bracketPassageMatch || naturalPassageMatch;
+      if (match && match[1] && match[2]) {
+        passageTargetRange = {
+          start: parseInt(match[1], 10),
+          end: parseInt(match[2], 10),
+        };
+      } else {
+        passageTargetRange = null;
+      }
+
+      let cleanBlock = block
+        .replace(/^\s*(?:<[^>]+>)*\s*\[(?:Cerita|Wacana)[^\]]*\]/i, '')
+        .replace(/^(?:<[^>]+>)*\s*(?:Wacana|Bacaan|Cerita)\s+untuk\s+soal[^\n:<]*/i, '')
+        .trim();
+
+      activePassage = cleanBlock || null;
+
+      // Check if closed in same block
+      if (textOnly.match(/\[\/(?:Cerita|Wacana)\]/i)) {
+        isInPassageBlock = false;
+        activePassage = activePassage ? activePassage.replace(/\[\/(?:Cerita|Wacana)\]/gi, '').trim() : null;
       }
       continue;
     }
@@ -108,16 +128,43 @@ export async function parseDocxQuestions(
       questionNumber = parseInt(qMatch[1], 10);
       const isEssay = /\[Essay\]/i.test(qMatch[2]);
 
+      // Determine if active passage applies to this question
+      let applyPassage = false;
+      let shouldResetPassageAfter = false;
+
+      if (activePassage) {
+        if (passageTargetRange) {
+          if (questionNumber >= passageTargetRange.start && questionNumber <= passageTargetRange.end) {
+            applyPassage = true;
+            if (questionNumber === passageTargetRange.end) {
+              shouldResetPassageAfter = true;
+            }
+          } else if (questionNumber > passageTargetRange.end) {
+            // Target range has already passed, reset immediately
+            activePassage = null;
+            passageTargetRange = null;
+          }
+        } else {
+          // Unbounded passage (no range specified): applies until explicitly closed
+          applyPassage = true;
+        }
+      }
+
       // Strip question number and [Essay] tag from HTML content
       let qHtml = block
         .replace(/^\s*(?:<[^>]+>)*\s*(\d+)\.\s*/i, '')
         .replace(/\[Essay\]/gi, '')
         .trim();
 
-      // If active passage exists, prepend it to question
+      // If active passage applies, prepend it to question
       let formattedText = qHtml;
-      if (activePassage) {
+      if (applyPassage && activePassage) {
         formattedText = `<div class="story-passage p-3 bg-amber-50/80 border-l-4 border-[#FF8928] rounded mb-3 text-sm text-slate-800">${activePassage}</div>\n${formattedText}`;
+      }
+
+      if (shouldResetPassageAfter) {
+        activePassage = null;
+        passageTargetRange = null;
       }
 
       currentQuestion = {

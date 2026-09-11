@@ -53,6 +53,7 @@
     "postcss": "^8.5.28",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "sharp": "^0.35.4",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
     "xlsx": "^0.18.5"
@@ -62,6 +63,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/sharp": "^0.31.1",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.0.0",
     "prisma": "^7.10.0",

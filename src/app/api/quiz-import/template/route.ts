@@ -41,7 +41,7 @@ export async function GET() {
               text: '- Soal bergambar: Sisipkan gambar (insert picture) pada butir soal. Letak gambar akan mengikuti posisi di dokumen (bisa di atas atau di bawah pertanyaan).',
             }),
             new Paragraph({
-              text: '- Soal Cerita / Wacana Multi-Soal: Gunakan awalan [Cerita] Teks bacaan... [/Cerita] sebelum butir-butir soal. Teks bacaan otomatis disertakan di setiap soal terkait.',
+              text: '- Soal Cerita / Wacana Multi-Soal: Gunakan awalan dengan rentang nomor soal, contoh: [Cerita: 5-7] Teks bacaan... [/Cerita] atau [Wacana untuk soal 5-7]. Teks wacana otomatis hanya disematkan pada nomor soal terkait dan otomatis selesai di nomor berikutnya.',
             }),
             new Paragraph({
               text: '- Beri jarak 1 baris kosong antar butir soal.',

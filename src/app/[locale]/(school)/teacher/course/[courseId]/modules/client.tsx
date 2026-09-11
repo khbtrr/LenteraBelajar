@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,7 @@ import {
   ChevronDown,
   ChevronRight,
   FolderOpen,
+  AlertTriangle,
 } from 'lucide-react';
 import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
 import { createQuiz, deleteQuiz, addQuizQuestion, updateQuizQuestion, getQuizWithQuestions } from '@/lib/actions/quiz';
@@ -109,6 +111,16 @@ export function TeacherCourseModulesClient({
   // Edit Question Modal State
   const [editingQuiz, setEditingQuiz] = useState<any>(null);
   const [editQuestionModal, setEditQuestionModal] = useState<{ id?: string; questionId?: string; type: QuestionType; text: string; points: number; options: any[] } | null>(null);
+
+  // Delete Quiz Confirmation Modal State
+  const [quizToDelete, setQuizToDelete] = useState<{
+    moduleId: string;
+    quizId: string;
+    title: string;
+    attemptsCount?: number;
+  } | null>(null);
+  const [deleteQuizLoading, setDeleteQuizLoading] = useState(false);
+  const [deleteQuizError, setDeleteQuizError] = useState<string | null>(null);
 
   // Assignment Modal State
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -442,19 +454,26 @@ export function TeacherCourseModulesClient({
     }
   };
 
-  const handleDeleteQuiz = async (moduleId: string, quizId: string) => {
-    if (!confirm('Hapus kuis ini?')) return;
+  const handleConfirmDeleteQuiz = async () => {
+    if (!quizToDelete) return;
+    setDeleteQuizLoading(true);
+    setDeleteQuizError(null);
+
     try {
-      await deleteQuiz(quizId);
+      await deleteQuiz(quizToDelete.quizId);
       setModules((prev) =>
         prev.map((m) =>
-          m.id === moduleId
-            ? { ...m, quizzes: m.quizzes.filter((q: any) => q.id !== quizId) }
+          m.id === quizToDelete.moduleId
+            ? { ...m, quizzes: m.quizzes.filter((q: any) => q.id !== quizToDelete.quizId) }
             : m
         )
       );
-    } catch (err) {
-      console.error(err);
+      setQuizToDelete(null);
+    } catch (err: any) {
+      console.error('Error deleting quiz:', err);
+      setDeleteQuizError(err?.message || 'Gagal menghapus kuis. Silakan coba lagi.');
+    } finally {
+      setDeleteQuizLoading(false);
     }
   };
 
@@ -794,7 +813,14 @@ export function TeacherCourseModulesClient({
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDeleteQuiz(mod.id, q.id)}
+                              onClick={() =>
+                                setQuizToDelete({
+                                  moduleId: mod.id,
+                                  quizId: q.id,
+                                  title: q.title,
+                                  attemptsCount: q._count?.attempts,
+                                })
+                              }
                               className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -1965,6 +1991,61 @@ export function TeacherCourseModulesClient({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Konfirmasi Hapus Kuis */}
+      <Dialog open={Boolean(quizToDelete)} onOpenChange={(open) => !open && setQuizToDelete(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              Hapus Kuis?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus kuis <strong>{quizToDelete?.title}</strong>? Tindakan ini akan menghapus seluruh butir soal di dalamnya dan tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+
+          {quizToDelete?.attemptsCount !== undefined && quizToDelete.attemptsCount > 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2 text-left">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+              <div>
+                <strong>Peringatan Riwayat Pengerjaan:</strong>
+                <p className="mt-0.5">
+                  Kuis ini memiliki <strong>{quizToDelete.attemptsCount}</strong> riwayat pengerjaan siswa yang juga akan ikut dihapus secara permanen.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {deleteQuizError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 text-left">
+              {deleteQuizError}
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteQuizLoading}
+              onClick={() => setQuizToDelete(null)}
+              className="w-full sm:w-1/2"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={deleteQuizLoading}
+              onClick={handleConfirmDeleteQuiz}
+              className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              {deleteQuizLoading ? 'Menghapus...' : 'Hapus Kuis'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

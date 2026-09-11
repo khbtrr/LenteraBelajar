@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { parseDocxQuestions, ImageHandler } from '@/lib/utils/quiz-import';
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,27 +35,37 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Image handler: save extracted images from Word to uploads/ directory
+    // Image handler: compress images to WebP (max width 1200px, 80% quality) and save to uploads/
     const imageHandler: ImageHandler = async (imgBuffer: Buffer, contentType: string) => {
       try {
         const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
         await mkdir(uploadDir, { recursive: true });
 
-        const ext = contentType.includes('jpeg') || contentType.includes('jpg')
-          ? 'jpg'
-          : contentType.includes('png')
-          ? 'png'
-          : contentType.includes('gif')
-          ? 'gif'
-          : contentType.includes('webp')
-          ? 'webp'
-          : 'png';
+        let processedBuffer: Buffer = imgBuffer;
+        let ext = 'webp';
+
+        try {
+          processedBuffer = await sharp(imgBuffer)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toBuffer();
+        } catch (sharpErr) {
+          console.warn('Sharp compression failed, using original format:', sharpErr);
+          ext = contentType.includes('jpeg') || contentType.includes('jpg')
+            ? 'jpg'
+            : contentType.includes('png')
+            ? 'png'
+            : contentType.includes('gif')
+            ? 'gif'
+            : 'webp';
+          processedBuffer = imgBuffer;
+        }
 
         const randomStr = Math.random().toString(36).substring(2, 8);
         const fileName = `quiz_img_${Date.now()}_${randomStr}.${ext}`;
         const filePath = path.join(uploadDir, fileName);
 
-        await writeFile(filePath, imgBuffer);
+        await writeFile(filePath, processedBuffer);
         return `/api/files/${fileName}`;
       } catch (err) {
         console.error('Error saving imported image:', err);

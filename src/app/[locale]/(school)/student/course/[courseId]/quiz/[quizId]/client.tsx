@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle2, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Send, LayoutGrid } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Clock, CheckCircle2, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Send, LayoutGrid, AlertCircle } from 'lucide-react';
 import { submitQuizAttempt } from '@/lib/actions/quiz';
 import { Link } from '@/i18n/navigation';
 
@@ -38,6 +39,8 @@ export function StudentQuizClient({
   questions: Question[];
   questionsPerPage?: number;
 }) {
+  const storageKey = `quiz_draft_${initialAttempt.id}`;
+
   // Check if attempt is already submitted
   const [isSubmitted, setIsSubmitted] = useState(Boolean(initialAttempt.submittedAt));
   const [submissionResult, setSubmissionResult] = useState<{
@@ -49,21 +52,82 @@ export function StudentQuizClient({
       : null
   );
 
-  // Answers map: questionId -> answer
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const answersRef = useRef<Record<string, string>>({});
+  // Initialize answers from server attempt.answers merged with local cache
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
+    const loaded: Record<string, string> = {};
+    if (Array.isArray(initialAttempt.answers)) {
+      for (const a of initialAttempt.answers) {
+        if (a.questionId && a.answer) {
+          loaded[a.questionId] = a.answer;
+        }
+      }
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const savedLocal = localStorage.getItem(storageKey);
+        if (savedLocal) {
+          const parsed = JSON.parse(savedLocal);
+          Object.assign(loaded, parsed);
+        }
+      } catch (e) {
+        console.warn('Failed to parse local quiz draft:', e);
+      }
+    }
+    return loaded;
+  });
+
+  const answersRef = useRef<Record<string, string>>(answers);
   const [loading, setLoading] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [timeUpLoading, setTimeUpLoading] = useState(false);
   const [timeUpError, setTimeUpError] = useState<string | null>(null);
 
+  // Modal states for submit confirmation & error alert
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
+
   // Active question index for 1 Question Per Page (Moodle-style) mode
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Keep answersRef strictly synced with state for guaranteed auto-submit on timer end
+  // Keep answersRef strictly synced and persist to localStorage instantly
   useEffect(() => {
     answersRef.current = answers;
-  }, [answers]);
+    if (typeof window !== 'undefined' && !isSubmitted) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(answers));
+      } catch (e) {
+        // ignore quota error
+      }
+    }
+  }, [answers, isSubmitted, storageKey]);
+
+  // Debounced background sync to server (/api/quiz/draft) every 2 seconds after typing
+  useEffect(() => {
+    if (isSubmitted || isTimeUp) return;
+    const entries = Object.entries(answers);
+    if (entries.length === 0) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const payload = entries.map(([questionId, answer]) => ({
+          questionId,
+          answer,
+        }));
+        await fetch('/api/quiz/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            attemptId: initialAttempt.id,
+            answers: payload,
+          }),
+        });
+      } catch (e) {
+        // silently fail background draft sync; local storage still holds it
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [answers, isSubmitted, isTimeUp, initialAttempt.id]);
 
   // Countdown Timer Calculation
   const calculateRemainingSeconds = () => {
@@ -152,6 +216,9 @@ export function StudentQuizClient({
 
     try {
       const res = await sendAnswersToServer(formattedAnswers);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(storageKey);
+      }
       setSubmissionResult(res);
       setIsSubmitted(true);
     } catch (err: any) {
@@ -162,30 +229,31 @@ export function StudentQuizClient({
     }
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleOpenSubmitConfirm = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (isSubmitted || loading) return;
+    setIsConfirmModalOpen(true);
+  };
 
-    const unansweredCount = questions.length - answeredCount;
-    const confirmMessage =
-      unansweredCount > 0
-        ? `Masih ada ${unansweredCount} butir soal yang belum Anda jawab.\n\nApakah Anda yakin ingin mengumpulkan kuis sekarang?`
-        : 'Apakah Anda yakin ingin mengumpulkan kuis ini sekarang?';
-
-    if (!confirm(confirmMessage)) return;
-
+  const handleExecuteSubmit = async () => {
+    setIsConfirmModalOpen(false);
     setLoading(true);
+    setSubmitErrorMessage(null);
+
     try {
       const formattedAnswers = Object.entries(answers).map(([qId, ans]) => ({
         questionId: qId,
         answer: ans,
       }));
       const res = await sendAnswersToServer(formattedAnswers);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(storageKey);
+      }
       setSubmissionResult(res);
       setIsSubmitted(true);
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Gagal mengumpulkan kuis');
+      setSubmitErrorMessage(err?.message || 'Gagal mengumpulkan kuis. Pastikan koneksi internet aktif lalu coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -405,7 +473,7 @@ export function StudentQuizClient({
                 <Button
                   type="button"
                   disabled={loading}
-                  onClick={() => handleSubmit()}
+                  onClick={() => handleOpenSubmitConfirm()}
                   className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-bold flex items-center gap-1.5 w-full sm:w-auto"
                 >
                   {loading ? 'Mengumpulkan...' : 'Kumpulkan Kuis'} <Send className="w-4 h-4" />
@@ -471,7 +539,7 @@ export function StudentQuizClient({
                 <Button
                   type="button"
                   disabled={loading}
-                  onClick={() => handleSubmit()}
+                  onClick={() => handleOpenSubmitConfirm()}
                   className="w-full bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-bold py-2"
                 >
                   {loading ? 'Mengumpulkan...' : 'Kumpulkan Kuis'}
@@ -482,7 +550,7 @@ export function StudentQuizClient({
         </div>
       ) : (
         /* MODE: Semua Soal dalam 1 Halaman (Classic List) */
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleOpenSubmitConfirm} className="space-y-6">
           {questions.map((q, idx) => renderQuestionCard(q, idx))}
 
           <div className="flex justify-between items-center pt-4">
@@ -500,6 +568,98 @@ export function StudentQuizClient({
           </div>
         </form>
       )}
+
+      {/* Confirmation Modal for Submitting Quiz */}
+      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+        <DialogContent className="max-w-md p-6 bg-white border border-gray-200">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            {questions.length - answeredCount > 0 ? (
+              <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+            ) : (
+              <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+            )}
+
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              {questions.length - answeredCount > 0
+                ? 'Ada Soal Belum Terjawab'
+                : 'Kumpulkan Kuis Sekarang?'}
+            </DialogTitle>
+
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+              {questions.length - answeredCount > 0 ? (
+                <>
+                  Masih ada <strong className="text-red-600 font-bold">{questions.length - answeredCount}</strong> dari{' '}
+                  <strong>{questions.length}</strong> butir soal yang belum Anda jawab. Apakah Anda yakin ingin tetap mengumpulkan kuis ini sekarang?
+                </>
+              ) : (
+                <>
+                  Seluruh <strong>{questions.length}</strong> butir soal telah selesai Anda jawab. Apakah Anda yakin ingin menyelesaikan dan mengumpulkan kuis ini sekarang?
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Quick Stat Pill */}
+          <div className="my-2 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between text-xs text-gray-600">
+            <span>Terjawab: <strong className="text-emerald-700">{answeredCount}</strong></span>
+            <span>Belum dijawab: <strong className="text-amber-700">{questions.length - answeredCount}</strong></span>
+            <span>Total: <strong>{questions.length} Soal</strong></span>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsConfirmModalOpen(false)}
+              className="w-full sm:w-1/2"
+            >
+              {questions.length - answeredCount > 0 ? 'Lanjut Mengerjakan' : 'Periksa Kembali'}
+            </Button>
+            <Button
+              type="button"
+              disabled={loading}
+              onClick={handleExecuteSubmit}
+              className={`w-full sm:w-1/2 text-white font-bold ${
+                questions.length - answeredCount > 0
+                  ? 'bg-[#FF8928] hover:bg-[#FF8928]/90'
+                  : 'bg-[#002446] hover:bg-[#002446]/90'
+              }`}
+            >
+              {loading ? 'Mengumpulkan...' : 'Ya, Kumpulkan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Modal if Submission Fails */}
+      <Dialog open={Boolean(submitErrorMessage)} onOpenChange={(open) => !open && setSubmitErrorMessage(null)}>
+        <DialogContent className="max-w-md p-6 bg-white border border-red-200 text-center">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-lg font-bold text-red-700">
+              Gagal Mengumpulkan Kuis
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600">
+              {submitErrorMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-3">
+            <Button
+              type="button"
+              onClick={() => setSubmitErrorMessage(null)}
+              className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
+            >
+              Tutup & Coba Lagi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Time Up Overlay Modal */}
       {isTimeUp && !isSubmitted && (
