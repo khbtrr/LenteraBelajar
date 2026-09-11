@@ -256,6 +256,8 @@ model Quiz {
   duration         Int?
   deadline         DateTime?
   shuffleQuestions Boolean  @default(false)
+  shuffleOptions   Boolean  @default(false)
+  questionsPerPage Int      @default(0) // 0 = all on one page, 1 = 1 per page (Moodle-style)
   isPublished      Boolean  @default(false)
   order            Int      @default(0)
   maxAttempts      Int?     @default(1)  // null = unlimited

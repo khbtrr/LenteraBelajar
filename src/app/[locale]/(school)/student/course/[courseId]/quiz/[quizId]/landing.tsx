@@ -44,6 +44,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
         quizTitle={quizData.quizTitle}
         durationMinutes={quizData.durationMinutes}
         questions={quizData.questions}
+        questionsPerPage={quizData.questionsPerPage}
       />
     );
   }

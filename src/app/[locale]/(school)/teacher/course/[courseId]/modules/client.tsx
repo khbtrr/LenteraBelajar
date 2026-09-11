@@ -74,6 +74,8 @@ export function TeacherCourseModulesClient({
   const [quizDuration, setQuizDuration] = useState('30');
   const [quizDeadline, setQuizDeadline] = useState('');
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
+  const [shuffleOptions, setShuffleOptions] = useState(false);
+  const [questionsPerPage, setQuestionsPerPage] = useState('0');
   const [quizMaxAttempts, setQuizMaxAttempts] = useState('1');
   const [quizPassingGrade, setQuizPassingGrade] = useState('');
 
@@ -314,6 +316,73 @@ export function TeacherCourseModulesClient({
     }
   };
 
+  const handleSelectAllCategory = (catQuestions: any[], shouldSelectAll: boolean) => {
+    if (shouldSelectAll) {
+      // Add all questions not yet in draft
+      const newToAdd: any[] = [];
+      for (const bq of catQuestions) {
+        if (!questions.some((q) => q.text === bq.text && q.type === bq.type)) {
+          const options =
+            bq.type === QuestionType.MULTIPLE_CHOICE && Array.isArray(bq.options)
+              ? bq.options.map((opt: any, idx: number) => ({
+                  id: opt.id || String.fromCharCode(65 + idx),
+                  text: opt.text || '',
+                  isCorrect: Boolean(opt.isCorrect),
+                }))
+              : [];
+          newToAdd.push({
+            type: bq.type as QuestionType,
+            text: bq.text,
+            points: Number(bq.points) || 10,
+            options,
+          });
+        }
+      }
+      setQuestions((prev) => [...prev, ...newToAdd]);
+    } else {
+      // Remove all questions of this category from draft
+      setQuestions((prev) =>
+        prev.filter((q) => !catQuestions.some((bq) => bq.text === q.text && bq.type === q.type))
+      );
+    }
+  };
+
+  const handleSelectAllGlobal = (shouldSelectAll: boolean) => {
+    if (!bankData) return;
+    const allBankQuestions = [
+      ...bankData.categories.flatMap((c: any) => c.questions || []),
+      ...(bankData.uncategorized || []),
+    ];
+
+    if (shouldSelectAll) {
+      const newToAdd: any[] = [];
+      for (const bq of allBankQuestions) {
+        if (!questions.some((q) => q.text === bq.text && q.type === bq.type)) {
+          const options =
+            bq.type === QuestionType.MULTIPLE_CHOICE && Array.isArray(bq.options)
+              ? bq.options.map((opt: any, idx: number) => ({
+                  id: opt.id || String.fromCharCode(65 + idx),
+                  text: opt.text || '',
+                  isCorrect: Boolean(opt.isCorrect),
+                }))
+              : [];
+          newToAdd.push({
+            type: bq.type as QuestionType,
+            text: bq.text,
+            points: Number(bq.points) || 10,
+            options,
+          });
+        }
+      }
+      setQuestions((prev) => [...prev, ...newToAdd]);
+    } else {
+      // Deselect all bank questions from draft
+      setQuestions((prev) =>
+        prev.filter((q) => !allBankQuestions.some((bq) => bq.text === q.text && bq.type === q.type))
+      );
+    }
+  };
+
   const handleSaveQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeModuleId || !quizTitle.trim()) return;
@@ -326,6 +395,8 @@ export function TeacherCourseModulesClient({
         duration: quizDuration ? Number(quizDuration) : undefined,
         deadline: quizDeadline || undefined,
         shuffleQuestions,
+        shuffleOptions,
+        questionsPerPage: Number(questionsPerPage) || 0,
         maxAttempts: quizMaxAttempts === 'unlimited' ? null : Number(quizMaxAttempts),
         passingGrade: quizPassingGrade ? Number(quizPassingGrade) : null,
       });
@@ -978,21 +1049,50 @@ export function TeacherCourseModulesClient({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <input
-                  type="checkbox"
-                  id="qzShuffle"
-                  checked={shuffleQuestions}
-                  onChange={(e) => setShuffleQuestions(e.target.checked)}
-                  className="rounded border-gray-300 text-[#FF8928] focus:ring-[#002446]"
-                />
-                <Label htmlFor="qzShuffle" className="text-xs font-medium cursor-pointer text-amber-900">
-                  Acak Urutan Soal untuk Setiap Siswa (Mencegah Mencontek)
-                </Label>
+              {/* Acak Soal & Acak Opsi */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <input
+                    type="checkbox"
+                    id="qzShuffle"
+                    checked={shuffleQuestions}
+                    onChange={(e) => setShuffleQuestions(e.target.checked)}
+                    className="rounded border-gray-300 text-[#FF8928] focus:ring-[#002446]"
+                  />
+                  <Label htmlFor="qzShuffle" className="text-xs font-medium cursor-pointer text-amber-900">
+                    Acak Urutan Soal (Shuffle Questions)
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <input
+                    type="checkbox"
+                    id="qzShuffleOptions"
+                    checked={shuffleOptions}
+                    onChange={(e) => setShuffleOptions(e.target.checked)}
+                    className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                  />
+                  <Label htmlFor="qzShuffleOptions" className="text-xs font-medium cursor-pointer text-blue-950">
+                    Acak Pilihan Jawaban PG (Shuffle Options)
+                  </Label>
+                </div>
               </div>
 
-              {/* Max Attempts & KKM */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Tampilan per Halaman, Max Attempts & KKM */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="qzPerPage">Tampilan Soal per Halaman</Label>
+                  <select
+                    id="qzPerPage"
+                    value={questionsPerPage}
+                    onChange={(e) => setQuestionsPerPage(e.target.value)}
+                    className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                  >
+                    <option value="0">Semua Soal dalam 1 Halaman</option>
+                    <option value="1">1 Soal per Halaman (Fokus CBT)</option>
+                  </select>
+                  <p className="text-[11px] text-gray-500">Mode 1 soal menampilkan navigasi ala Moodle/CBT.</p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="qzMaxAttempts">Kesempatan Mengerjakan</Label>
                   <select
@@ -1006,7 +1106,7 @@ export function TeacherCourseModulesClient({
                     ))}
                     <option value="unlimited">Unlimited (Tanpa Batas)</option>
                   </select>
-                  <p className="text-[11px] text-gray-500">Nilai <strong>terbaik</strong> dari semua percobaan yang diambil.</p>
+                  <p className="text-[11px] text-gray-500">Nilai <strong>terbaik</strong> yang diambil.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="qzPassingGrade">Nilai Minimal Lulus (KKM)</Label>
@@ -1261,7 +1361,35 @@ export function TeacherCourseModulesClient({
                       </Link>
                     </div>
                   ) : (
-                    <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                    <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                      {/* Global Batch Select Controls */}
+                      <div className="flex items-center justify-between p-2.5 bg-blue-50/70 border border-blue-200 rounded-lg text-xs">
+                        <span className="font-bold text-[#002446]">
+                          Total Tersedia:{' '}
+                          {bankData.categories.reduce((acc: number, c: any) => acc + (c.questions?.length || 0), 0) +
+                            (bankData.uncategorized?.length || 0)}{' '}
+                          Soal Bank
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectAllGlobal(true)}
+                            className="text-[11px] font-semibold text-[#002446] hover:underline flex items-center gap-1 bg-white px-2 py-1 rounded border border-blue-200"
+                          >
+                            <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+                            Pilih Semua Soal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectAllGlobal(false)}
+                            className="text-[11px] font-semibold text-red-600 hover:underline flex items-center gap-1 bg-white px-2 py-1 rounded border border-red-200"
+                          >
+                            <Square className="w-3.5 h-3.5 text-red-500" />
+                            Batal Pilih Semua
+                          </button>
+                        </div>
+                      </div>
+
                       {/* Categories list */}
                       {bankData.categories.map((cat: any) => {
                         const isExpanded = expandedCategories[cat.id] ?? false;
@@ -1269,19 +1397,20 @@ export function TeacherCourseModulesClient({
                         const selectedInCat = catQuestions.filter((q: any) =>
                           questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
                         ).length;
+                        const isAllCatSelected = catQuestions.length > 0 && selectedInCat === catQuestions.length;
 
                         return (
                           <div key={cat.id} className="border rounded-lg bg-white overflow-hidden shadow-2xs">
-                            <div
-                              onClick={() =>
-                                setExpandedCategories((prev) => ({
-                                  ...prev,
-                                  [cat.id]: !prev[cat.id],
-                                }))
-                              }
-                              className="p-3 bg-gray-50/80 hover:bg-gray-100/80 flex items-center justify-between cursor-pointer select-none transition-colors border-b"
-                            >
-                              <div className="flex items-center gap-2">
+                            <div className="p-3 bg-gray-50/80 hover:bg-gray-100/80 flex items-center justify-between transition-colors border-b">
+                              <div
+                                onClick={() =>
+                                  setExpandedCategories((prev) => ({
+                                    ...prev,
+                                    [cat.id]: !prev[cat.id],
+                                  }))
+                                }
+                                className="flex items-center gap-2 cursor-pointer select-none flex-1"
+                              >
                                 {isExpanded ? (
                                   <ChevronDown className="w-4 h-4 text-gray-500" />
                                 ) : (
@@ -1292,11 +1421,28 @@ export function TeacherCourseModulesClient({
                                 <Badge variant="outline" className="text-[10px] text-gray-500">
                                   {catQuestions.length} Soal
                                 </Badge>
+                                {selectedInCat > 0 && (
+                                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
+                                    {selectedInCat} terpilih
+                                  </Badge>
+                                )}
                               </div>
-                              {selectedInCat > 0 && (
-                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
-                                  {selectedInCat} terpilih
-                                </Badge>
+
+                              {catQuestions.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectAllCategory(catQuestions, !isAllCatSelected);
+                                  }}
+                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded border transition-colors ${
+                                    isAllCatSelected
+                                      ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                                      : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                  }`}
+                                >
+                                  {isAllCatSelected ? 'Batal Pilih Kategori' : 'Pilih Semua Kategori'}
+                                </button>
                               )}
                             </div>
 
@@ -1356,40 +1502,58 @@ export function TeacherCourseModulesClient({
                       {/* Uncategorized Questions */}
                       {bankData.uncategorized && bankData.uncategorized.length > 0 && (
                         <div className="border rounded-lg bg-white overflow-hidden shadow-2xs">
-                          <div
-                            onClick={() =>
-                              setExpandedCategories((prev) => ({
-                                ...prev,
-                                uncategorized: !prev.uncategorized,
-                              }))
-                            }
-                            className="p-3 bg-gray-50/80 hover:bg-gray-100/80 flex items-center justify-between cursor-pointer select-none transition-colors border-b"
-                          >
-                            <div className="flex items-center gap-2">
-                              {expandedCategories.uncategorized ? (
-                                <ChevronDown className="w-4 h-4 text-gray-500" />
-                              ) : (
-                                <ChevronRight className="w-4 h-4 text-gray-500" />
+                            <div className="p-3 bg-gray-50/80 hover:bg-gray-100/80 flex items-center justify-between transition-colors border-b">
+                              <div
+                                onClick={() =>
+                                  setExpandedCategories((prev) => ({
+                                    ...prev,
+                                    uncategorized: !prev.uncategorized,
+                                  }))
+                                }
+                                className="flex items-center gap-2 cursor-pointer select-none flex-1"
+                              >
+                                {expandedCategories.uncategorized ? (
+                                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                                )}
+                                <FolderOpen className="w-4 h-4 text-gray-400" />
+                                <span className="font-semibold text-xs text-gray-700">Belum Berkategori</span>
+                                <Badge variant="outline" className="text-[10px] text-gray-500">
+                                  {bankData.uncategorized.length} Soal
+                                </Badge>
+                                {bankData.uncategorized.filter((q: any) =>
+                                  questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
+                                ).length > 0 && (
+                                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
+                                    {
+                                      bankData.uncategorized.filter((q: any) =>
+                                        questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
+                                      ).length
+                                    }{' '}
+                                    terpilih
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {bankData.uncategorized.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const isAllUncatSelected =
+                                      bankData.uncategorized.length > 0 &&
+                                      bankData.uncategorized.filter((q: any) =>
+                                        questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
+                                      ).length === bankData.uncategorized.length;
+                                    handleSelectAllCategory(bankData.uncategorized, !isAllUncatSelected);
+                                  }}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 transition-colors"
+                                >
+                                  Pilih Semua
+                                </button>
                               )}
-                              <FolderOpen className="w-4 h-4 text-gray-400" />
-                              <span className="font-semibold text-xs text-gray-700">Belum Berkategori</span>
-                              <Badge variant="outline" className="text-[10px] text-gray-500">
-                                {bankData.uncategorized.length} Soal
-                              </Badge>
                             </div>
-                            {bankData.uncategorized.filter((q: any) =>
-                              questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
-                            ).length > 0 && (
-                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
-                                {
-                                  bankData.uncategorized.filter((q: any) =>
-                                    questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
-                                  ).length
-                                }{' '}
-                                terpilih
-                              </Badge>
-                            )}
-                          </div>
 
                           {expandedCategories.uncategorized && (
                             <div className="divide-y p-1">

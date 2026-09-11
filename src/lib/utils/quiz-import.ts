@@ -62,11 +62,42 @@ export async function parseDocxQuestions(
   let currentQuestion: ParsedQuestion | null = null;
   let questionNumber = 0;
 
+  // Track shared reading passages (Wacana / Cerita)
+  let activePassage: string | null = null;
+  let isInPassageBlock = false;
+
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
 
     // Extract plain text for regex matching (strip html tags)
     const textOnly = block.replace(/<[^>]+>/g, '').trim();
+
+    // Check for story passage tags: [Cerita] or [Wacana]
+    if (textOnly.match(/^\[(?:Cerita|Wacana)\]/i)) {
+      isInPassageBlock = true;
+      const cleanBlock = block.replace(/^\s*(?:<[^>]+>)*\s*\[(?:Cerita|Wacana)\]/i, '').trim();
+      activePassage = cleanBlock;
+      // Check if closed in same block
+      if (textOnly.match(/\[\/(?:Cerita|Wacana)\]/i)) {
+        isInPassageBlock = false;
+        activePassage = activePassage.replace(/\[\/(?:Cerita|Wacana)\]/gi, '').trim();
+      }
+      continue;
+    }
+
+    if (textOnly.match(/\[\/(?:Cerita|Wacana)\]/i)) {
+      isInPassageBlock = false;
+      const cleanBlock = block.replace(/\[\/(?:Cerita|Wacana)\]/gi, '').trim();
+      if (cleanBlock) {
+        activePassage = activePassage ? `${activePassage}<br/>${cleanBlock}` : cleanBlock;
+      }
+      continue;
+    }
+
+    if (isInPassageBlock) {
+      activePassage = activePassage ? `${activePassage}<br/>${block}` : block;
+      continue;
+    }
 
     // Check if new question: "1. Apa..." or "1. [Essay] Jelaskan..."
     const qMatch = textOnly.match(/^(\d+)\.\s+(.*)/);
@@ -83,18 +114,15 @@ export async function parseDocxQuestions(
         .replace(/\[Essay\]/gi, '')
         .trim();
 
-      // If there are <img> tags inside this block, keep them at the top of question text
-      const inlineImgs = block.match(/<img[^>]+src=["'][^"']+["'][^>]*\/?>/gi) || [];
-      const cleanHtmlWithoutImgs = qHtml.replace(/<img[^>]*\/?>/gi, '').trim();
-
-      let finalText = cleanHtmlWithoutImgs;
-      if (inlineImgs.length > 0) {
-        finalText = `${inlineImgs.join('\n')}\n${finalText}`.trim();
+      // If active passage exists, prepend it to question
+      let formattedText = qHtml;
+      if (activePassage) {
+        formattedText = `<div class="story-passage p-3 bg-amber-50/80 border-l-4 border-[#FF8928] rounded mb-3 text-sm text-slate-800">${activePassage}</div>\n${formattedText}`;
       }
 
       currentQuestion = {
         type: isEssay ? 'ESSAY' : 'MULTIPLE_CHOICE',
-        text: finalText,
+        text: formattedText,
         points: isEssay ? 5 : 1,
         options: [],
       };
@@ -135,11 +163,14 @@ export async function parseDocxQuestions(
       // Check if block contains an image: <img ... />
       const imgMatches = block.match(/<img[^>]+src=["'][^"']+["'][^>]*\/?>/gi);
       if (imgMatches && imgMatches.length > 0) {
-        // Place image at top of question text
-        const remainingText = block.replace(/<img[^>]*\/?>/gi, '').replace(/<[^>]+>/g, '').trim();
-        currentQuestion.text = `${imgMatches.join('\n')}\n${currentQuestion.text}`.trim();
-        if (remainingText) {
-          currentQuestion.text += '\n' + remainingText;
+        // Place image in order: if options haven't started yet, append to question body
+        // This naturally places the image above or below the text based on where it appeared in Word!
+        if (currentQuestion.options.length === 0) {
+          const remainingText = block.replace(/<img[^>]*\/?>/gi, '').replace(/<[^>]+>/g, '').trim();
+          currentQuestion.text = `${currentQuestion.text}\n${imgMatches.join('\n')}`.trim();
+          if (remainingText) {
+            currentQuestion.text += '\n' + remainingText;
+          }
         }
         continue;
       }

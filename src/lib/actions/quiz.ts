@@ -45,6 +45,8 @@ export async function createQuiz(data: {
   duration?: number;
   deadline?: string;
   shuffleQuestions?: boolean;
+  shuffleOptions?: boolean;
+  questionsPerPage?: number;
   maxAttempts?: number | null;
   passingGrade?: number | null;
   useQuestionBank?: boolean;
@@ -62,6 +64,8 @@ export async function createQuiz(data: {
       duration: data.duration ? Number(data.duration) : null,
       deadline: data.deadline ? new Date(data.deadline) : null,
       shuffleQuestions: Boolean(data.shuffleQuestions),
+      shuffleOptions: Boolean(data.shuffleOptions),
+      questionsPerPage: Number(data.questionsPerPage) || 0,
       isPublished: true,
       order: count,
       maxAttempts: data.maxAttempts ?? null,
@@ -161,6 +165,8 @@ export async function updateQuizSettings(
     duration?: number | null;
     deadline?: string | null;
     shuffleQuestions?: boolean;
+    shuffleOptions?: boolean;
+    questionsPerPage?: number;
     maxAttempts?: number | null;
     passingGrade?: number | null;
   }
@@ -175,6 +181,8 @@ export async function updateQuizSettings(
       duration: data.duration !== undefined ? data.duration : undefined,
       deadline: data.deadline !== undefined ? (data.deadline ? new Date(data.deadline) : null) : undefined,
       shuffleQuestions: data.shuffleQuestions,
+      shuffleOptions: data.shuffleOptions,
+      questionsPerPage: data.questionsPerPage !== undefined ? data.questionsPerPage : undefined,
       maxAttempts: data.maxAttempts !== undefined ? data.maxAttempts : undefined,
       passingGrade: data.passingGrade !== undefined ? data.passingGrade : undefined,
     },
@@ -414,6 +422,19 @@ export async function startOrGetQuizAttempt(quizId: string) {
     questions = [...questions].sort(() => Math.random() - 0.5);
   }
 
+  // Shuffle options if quiz.shuffleOptions is true
+  if (quiz.shuffleOptions) {
+    questions = questions.map((q) => {
+      if (q.type === QuestionType.MULTIPLE_CHOICE && Array.isArray(q.options)) {
+        return {
+          ...q,
+          options: [...q.options].sort(() => Math.random() - 0.5),
+        };
+      }
+      return q;
+    });
+  }
+
   return {
     attempt,
     quizTitle: quiz.title,
@@ -421,7 +442,9 @@ export async function startOrGetQuizAttempt(quizId: string) {
     questions,
     maxAttempts: quiz.maxAttempts,
     submittedCount,
-    passingGrade: quiz.passingGrade
+    passingGrade: quiz.passingGrade,
+    questionsPerPage: quiz.questionsPerPage ?? 0,
+    shuffleOptions: quiz.shuffleOptions ?? false,
   };
 }
 

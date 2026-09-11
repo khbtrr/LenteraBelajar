@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle2, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Clock, CheckCircle2, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Send, LayoutGrid } from 'lucide-react';
 import { submitQuizAttempt } from '@/lib/actions/quiz';
 import { Link } from '@/i18n/navigation';
 
@@ -28,6 +28,7 @@ export function StudentQuizClient({
   quizTitle,
   durationMinutes,
   questions,
+  questionsPerPage = 0,
 }: {
   courseId: string;
   quizId: string;
@@ -35,6 +36,7 @@ export function StudentQuizClient({
   quizTitle: string;
   durationMinutes: number | null;
   questions: Question[];
+  questionsPerPage?: number;
 }) {
   // Check if attempt is already submitted
   const [isSubmitted, setIsSubmitted] = useState(Boolean(initialAttempt.submittedAt));
@@ -49,7 +51,16 @@ export function StudentQuizClient({
 
   // Answers map: questionId -> answer
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const answersRef = useRef<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+
+  // Active question index for 1 Question Per Page (Moodle-style) mode
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Keep answersRef strictly synced with state for guaranteed auto-submit on timer end
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 
   // Countdown Timer Calculation
   const calculateRemainingSeconds = () => {
@@ -95,7 +106,9 @@ export function StudentQuizClient({
   };
 
   const handleAutoSubmit = async () => {
-    const formattedAnswers = Object.entries(answers).map(([qId, ans]) => ({
+    // Read from answersRef.current to guarantee 100% of latest answers are submitted
+    const currentAnswers = answersRef.current;
+    const formattedAnswers = Object.entries(currentAnswers).map(([qId, ans]) => ({
       questionId: qId,
       answer: ans,
     }));
@@ -108,8 +121,8 @@ export function StudentQuizClient({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!confirm('Apakah Anda yakin ingin mengumpulkan kuis ini sekarang?')) return;
 
     setLoading(true);
@@ -135,7 +148,8 @@ export function StudentQuizClient({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.keys(answers).filter((k) => answers[k]?.trim()).length;
+  const isOnePerPage = questionsPerPage === 1;
 
   if (isSubmitted) {
     return (
@@ -176,8 +190,83 @@ export function StudentQuizClient({
     );
   }
 
+  // Helper renderer for a single question card
+  const renderQuestionCard = (q: Question, idx: number) => (
+    <Card key={q.id} className="border border-gray-200 shadow-sm bg-white">
+      <CardHeader className="p-5 pb-3 flex flex-row items-start justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center h-6 w-6 rounded bg-gray-100 text-[#002446] text-xs font-bold">
+            {idx + 1}
+          </span>
+          <Badge variant="outline" className="text-xs">
+            {q.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+          </Badge>
+          {answers[q.id]?.trim() && (
+            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
+              ✓ Sudah Dijawab
+            </Badge>
+          )}
+        </div>
+        <span className="text-xs text-gray-400 font-medium">
+          {q.points} Poin
+        </span>
+      </CardHeader>
+
+      <CardContent className="p-5 pt-0 space-y-4">
+        <div
+          className="text-base text-gray-800 font-medium leading-relaxed whitespace-pre-line [&_img]:max-w-full [&_img]:max-h-96 [&_img]:rounded-lg [&_img]:my-3 [&_img]:border [&_img]:border-gray-200 [&_img]:shadow-xs"
+          dangerouslySetInnerHTML={{ __html: q.text }}
+        />
+
+        {/* Multiple Choice Options */}
+        {q.type === 'MULTIPLE_CHOICE' && q.options && (
+          <div className="space-y-2 pt-2">
+            {q.options.map((opt) => {
+              const isSelected = answers[q.id] === opt.id;
+              return (
+                <div
+                  key={opt.id}
+                  onClick={() => handleSelectAnswer(q.id, opt.id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-blue-50/80 border-[#002446] text-[#002446] font-medium shadow-sm'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100/70 text-gray-700'
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold border ${
+                      isSelected
+                        ? 'bg-[#002446] text-white border-[#002446]'
+                        : 'bg-white text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    {opt.id}
+                  </div>
+                  <span className="text-sm">{opt.text}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Essay Textarea */}
+        {q.type === 'ESSAY' && (
+          <div className="pt-2">
+            <textarea
+              rows={5}
+              placeholder="Tuliskan jawaban uraian Anda secara rinci di sini..."
+              value={answers[q.id] || ''}
+              onChange={(e) => handleSelectAnswer(q.id, e.target.value)}
+              className="w-full p-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="space-y-6 max-w-3xl mx-auto pb-16">
+    <div className={`space-y-6 mx-auto pb-16 ${isOnePerPage ? 'max-w-5xl' : 'max-w-3xl'}`}>
       {/* Sticky Countdown Header */}
       <div className="sticky top-20 z-20 bg-white/95 backdrop-blur shadow-sm border border-gray-200 rounded-xl p-4 flex items-center justify-between">
         <div>
@@ -201,91 +290,133 @@ export function StudentQuizClient({
         )}
       </div>
 
-      {/* Questions List */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {questions.map((q, idx) => (
-          <Card key={q.id} className="border border-gray-200 shadow-sm bg-white">
-            <CardHeader className="p-5 pb-3 flex flex-row items-start justify-between">
-              <div className="flex items-center gap-2">
-                <span className="flex items-center justify-center h-6 w-6 rounded bg-gray-100 text-[#002446] text-xs font-bold">
-                  {idx + 1}
-                </span>
-                <Badge variant="outline" className="text-xs">
-                  {q.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
-                </Badge>
-              </div>
-              <span className="text-xs text-gray-400 font-medium">
-                {q.points} Poin
-              </span>
-            </CardHeader>
+      {isOnePerPage ? (
+        /* MODE: 1 Soal per Halaman (Moodle / CBT Style) */
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Question Area (3 cols) */}
+          <div className="lg:col-span-3 space-y-6">
+            {questions[currentIndex] && renderQuestionCard(questions[currentIndex], currentIndex)}
 
-            <CardContent className="p-5 pt-0 space-y-4">
-              <div
-                className="text-base text-gray-800 font-medium leading-relaxed whitespace-pre-line [&_img]:max-w-full [&_img]:max-h-96 [&_img]:rounded-lg [&_img]:my-3 [&_img]:border [&_img]:border-gray-200 [&_img]:shadow-xs"
-                dangerouslySetInnerHTML={{ __html: q.text }}
-              />
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentIndex === 0}
+                onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+                className="flex items-center gap-1.5"
+              >
+                <ChevronLeft className="w-4 h-4" /> Soal Sebelumnya
+              </Button>
 
-              {/* Multiple Choice Options */}
-              {q.type === 'MULTIPLE_CHOICE' && q.options && (
-                <div className="space-y-2 pt-2">
-                  {q.options.map((opt) => {
-                    const isSelected = answers[q.id] === opt.id;
-                    return (
-                      <div
-                        key={opt.id}
-                        onClick={() => handleSelectAnswer(q.id, opt.id)}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'bg-blue-50/80 border-[#002446] text-[#002446] font-medium shadow-sm'
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100/70 text-gray-700'
-                        }`}
-                      >
-                        <div
-                          className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold border ${
-                            isSelected
-                              ? 'bg-[#002446] text-white border-[#002446]'
-                              : 'bg-white text-gray-600 border-gray-300'
-                          }`}
-                        >
-                          {opt.id}
-                        </div>
-                        <span className="text-sm">{opt.text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+              {currentIndex < questions.length - 1 ? (
+                <Button
+                  type="button"
+                  onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+                  className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-1.5"
+                >
+                  Soal Selanjutnya <ChevronRight className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleSubmit()}
+                  className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-bold flex items-center gap-1.5"
+                >
+                  {loading ? 'Mengumpulkan...' : 'Kumpulkan Kuis'} <Send className="w-4 h-4" />
+                </Button>
               )}
-
-              {/* Essay Textarea */}
-              {q.type === 'ESSAY' && (
-                <div className="pt-2">
-                  <textarea
-                    rows={4}
-                    placeholder="Tuliskan jawaban uraian Anda secara rinci di sini..."
-                    value={answers[q.id] || ''}
-                    onChange={(e) => handleSelectAnswer(q.id, e.target.value)}
-                    className="w-full p-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-
-        <div className="flex justify-between items-center pt-4">
-          <div className="text-xs text-gray-500">
-            Pastikan seluruh pertanyaan telah dijawab sebelum mengirimkan.
+            </div>
           </div>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-bold px-8 py-2.5 h-auto text-base"
-          >
-            {loading ? 'Mengumpulkan...' : 'Kumpulkan Jawaban Kuis'}
-          </Button>
+          {/* Question Palette Map Sidebar (1 col) */}
+          <div className="lg:col-span-1 space-y-4">
+            <Card className="border border-gray-200 shadow-sm bg-white p-4 sticky top-40">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                <LayoutGrid className="w-4 h-4 text-[#FF8928]" />
+                <h3 className="font-bold text-xs text-[#002446] uppercase tracking-wider">
+                  Navigasi Soal
+                </h3>
+              </div>
+
+              {/* Number Grid */}
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-3">
+                {questions.map((q, qIdx) => {
+                  const isCurrent = currentIndex === qIdx;
+                  const isAnswered = Boolean(answers[q.id]?.trim());
+
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => setCurrentIndex(qIdx)}
+                      className={`h-9 w-9 rounded-lg font-bold text-xs flex items-center justify-center transition-all ${
+                        isCurrent
+                          ? 'ring-2 ring-[#FF8928] ring-offset-2 bg-[#002446] text-white shadow-sm'
+                          : isAnswered
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                      }`}
+                      title={`Soal #${qIdx + 1}: ${isAnswered ? 'Sudah dijawab' : 'Belum dijawab'}`}
+                    >
+                      {qIdx + 1}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div className="space-y-1.5 pt-4 text-[11px] text-gray-500 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-[#002446] ring-1 ring-[#FF8928]" />
+                  <span>Soal Aktif</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-emerald-100 border border-emerald-300" />
+                  <span>Sudah Dijawab</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-gray-100 border border-gray-300" />
+                  <span>Belum Dijawab</span>
+                </div>
+              </div>
+
+              {/* Direct Submit from Palette */}
+              <div className="pt-4 border-t border-gray-100">
+                <Button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleSubmit()}
+                  className="w-full bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-bold py-2"
+                >
+                  {loading ? 'Mengumpulkan...' : 'Kumpulkan Kuis'}
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
-      </form>
+      ) : (
+        /* MODE: Semua Soal dalam 1 Halaman (Classic List) */
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {questions.map((q, idx) => renderQuestionCard(q, idx))}
+
+          <div className="flex justify-between items-center pt-4">
+            <div className="text-xs text-gray-500">
+              Pastikan seluruh pertanyaan telah dijawab sebelum mengirimkan.
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-bold px-8 py-2.5 h-auto text-base"
+            >
+              {loading ? 'Mengumpulkan...' : 'Kumpulkan Jawaban Kuis'}
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
+

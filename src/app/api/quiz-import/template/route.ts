@@ -38,7 +38,10 @@ export async function GET() {
               text: '- Bobot poin per butir soal dapat diatur dengan menulis "Poin: X" di bawah soal (opsional, default 10 untuk PG, 20 untuk Essay)',
             }),
             new Paragraph({
-              text: '- Soal bergambar: Sisipkan gambar (insert picture) pada butir soal. Gambar otomatis tampil di atas teks pertanyaan.',
+              text: '- Soal bergambar: Sisipkan gambar (insert picture) pada butir soal. Letak gambar akan mengikuti posisi di dokumen (bisa di atas atau di bawah pertanyaan).',
+            }),
+            new Paragraph({
+              text: '- Soal Cerita / Wacana Multi-Soal: Gunakan awalan [Cerita] Teks bacaan... [/Cerita] sebelum butir-butir soal. Teks bacaan otomatis disertakan di setiap soal terkait.',
             }),
             new Paragraph({
               text: '- Beri jarak 1 baris kosong antar butir soal.',
