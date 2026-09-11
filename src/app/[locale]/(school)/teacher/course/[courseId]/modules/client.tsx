@@ -27,9 +27,16 @@ import {
   Calendar,
   Layers,
   CheckCircle,
+  Database,
+  CheckSquare,
+  Square,
+  ChevronDown,
+  ChevronRight,
+  FolderOpen,
 } from 'lucide-react';
 import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
 import { createQuiz, deleteQuiz, addQuizQuestion, updateQuizQuestion, getQuizWithQuestions } from '@/lib/actions/quiz';
+import { getQuestionBankByCategory } from '@/lib/actions/question-bank';
 import { createAssignment, deleteAssignment } from '@/lib/actions/assignment';
 import { RichTextEditor } from '@/components/editor/rich-text-editor';
 import { ContentType, QuestionType } from '@prisma/client';
@@ -90,6 +97,12 @@ export function TeacherCourseModulesClient({
     { id: 'C', text: '', isCorrect: false },
     { id: 'D', text: '', isCorrect: false },
   ]);
+
+  // Bank Soal Selection States inside Quiz Creation
+  const [quizInputMode, setQuizInputMode] = useState<'manual' | 'bank'>('manual');
+  const [bankData, setBankData] = useState<{ categories: any[]; uncategorized: any[] } | null>(null);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({ uncategorized: true });
 
   // Edit Question Modal State
   const [editingQuiz, setEditingQuiz] = useState<any>(null);
@@ -253,6 +266,52 @@ export function TeacherCourseModulesClient({
       { id: 'C', text: '', isCorrect: false },
       { id: 'D', text: '', isCorrect: false },
     ]);
+  };
+
+  const handleFetchBankData = async () => {
+    if (bankData || bankLoading) return;
+    setBankLoading(true);
+    try {
+      const data = await getQuestionBankByCategory(course.id);
+      setBankData(data);
+    } catch (err) {
+      console.error('Failed to fetch bank data:', err);
+      alert('Gagal memuat data bank soal');
+    } finally {
+      setBankLoading(false);
+    }
+  };
+
+  const handleToggleBankQuestion = (bankQ: any) => {
+    // Check if already in draft questions (match by text or unique property)
+    const existingIndex = questions.findIndex(
+      (q) => q.text === bankQ.text && q.type === bankQ.type
+    );
+
+    if (existingIndex > -1) {
+      // Remove from draft
+      setQuestions((prev) => prev.filter((_, i) => i !== existingIndex));
+    } else {
+      // Add to draft
+      const options =
+        bankQ.type === QuestionType.MULTIPLE_CHOICE && Array.isArray(bankQ.options)
+          ? bankQ.options.map((opt: any, idx: number) => ({
+              id: opt.id || String.fromCharCode(65 + idx),
+              text: opt.text || '',
+              isCorrect: Boolean(opt.isCorrect),
+            }))
+          : [];
+
+      setQuestions((prev) => [
+        ...prev,
+        {
+          type: bankQ.type as QuestionType,
+          text: bankQ.text,
+          points: Number(bankQ.points) || 10,
+          options,
+        },
+      ]);
+    }
   };
 
   const handleSaveQuiz = async (e: React.FormEvent) => {
@@ -964,176 +1023,423 @@ export function TeacherCourseModulesClient({
                 </div>
               </div>
 
-              {/* Input Bank Soal */}
-              <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-sm text-[#002446]">
-                    Tambah Soal ke Kuis (Total Draft: {questions.length} Soal)
-                  </h4>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={qType === QuestionType.MULTIPLE_CHOICE ? 'default' : 'outline'}
-                      onClick={() => setQType(QuestionType.MULTIPLE_CHOICE)}
-                      className={
-                        qType === QuestionType.MULTIPLE_CHOICE ? 'bg-[#002446] text-white' : ''
-                      }
-                    >
-                      Pilihan Ganda (Auto-Grade)
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={qType === QuestionType.ESSAY ? 'default' : 'outline'}
-                      onClick={() => setQType(QuestionType.ESSAY)}
-                      className={qType === QuestionType.ESSAY ? 'bg-[#002446] text-white' : ''}
-                    >
-                      Essay / Uraian
-                    </Button>
-                  </div>
-                </div>
+              {/* Mode Selector Tabs: Manual vs Bank Soal */}
+              <div className="flex border-b border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setQuizInputMode('manual')}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
+                    quizInputMode === 'manual'
+                      ? 'border-[#002446] text-[#002446] bg-blue-50/50'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#FF8928]" />
+                  Input Soal Manual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuizInputMode('bank');
+                    handleFetchBankData();
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
+                    quizInputMode === 'bank'
+                      ? 'border-[#002446] text-[#002446] bg-blue-50/50'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Database className="w-3.5 h-3.5 text-[#FF8928]" />
+                  Ambil dari Bank Soal
+                </button>
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="sm:col-span-3 space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-700">Pertanyaan Soal</Label>
-                    <Input
-                      placeholder="Tuliskan butir soal di sini..."
-                      value={qText}
-                      onChange={(e) => setQText(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-gray-700">Bobot Poin</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={qPoints}
-                      onChange={(e) => setQPoints(Math.max(1, Number(e.target.value) || 1))}
-                      className="font-bold text-[#002446]"
-                    />
-                    <p className="text-[10px] text-gray-500">Default: 10 poin</p>
-                  </div>
-                </div>
-
-                {qType === QuestionType.MULTIPLE_CHOICE && (
-                  <div className="space-y-3 pt-2 border-t border-gray-200">
-                    <div>
-                      <Label className="text-xs font-bold text-[#002446]">
-                        Pilihan Jawaban & Tentukan Kunci Jawaban:
-                      </Label>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        Klik radio button di samping huruf untuk memilih jawaban benar. Anda dapat menambah atau mengurangi pilihan (minimal 2).
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      {mcOptions.map((opt, index) => (
-                        <div
-                          key={opt.id}
-                          className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
-                            opt.isCorrect
-                              ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
-                              : 'bg-white border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input
-                              type="radio"
-                              name="correctKey"
-                              checked={opt.isCorrect}
-                              onChange={() => {
-                                setMcOptions((prev) =>
-                                  prev.map((o) => ({ ...o, isCorrect: o.id === opt.id }))
-                                );
-                              }}
-                              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                            />
-                            <span
-                              className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
-                                opt.isCorrect
-                                  ? 'bg-emerald-600 text-white shadow-xs'
-                                  : 'bg-gray-100 text-gray-700'
-                              }`}
-                            >
-                              {opt.id}
-                            </span>
-                          </label>
-
-                          <Input
-                            placeholder={`Masukkan teks untuk Pilihan ${opt.id}...`}
-                            value={opt.text}
-                            onChange={(e) => {
-                              setMcOptions((prev) =>
-                                prev.map((o) => (o.id === opt.id ? { ...o, text: e.target.value } : o))
-                              );
-                            }}
-                            className={`flex-1 bg-white text-sm ${
-                              opt.isCorrect ? 'border-emerald-300 focus-visible:ring-emerald-500' : ''
-                            }`}
-                          />
-
-                          {opt.isCorrect && (
-                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded hidden sm:inline whitespace-nowrap">
-                              ✓ Kunci Benar
-                            </span>
-                          )}
-
-                          {mcOptions.length > 2 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setMcOptions((prev) => {
-                                  const filtered = prev.filter((o) => o.id !== opt.id);
-                                  const hadCorrect = filtered.some((o) => o.isCorrect);
-                                  return filtered.map((o, idx) => ({
-                                    ...o,
-                                    id: String.fromCharCode(65 + idx),
-                                    isCorrect: hadCorrect ? o.isCorrect : idx === 0,
-                                  }));
-                                });
-                              }}
-                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                              title={`Hapus Pilihan ${opt.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-
+              {quizInputMode === 'manual' ? (
+                /* Mode 1: Input Manual */
+                <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm text-[#002446]">
+                      Tambah Soal Manual ke Kuis (Total Draft: {questions.length} Soal)
+                    </h4>
+                    <div className="flex gap-2">
                       <Button
                         type="button"
-                        variant="outline"
-                        onClick={() => {
-                          const nextLetter = String.fromCharCode(65 + mcOptions.length);
-                          setMcOptions((prev) => [
-                            ...prev,
-                            { id: nextLetter, text: '', isCorrect: false },
-                          ]);
-                        }}
-                        className="w-full mt-2 border-dashed border-2 border-blue-200 bg-blue-50/30 text-[#002446] hover:bg-blue-50 hover:border-[#002446] flex items-center justify-center gap-2 py-2.5 font-semibold text-xs transition-colors"
+                        size="sm"
+                        variant={qType === QuestionType.MULTIPLE_CHOICE ? 'default' : 'outline'}
+                        onClick={() => setQType(QuestionType.MULTIPLE_CHOICE)}
+                        className={
+                          qType === QuestionType.MULTIPLE_CHOICE ? 'bg-[#002446] text-white' : ''
+                        }
                       >
-                        <Plus className="h-4 w-4 text-[#FF8928]" />
-                        Tambah Pilihan Jawaban ({String.fromCharCode(65 + mcOptions.length)})
+                        Pilihan Ganda (Auto-Grade)
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={qType === QuestionType.ESSAY ? 'default' : 'outline'}
+                        onClick={() => setQType(QuestionType.ESSAY)}
+                        className={qType === QuestionType.ESSAY ? 'bg-[#002446] text-white' : ''}
+                      >
+                        Essay / Uraian
                       </Button>
                     </div>
                   </div>
-                )}
 
-                <div className="flex justify-end pt-2">
-                  <Button
-                    type="button"
-                    onClick={handleAddQuestionToQuizDraft}
-                    className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs"
-                  >
-                    + Masukkan Soal ke Kuis
-                  </Button>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="sm:col-span-3 space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-700">Pertanyaan Soal</Label>
+                      <Input
+                        placeholder="Tuliskan butir soal di sini..."
+                        value={qText}
+                        onChange={(e) => setQText(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-gray-700">Bobot Poin</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={qPoints}
+                        onChange={(e) => setQPoints(Math.max(1, Number(e.target.value) || 1))}
+                        className="font-bold text-[#002446]"
+                      />
+                      <p className="text-[10px] text-gray-500">Default: 10 poin</p>
+                    </div>
+                  </div>
+
+                  {qType === QuestionType.MULTIPLE_CHOICE && (
+                    <div className="space-y-3 pt-2 border-t border-gray-200">
+                      <div>
+                        <Label className="text-xs font-bold text-[#002446]">
+                          Pilihan Jawaban & Tentukan Kunci Jawaban:
+                        </Label>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          Klik radio button di samping huruf untuk memilih jawaban benar. Anda dapat menambah atau mengurangi pilihan (minimal 2).
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        {mcOptions.map((opt) => (
+                          <div
+                            key={opt.id}
+                            className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+                              opt.isCorrect
+                                ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                                : 'bg-white border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="radio"
+                                name="correctKey"
+                                checked={opt.isCorrect}
+                                onChange={() => {
+                                  setMcOptions((prev) =>
+                                    prev.map((o) => ({ ...o, isCorrect: o.id === opt.id }))
+                                  );
+                                }}
+                                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                              />
+                              <span
+                                className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
+                                  opt.isCorrect
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                {opt.id}
+                              </span>
+                            </label>
+
+                            <Input
+                              placeholder={`Masukkan teks untuk Pilihan ${opt.id}...`}
+                              value={opt.text}
+                              onChange={(e) => {
+                                setMcOptions((prev) =>
+                                  prev.map((o) => (o.id === opt.id ? { ...o, text: e.target.value } : o))
+                                );
+                              }}
+                              className={`flex-1 bg-white text-sm ${
+                                opt.isCorrect ? 'border-emerald-300 focus-visible:ring-emerald-500' : ''
+                              }`}
+                            />
+
+                            {opt.isCorrect && (
+                              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded hidden sm:inline whitespace-nowrap">
+                                ✓ Kunci Benar
+                              </span>
+                            )}
+
+                            {mcOptions.length > 2 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setMcOptions((prev) => {
+                                    const filtered = prev.filter((o) => o.id !== opt.id);
+                                    const hadCorrect = filtered.some((o) => o.isCorrect);
+                                    return filtered.map((o, idx) => ({
+                                      ...o,
+                                      id: String.fromCharCode(65 + idx),
+                                      isCorrect: hadCorrect ? o.isCorrect : idx === 0,
+                                    }));
+                                  });
+                                }}
+                                className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                                title={`Hapus Pilihan ${opt.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const nextLetter = String.fromCharCode(65 + mcOptions.length);
+                            setMcOptions((prev) => [
+                              ...prev,
+                              { id: nextLetter, text: '', isCorrect: false },
+                            ]);
+                          }}
+                          className="w-full mt-2 border-dashed border-2 border-blue-200 bg-blue-50/30 text-[#002446] hover:bg-blue-50 hover:border-[#002446] flex items-center justify-center gap-2 py-2.5 font-semibold text-xs transition-colors"
+                        >
+                          <Plus className="h-4 w-4 text-[#FF8928]" />
+                          Tambah Pilihan Jawaban ({String.fromCharCode(65 + mcOptions.length)})
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="button"
+                      onClick={handleAddQuestionToQuizDraft}
+                      className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs"
+                    >
+                      + Masukkan Soal ke Kuis
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Mode 2: Ambil dari Bank Soal */
+                <div className="border rounded-lg p-4 bg-slate-50/70 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-sm text-[#002446] flex items-center gap-1.5">
+                        <Database className="w-4 h-4 text-[#FF8928]" />
+                        Pilih Butir Soal dari Bank Soal
+                      </h4>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Centang soal yang ingin dimasukkan ke dalam kuis ini. Soal otomatis ditambahkan ke daftar kuis.
+                      </p>
+                    </div>
+                    <Link
+                      href={`/teacher/course/${course.id}/question-bank`}
+                      target="_blank"
+                      className="text-xs text-[#FF8928] hover:underline flex items-center gap-1"
+                    >
+                      Buka Kelola Bank Soal ↗
+                    </Link>
+                  </div>
+
+                  {bankLoading ? (
+                    <div className="text-center py-8 text-xs text-gray-500">
+                      Memuat daftar soal dari Bank Soal...
+                    </div>
+                  ) : !bankData || (bankData.categories.length === 0 && bankData.uncategorized.length === 0) ? (
+                    <div className="text-center py-8 bg-white rounded-lg border border-dashed text-gray-500 text-xs space-y-2">
+                      <p>Bank Soal kursus ini masih kosong.</p>
+                      <Link href={`/teacher/course/${course.id}/question-bank`}>
+                        <Button type="button" size="sm" variant="outline" className="text-xs">
+                          Tambah atau Impor Soal ke Bank Soal
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                      {/* Categories list */}
+                      {bankData.categories.map((cat: any) => {
+                        const isExpanded = expandedCategories[cat.id] ?? false;
+                        const catQuestions = cat.questions || [];
+                        const selectedInCat = catQuestions.filter((q: any) =>
+                          questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
+                        ).length;
+
+                        return (
+                          <div key={cat.id} className="border rounded-lg bg-white overflow-hidden shadow-2xs">
+                            <div
+                              onClick={() =>
+                                setExpandedCategories((prev) => ({
+                                  ...prev,
+                                  [cat.id]: !prev[cat.id],
+                                }))
+                              }
+                              className="p-3 bg-gray-50/80 hover:bg-gray-100/80 flex items-center justify-between cursor-pointer select-none transition-colors border-b"
+                            >
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                                )}
+                                <FolderOpen className="w-4 h-4 text-[#FF8928]" />
+                                <span className="font-semibold text-xs text-[#002446]">{cat.name}</span>
+                                <Badge variant="outline" className="text-[10px] text-gray-500">
+                                  {catQuestions.length} Soal
+                                </Badge>
+                              </div>
+                              {selectedInCat > 0 && (
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
+                                  {selectedInCat} terpilih
+                                </Badge>
+                              )}
+                            </div>
+
+                            {isExpanded && (
+                              <div className="divide-y p-1">
+                                {catQuestions.length === 0 ? (
+                                  <div className="p-3 text-center text-xs text-gray-400">
+                                    Tidak ada butir soal dalam kategori ini.
+                                  </div>
+                                ) : (
+                                  catQuestions.map((bankQ: any) => {
+                                    const isChecked = questions.some(
+                                      (q) => q.text === bankQ.text && q.type === bankQ.type
+                                    );
+
+                                    return (
+                                      <div
+                                        key={bankQ.id}
+                                        onClick={() => handleToggleBankQuestion(bankQ)}
+                                        className={`p-2.5 text-xs flex items-start gap-2.5 rounded cursor-pointer transition-colors ${
+                                          isChecked
+                                            ? 'bg-blue-50/70 border-l-4 border-l-[#002446]'
+                                            : 'hover:bg-gray-50'
+                                        }`}
+                                      >
+                                        <div className="pt-0.5">
+                                          {isChecked ? (
+                                            <CheckSquare className="w-4 h-4 text-[#002446]" />
+                                          ) : (
+                                            <Square className="w-4 h-4 text-gray-400" />
+                                          )}
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                          <div className="flex items-center gap-1.5">
+                                            <Badge variant="outline" className="text-[9px]">
+                                              {bankQ.type === QuestionType.MULTIPLE_CHOICE ? 'PG' : 'Essay'}
+                                            </Badge>
+                                            <Badge variant="secondary" className="text-[9px]">
+                                              {bankQ.points} Poin
+                                            </Badge>
+                                          </div>
+                                          <div
+                                            className="text-gray-800 line-clamp-2 [&_img]:max-h-16 [&_img]:rounded [&_img]:my-1"
+                                            dangerouslySetInnerHTML={{ __html: bankQ.text }}
+                                          />
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Uncategorized Questions */}
+                      {bankData.uncategorized && bankData.uncategorized.length > 0 && (
+                        <div className="border rounded-lg bg-white overflow-hidden shadow-2xs">
+                          <div
+                            onClick={() =>
+                              setExpandedCategories((prev) => ({
+                                ...prev,
+                                uncategorized: !prev.uncategorized,
+                              }))
+                            }
+                            className="p-3 bg-gray-50/80 hover:bg-gray-100/80 flex items-center justify-between cursor-pointer select-none transition-colors border-b"
+                          >
+                            <div className="flex items-center gap-2">
+                              {expandedCategories.uncategorized ? (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-gray-500" />
+                              )}
+                              <FolderOpen className="w-4 h-4 text-gray-400" />
+                              <span className="font-semibold text-xs text-gray-700">Belum Berkategori</span>
+                              <Badge variant="outline" className="text-[10px] text-gray-500">
+                                {bankData.uncategorized.length} Soal
+                              </Badge>
+                            </div>
+                            {bankData.uncategorized.filter((q: any) =>
+                              questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
+                            ).length > 0 && (
+                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
+                                {
+                                  bankData.uncategorized.filter((q: any) =>
+                                    questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
+                                  ).length
+                                }{' '}
+                                terpilih
+                              </Badge>
+                            )}
+                          </div>
+
+                          {expandedCategories.uncategorized && (
+                            <div className="divide-y p-1">
+                              {bankData.uncategorized.map((bankQ: any) => {
+                                const isChecked = questions.some(
+                                  (q) => q.text === bankQ.text && q.type === bankQ.type
+                                );
+
+                                return (
+                                  <div
+                                    key={bankQ.id}
+                                    onClick={() => handleToggleBankQuestion(bankQ)}
+                                    className={`p-2.5 text-xs flex items-start gap-2.5 rounded cursor-pointer transition-colors ${
+                                      isChecked
+                                        ? 'bg-blue-50/70 border-l-4 border-l-[#002446]'
+                                        : 'hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <div className="pt-0.5">
+                                      {isChecked ? (
+                                        <CheckSquare className="w-4 h-4 text-[#002446]" />
+                                      ) : (
+                                        <Square className="w-4 h-4 text-gray-400" />
+                                      )}
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <Badge variant="outline" className="text-[9px]">
+                                          {bankQ.type === QuestionType.MULTIPLE_CHOICE ? 'PG' : 'Essay'}
+                                        </Badge>
+                                        <Badge variant="secondary" className="text-[9px]">
+                                          {bankQ.points} Poin
+                                        </Badge>
+                                      </div>
+                                      <div
+                                        className="text-gray-800 line-clamp-2 [&_img]:max-h-16 [&_img]:rounded [&_img]:my-1"
+                                        dangerouslySetInnerHTML={{ __html: bankQ.text }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Daftar Soal yang Telah Dimasukkan */}
               {questions.length > 0 && (
@@ -1167,7 +1473,10 @@ export function TeacherCourseModulesClient({
                           <Badge variant="secondary" className="mr-2 text-[10px] bg-slate-100 text-slate-700 font-semibold">
                             {q.points} Poin
                           </Badge>
-                          <span className="text-gray-800">{q.text}</span>
+                          <div
+                            className="inline text-gray-800 [&_img]:inline-block [&_img]:max-h-8 [&_img]:rounded [&_img]:align-middle [&_img]:mr-1"
+                            dangerouslySetInnerHTML={{ __html: q.text }}
+                          />
                         </div>
                         <Button
                           size="sm"

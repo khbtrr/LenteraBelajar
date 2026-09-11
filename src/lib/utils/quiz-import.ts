@@ -18,10 +18,43 @@ export interface ParseResult {
   warnings: string[];
 }
 
-export async function parseDocxQuestions(buffer: Buffer): Promise<ParseResult> {
-  const result = await mammoth.extractRawText({ buffer });
-  const text = result.value;
-  const lines = text.split(/\r?\n/);
+export type ImageHandler = (imageBuffer: Buffer, contentType: string) => Promise<string>;
+
+export async function parseDocxQuestions(
+  buffer: Buffer,
+  imageHandler?: ImageHandler
+): Promise<ParseResult> {
+  const options: any = {};
+
+  if (imageHandler) {
+    options.convertImage = mammoth.images.imgElement(async (image: any) => {
+      const imgBuffer = await image.read();
+      const contentType = image.contentType || 'image/png';
+      const src = await imageHandler(imgBuffer, contentType);
+      return { src };
+    });
+  } else {
+    // Default fallback: base64 data URI so images still show in preview
+    options.convertImage = mammoth.images.imgElement(async (image: any) => {
+      const imgBuffer = await image.read();
+      const contentType = image.contentType || 'image/png';
+      return {
+        src: `data:${contentType};base64,${imgBuffer.toString('base64')}`,
+      };
+    });
+  }
+
+  const result = await mammoth.convertToHtml({ buffer }, options);
+  const html = result.value;
+
+  // Split into paragraphs / top level tags
+  const blockRegex = /<p[^>]*>([\s\S]*?)<\/p>|<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi;
+  const blocks: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = blockRegex.exec(html)) !== null) {
+    const content = (m[1] !== undefined ? m[1] : m[2]).trim();
+    if (content) blocks.push(content);
+  }
 
   const questions: ParsedQuestion[] = [];
   const warnings: string[] = [];
@@ -29,24 +62,39 @@ export async function parseDocxQuestions(buffer: Buffer): Promise<ParseResult> {
   let currentQuestion: ParsedQuestion | null = null;
   let questionNumber = 0;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
 
-    // Match new question: "1. Apa..." or "1. [Essay] Jelaskan..."
-    const qMatch = line.match(/^(\d+)\.\s+(.*)/);
+    // Extract plain text for regex matching (strip html tags)
+    const textOnly = block.replace(/<[^>]+>/g, '').trim();
+
+    // Check if new question: "1. Apa..." or "1. [Essay] Jelaskan..."
+    const qMatch = textOnly.match(/^(\d+)\.\s+(.*)/);
     if (qMatch) {
       if (currentQuestion) {
         finalizeQuestion(currentQuestion, questionNumber, warnings, questions);
       }
       questionNumber = parseInt(qMatch[1], 10);
-      const rawText = qMatch[2];
-      const isEssay = /\[Essay\]/i.test(rawText);
-      const cleanText = rawText.replace(/\[Essay\]/gi, '').trim();
+      const isEssay = /\[Essay\]/i.test(qMatch[2]);
+
+      // Strip question number and [Essay] tag from HTML content
+      let qHtml = block
+        .replace(/^\s*(?:<[^>]+>)*\s*(\d+)\.\s*/i, '')
+        .replace(/\[Essay\]/gi, '')
+        .trim();
+
+      // If there are <img> tags inside this block, keep them at the top of question text
+      const inlineImgs = block.match(/<img[^>]+src=["'][^"']+["'][^>]*\/?>/gi) || [];
+      const cleanHtmlWithoutImgs = qHtml.replace(/<img[^>]*\/?>/gi, '').trim();
+
+      let finalText = cleanHtmlWithoutImgs;
+      if (inlineImgs.length > 0) {
+        finalText = `${inlineImgs.join('\n')}\n${finalText}`.trim();
+      }
 
       currentQuestion = {
         type: isEssay ? 'ESSAY' : 'MULTIPLE_CHOICE',
-        text: cleanText,
+        text: finalText,
         points: isEssay ? 5 : 1,
         options: [],
       };
@@ -54,39 +102,54 @@ export async function parseDocxQuestions(buffer: Buffer): Promise<ParseResult> {
     }
 
     if (currentQuestion) {
-      // Check for points declaration
-      const ptMatch = line.match(/^Poin:\s*(\d+(\.\d+)?)/i);
+      // Check for points declaration: "Poin: 10"
+      const ptMatch = textOnly.match(/^Poin:\s*(\d+(\.\d+)?)/i);
       if (ptMatch) {
         currentQuestion.points = parseFloat(ptMatch[1]);
         continue;
       }
 
       // Check for option: "A. Option text" or "B. *Correct option text"
-      const optMatch = line.match(/^([A-Z])\.\s+(.*)/i);
+      const optMatch = textOnly.match(/^([A-Z])\.\s+(.*)/i);
       if (optMatch && currentQuestion.type === 'MULTIPLE_CHOICE') {
         const id = optMatch[1].toUpperCase();
-        let optText = optMatch[2].trim();
+        let optText = block.replace(/^\s*(?:<[^>]+>)*\s*[A-Z]\.\s+/i, '').trim();
         let isCorrect = false;
 
-        if (optText.startsWith('*')) {
+        if (optText.startsWith('*') || textOnly.match(/^[A-Z]\.\s+\*/i)) {
           isCorrect = true;
-          optText = optText.substring(1).trim();
+          optText = optText.replace(/^\*/, '').trim();
         }
+
+        // Clean any tags from option text for uniform display
+        const cleanOpt = optText.replace(/<[^>]+>/g, '').trim();
 
         currentQuestion.options.push({
           id,
-          text: optText,
+          text: cleanOpt,
           isCorrect,
         });
         continue;
       }
 
-      // If no other matches, append as text to either the question body or the last option
+      // Check if block contains an image: <img ... />
+      const imgMatches = block.match(/<img[^>]+src=["'][^"']+["'][^>]*\/?>/gi);
+      if (imgMatches && imgMatches.length > 0) {
+        // Place image at top of question text
+        const remainingText = block.replace(/<img[^>]*\/?>/gi, '').replace(/<[^>]+>/g, '').trim();
+        currentQuestion.text = `${imgMatches.join('\n')}\n${currentQuestion.text}`.trim();
+        if (remainingText) {
+          currentQuestion.text += '\n' + remainingText;
+        }
+        continue;
+      }
+
+      // If no other matches, append as text to question body or last option
       if (currentQuestion.options.length === 0) {
-        currentQuestion.text += '\n' + line;
+        currentQuestion.text += '\n' + textOnly;
       } else {
         const lastOpt = currentQuestion.options[currentQuestion.options.length - 1];
-        lastOpt.text += '\n' + line;
+        lastOpt.text += ' ' + textOnly;
       }
     }
   }
@@ -96,9 +159,9 @@ export async function parseDocxQuestions(buffer: Buffer): Promise<ParseResult> {
     finalizeQuestion(currentQuestion, questionNumber, warnings, questions);
   }
 
-  // Also include mammoth warnings if any
+  // Include mammoth warnings if any
   if (result.messages && result.messages.length > 0) {
-    result.messages.forEach(msg => warnings.push(`Mammoth: ${msg.message}`));
+    result.messages.forEach((msg) => warnings.push(`Mammoth: ${msg.message}`));
   }
 
   return { questions, warnings };

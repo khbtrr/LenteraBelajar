@@ -85,6 +85,7 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
   // Computed data
   const categories = bankData.categories || [];
@@ -316,16 +317,34 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
   const handleUploadWord = async () => {
     if (!importFile) return;
     setLoading(true);
+    setImportWarnings([]);
     try {
       const formData = new FormData();
       formData.append('file', importFile);
+      formData.append('courseId', courseId);
+      if (selectedCategoryId && selectedCategoryId !== 'uncategorized') {
+        formData.append('categoryId', selectedCategoryId);
+      }
+
       const res = await fetch('/api/quiz-import', { method: 'POST', body: formData });
       const data = await res.json();
-      if (data.questions) {
-        setImportPreview(data.questions);
+      if (!res.ok) {
+        alert(data.error || 'Gagal memproses file Word');
+        return;
       }
-    } catch (e) {
+
+      if (data.warnings && data.warnings.length > 0) {
+        setImportWarnings(data.warnings);
+      }
+
+      if (data.questions && data.questions.length > 0) {
+        setImportPreview(data.questions);
+      } else {
+        alert('Tidak ada butir soal yang berhasil terbaca dari dokumen. Pastikan penulisan nomor soal diawali angka dan titik (misal: 1. Pertanyaan...)');
+      }
+    } catch (e: any) {
       console.error(e);
+      alert(e?.message || 'Terjadi kesalahan saat memproses file');
     } finally {
       setLoading(false);
     }
@@ -736,6 +755,20 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
               )}
             </div>
 
+            {importWarnings.length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
+                <p className="font-semibold flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  Catatan Format Impor:
+                </p>
+                <ul className="list-disc pl-5 space-y-0.5">
+                  {importWarnings.map((w, idx) => (
+                    <li key={idx}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {importPreview.length > 0 && (
               <div className="space-y-3 mt-6">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
@@ -749,7 +782,10 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                         <Badge variant="outline">{q.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}</Badge>
                         <Badge variant="outline">{q.points} Poin</Badge>
                       </div>
-                      <p className="font-medium line-clamp-1">{q.text}</p>
+                      <div
+                        className="font-medium line-clamp-3 [&_img]:max-h-24 [&_img]:rounded [&_img]:my-1"
+                        dangerouslySetInnerHTML={{ __html: q.text }}
+                      />
                       {q.type === 'MULTIPLE_CHOICE' && q.options && (
                         <p className="text-xs text-slate-500 mt-1">
                           {q.options.length} Opsi • Jawaban benar: {q.options.findIndex((o: any) => o.isCorrect) > -1 ? getOptionLetter(q.options.findIndex((o: any) => o.isCorrect)) : '?'}
@@ -762,7 +798,7 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsImportModalOpen(false); setImportPreview([]); setImportFile(null); }} disabled={loading}>
+            <Button variant="outline" onClick={() => { setIsImportModalOpen(false); setImportPreview([]); setImportWarnings([]); setImportFile(null); }} disabled={loading}>
               Batal
             </Button>
             <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white" onClick={handleConfirmImport} disabled={loading || importPreview.length === 0}>

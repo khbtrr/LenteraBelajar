@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireRole } from '@/lib/auth-utils';
+import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { parseDocxQuestions } from '@/lib/utils/quiz-import';
+import { parseDocxQuestions, ImageHandler } from '@/lib/utils/quiz-import';
+import { writeFile, mkdir } from 'node:fs/promises';
+import path from 'node:path';
 
 export async function POST(req: NextRequest) {
   try {
     // Authorize user
-    await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Sesi Anda telah berakhir, silakan login kembali' }, { status: 401 });
+    }
+
+    const role = session.user.role;
+    if (!['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+      return NextResponse.json({ error: 'Akses ditolak: Peran tidak diizinkan' }, { status: 403 });
+    }
 
     // Parse formData
     const formData = await req.formData();
@@ -22,20 +32,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Format file tidak didukung. Harap unggah file .docx' }, { status: 400 });
     }
 
-    if (!courseId) {
-      return NextResponse.json({ error: 'courseId wajib diisi' }, { status: 400 });
-    }
-
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Image handler: save extracted images from Word to uploads/ directory
+    const imageHandler: ImageHandler = async (imgBuffer: Buffer, contentType: string) => {
+      try {
+        const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
+        await mkdir(uploadDir, { recursive: true });
+
+        const ext = contentType.includes('jpeg') || contentType.includes('jpg')
+          ? 'jpg'
+          : contentType.includes('png')
+          ? 'png'
+          : contentType.includes('gif')
+          ? 'gif'
+          : contentType.includes('webp')
+          ? 'webp'
+          : 'png';
+
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const fileName = `quiz_img_${Date.now()}_${randomStr}.${ext}`;
+        const filePath = path.join(uploadDir, fileName);
+
+        await writeFile(filePath, imgBuffer);
+        return `/api/files/${fileName}`;
+      } catch (err) {
+        console.error('Error saving imported image:', err);
+        // Fallback to data URI if disk write fails
+        return `data:${contentType};base64,${imgBuffer.toString('base64')}`;
+      }
+    };
     
-    // Parse the file
-    const { questions, warnings } = await parseDocxQuestions(buffer);
+    // Parse the file with image upload handler
+    const { questions, warnings } = await parseDocxQuestions(buffer, imageHandler);
 
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
     // Handle DB Import if action=import is present
     if (action === 'import') {
+      if (!courseId) {
+        return NextResponse.json({ error: 'courseId wajib diisi untuk menyimpan soal' }, { status: 400 });
+      }
+
       if (questions.length === 0) {
         return NextResponse.json({ error: 'Tidak ada soal valid yang ditemukan untuk diimpor' }, { status: 400 });
       }

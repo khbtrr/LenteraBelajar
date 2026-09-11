@@ -23,22 +23,25 @@ export async function GET() {
               ],
             }),
             new Paragraph({
-              text: '1. Setiap butir soal harus diawali nomor urut diikuti tanda titik (misal: 1. Pertanyaan...)',
+              text: '- Setiap butir soal harus diawali nomor urut diikuti tanda titik (misal: 1. Pertanyaan...)',
             }),
             new Paragraph({
-              text: '2. Pilihan ganda ditulis dengan huruf kapital diikuti tanda titik (A. , B. , C. , D. , E.)',
+              text: '- Pilihan ganda ditulis dengan huruf kapital diikuti tanda titik (A. , B. , C. , D. , E.)',
             }),
             new Paragraph({
-              text: '3. Beri tanda bintang (*) tepat di awal jawaban yang BENAR (contoh: C. *Jawaban Benar)',
+              text: '- Beri tanda bintang (*) tepat di awal jawaban yang BENAR (contoh: C. *Jawaban Benar)',
             }),
             new Paragraph({
-              text: '4. Untuk soal Essay/Uraian, tambahkan tag [Essay] di belakang nomor soal (contoh: 4. [Essay] Pertanyaan...)',
+              text: '- Untuk soal Essay/Uraian, tambahkan tag [Essay] di belakang nomor soal (contoh: 4. [Essay] Pertanyaan...)',
             }),
             new Paragraph({
-              text: '5. Bobot poin per butir soal dapat diatur dengan menulis "Poin: X" di bawah soal (opsional)',
+              text: '- Bobot poin per butir soal dapat diatur dengan menulis "Poin: X" di bawah soal (opsional, default 10 untuk PG, 20 untuk Essay)',
             }),
             new Paragraph({
-              text: '6. Beri jarak 1 baris kosong antar butir soal.',
+              text: '- Soal bergambar: Sisipkan gambar (insert picture) pada butir soal. Gambar otomatis tampil di atas teks pertanyaan.',
+            }),
+            new Paragraph({
+              text: '- Beri jarak 1 baris kosong antar butir soal.',
             }),
             new Paragraph({
               text: '--------------------------------------------------',

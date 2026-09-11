@@ -220,9 +220,10 @@ export function StudentQuizClient({
             </CardHeader>
 
             <CardContent className="p-5 pt-0 space-y-4">
-              <p className="text-base text-gray-800 font-medium leading-relaxed">
-                {q.text}
-              </p>
+              <div
+                className="text-base text-gray-800 font-medium leading-relaxed whitespace-pre-line [&_img]:max-w-full [&_img]:max-h-96 [&_img]:rounded-lg [&_img]:my-3 [&_img]:border [&_img]:border-gray-200 [&_img]:shadow-xs"
+                dangerouslySetInnerHTML={{ __html: q.text }}
+              />
 
               {/* Multiple Choice Options */}
               {q.type === 'MULTIPLE_CHOICE' && q.options && (
