@@ -17,36 +17,36 @@ export default async function TeacherDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#002446]">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
         {t('welcome', { name: session.user.name })}
       </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">{t('totalCourses')}</CardTitle>
-            <BookOpen className="h-5 w-5 text-[#FF8928]" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('totalCourses')}</CardTitle>
+            <BookOpen className="h-5 w-5 text-accent-500" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-[#002446]">{courseCount}</p>
+            <p className="text-3xl font-bold text-brand-500 dark:text-brand-400">{courseCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">{t('activeCourses')}</CardTitle>
-            <ClipboardList className="h-5 w-5 text-[#FF8928]" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('activeCourses')}</CardTitle>
+            <ClipboardList className="h-5 w-5 text-accent-500" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-[#002446]">{activeCourseCount}</p>
+            <p className="text-3xl font-bold text-brand-500 dark:text-brand-400">{activeCourseCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">{t('totalStudents')}</CardTitle>
-            <Users className="h-5 w-5 text-[#FF8928]" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('totalStudents')}</CardTitle>
+            <Users className="h-5 w-5 text-accent-500" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-[#002446]">0</p>
+            <p className="text-3xl font-bold text-brand-500 dark:text-brand-400">0</p>
           </CardContent>
         </Card>
       </div>

@@ -17,8 +17,8 @@ export default async function TeacherMyCoursesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#002446]">Course Saya</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Course Saya</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Daftar mata pelajaran yang Anda ampu pada tahun ajaran aktif maupun arsip.
         </p>
       </div>

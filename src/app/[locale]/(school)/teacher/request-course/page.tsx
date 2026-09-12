@@ -13,8 +13,8 @@ export default async function TeacherRequestCoursePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#002446]">Ajukan Pembuatan Course</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ajukan Pembuatan Course</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Kirim permohonan pembuatan course baru kepada administrator sekolah untuk disetujui.
         </p>
       </div>

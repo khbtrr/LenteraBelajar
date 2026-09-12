@@ -38,38 +38,38 @@
   --color-white: #ffffff;
   --color-black: #101828;
 
-  /* LenteraBelajar Identity: Primary Deep Navy */
-  --color-brand-25: #f4f8fc;
-  --color-brand-50: #eaf2f9;
-  --color-brand-100: #d5e5f3;
-  --color-brand-200: #b0d0ea;
-  --color-brand-300: #7eb3dc;
-  --color-brand-400: #4991cb;
-  --color-brand-500: #002446;
-  --color-brand-600: #001f3d;
-  --color-brand-700: #001932;
-  --color-brand-800: #001326;
-  --color-brand-900: #000e1c;
-  --color-brand-950: #000812;
+  /* Tailwind / TailAdmin Modern Brand Palette */
+  --color-brand-25: #f2f7ff;
+  --color-brand-50: #ecf3ff;
+  --color-brand-100: #dde9ff;
+  --color-brand-200: #c2d6ff;
+  --color-brand-300: #9cb9ff;
+  --color-brand-400: #7592ff;
+  --color-brand-500: #465fff;
+  --color-brand-600: #3641f5;
+  --color-brand-700: #2a31d8;
+  --color-brand-800: #252dae;
+  --color-brand-900: #262e89;
+  --color-brand-950: #161950;
 
-  /* LenteraBelajar Identity: Accent Warm Orange */
+  /* Accent Palette */
   --color-accent-25: #fffaf5;
   --color-accent-50: #fff6ed;
-  --color-accent-100: #ffeed5;
+  --color-accent-100: #ffead5;
   --color-accent-200: #fddcab;
   --color-accent-300: #feb273;
   --color-accent-400: #fd853a;
-  --color-accent-500: #FF8928;
-  --color-accent-600: #ea580c;
-  --color-accent-700: #c2410c;
-  --color-accent-800: #9a3412;
-  --color-accent-900: #7c2d12;
+  --color-accent-500: #fb6514;
+  --color-accent-600: #ec4a0a;
+  --color-accent-700: #c2320a;
+  --color-accent-800: #9c2a10;
+  --color-accent-900: #7e2410;
   --color-accent-950: #511c10;
 
-  /* Legacy LenteraBelajar tokens */
-  --color-primary: #002446;
-  --color-accent: #FF8928;
-  --color-background: #ECEEF0;
+  /* Mapped tokens for compatibility */
+  --color-primary: #465fff;
+  --color-accent: #fb6514;
+  --color-background: #f9fafb;
 
   --color-blue-light-25: #f5fbff;
   --color-blue-light-50: #f0f9ff;
@@ -186,6 +186,14 @@
     border-color: var(--color-gray-200, currentColor);
   }
 
+  .dark *,
+  .dark ::after,
+  .dark ::before,
+  .dark ::backdrop,
+  .dark ::file-selector-button {
+    border-color: var(--color-gray-800, currentColor);
+  }
+
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
@@ -193,6 +201,15 @@
 
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50 text-gray-800 dark:bg-gray-950 dark:text-gray-200;
+  }
+
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6 {
+    color: var(--color-white, #ffffff);
   }
 }
 
@@ -281,4 +298,25 @@
 .menu-accordion > div {
   overflow: hidden;
   min-height: 0;
+}
+
+/* Dark mode overrides for legacy hardcoded colors */
+.dark .text-\[\#002446\] {
+  color: #ffffff !important;
+}
+.dark .bg-\[\#002446\] {
+  background-color: var(--color-brand-500, #465fff) !important;
+}
+.dark .hover\:bg-\[\#002446\]\/90:hover {
+  background-color: var(--color-brand-600, #3641f5) !important;
+}
+.dark .border-\[\#002446\]\/20,
+.dark .border-\[\#002446\] {
+  border-color: var(--color-gray-800, #1f2937) !important;
+}
+.dark .bg-\[\#ECEEF0\] {
+  background-color: var(--color-gray-950, #0c111d) !important;
+}
+.dark .text-muted-foreground {
+  color: var(--color-gray-400, #98a2b3) !important;
 }

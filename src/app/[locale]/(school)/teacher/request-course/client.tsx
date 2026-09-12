@@ -88,10 +88,10 @@ export function TeacherRequestCourseClient({
   return (
     <div className="space-y-8">
       {/* Form Request */}
-      <Card className="border-[#002446]/20 shadow-sm">
+      <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
-            <Send className="h-5 w-5 text-[#FF8928]" /> Formulir Pengajuan Course
+          <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <Send className="h-5 w-5 text-accent-500" /> Formulir Pengajuan Course
           </CardTitle>
           <CardDescription>
             Setelah dikirim, Administrator akan meninjau dan mengaktifkan course Anda.
@@ -100,14 +100,14 @@ export function TeacherRequestCourseClient({
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {successMsg && (
-              <div className="p-3 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <div className="p-3 bg-green-50 border border-green-200 text-green-700 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400 text-sm rounded-lg flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                 {successMsg}
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="reqTitle">Judul Course yang Diajukan</Label>
+              <Label htmlFor="reqTitle" className="text-gray-700 dark:text-gray-300">Judul Course yang Diajukan</Label>
               <Input
                 id="reqTitle"
                 placeholder="misal: Biologi Sel dan Genetika Kelas XII"
@@ -118,7 +118,7 @@ export function TeacherRequestCourseClient({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reqDesc">Rencana / Deskripsi Pembelajaran</Label>
+              <Label htmlFor="reqDesc" className="text-gray-700 dark:text-gray-300">Rencana / Deskripsi Pembelajaran</Label>
               <Input
                 id="reqDesc"
                 placeholder="misal: Silabus materi semester ganjil, target kompetensi siswa"
@@ -129,12 +129,12 @@ export function TeacherRequestCourseClient({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="reqYear">Tahun Ajaran</Label>
+                <Label htmlFor="reqYear" className="text-gray-700 dark:text-gray-300">Tahun Ajaran</Label>
                 <select
                   id="reqYear"
                   value={academicYearId}
                   onChange={(e) => setAcademicYearId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                  className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-brand-500 transition-colors"
                   required
                 >
                   {academicYears.map((y) => (
@@ -146,12 +146,12 @@ export function TeacherRequestCourseClient({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reqCat">Kategori Mata Pelajaran</Label>
+                <Label htmlFor="reqCat" className="text-gray-700 dark:text-gray-300">Kategori Mata Pelajaran</Label>
                 <select
                   id="reqCat"
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                  className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-brand-500 transition-colors"
                 >
                   <option value="">-- Pilih Kategori (Mapel) --</option>
                   {categories.map((c) => (
@@ -167,7 +167,7 @@ export function TeacherRequestCourseClient({
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white flex items-center gap-2"
+                className="bg-accent-500 hover:bg-accent-600 text-white flex items-center gap-2 shadow-xs transition-colors"
               >
                 <Send className="h-4 w-4" />
                 {loading ? 'Mengirim...' : 'Kirim Pengajuan'}
@@ -180,14 +180,14 @@ export function TeacherRequestCourseClient({
       {/* Riwayat Pengajuan */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-bold text-[#002446]">
+          <CardTitle className="text-lg font-bold">
             Riwayat Pengajuan Course Anda
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow>
                 <TableHead>Judul Course</TableHead>
                 <TableHead>Tanggal Pengajuan</TableHead>
                 <TableHead>Status</TableHead>
@@ -197,7 +197,7 @@ export function TeacherRequestCourseClient({
             <TableBody>
               {requests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={4} className="text-center py-8 text-gray-500 dark:text-gray-400">
                     Belum ada riwayat pengajuan course.
                   </TableCell>
                 </TableRow>
@@ -205,14 +205,14 @@ export function TeacherRequestCourseClient({
                 requests.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>
-                      <div className="font-semibold text-[#002446]">{r.title}</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">{r.title}</div>
                       {r.description && (
-                        <div className="text-xs text-gray-500 line-clamp-1">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
                           {r.description}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">
+                    <TableCell className="text-sm text-gray-600 dark:text-gray-400">
                       {new Date(r.createdAt).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',
@@ -244,7 +244,7 @@ export function TeacherRequestCourseClient({
                         )}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">
+                    <TableCell className="text-sm text-gray-600 dark:text-gray-400">
                       {r.adminNote || '-'}
                     </TableCell>
                   </TableRow>

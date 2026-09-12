@@ -60,12 +60,12 @@ export function Sidebar({ items, title }: SidebarProps) {
       {/* Brand Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <Link href="/" className="flex items-center gap-3 overflow-hidden">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#002446] text-white shadow-sm flex-shrink-0">
-            <GraduationCap className="h-6 w-6 text-[#FF8928]" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-500 text-white shadow-sm flex-shrink-0">
+            <GraduationCap className="h-6 w-6 text-white" />
           </div>
           {isSidebarVisible && (
             <div className="flex flex-col min-w-0 transition-opacity duration-200">
-              <span className="font-bold text-base text-[#002446] dark:text-white truncate">
+              <span className="font-bold text-base text-gray-900 dark:text-white truncate">
                 LenteraBelajar
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
@@ -169,7 +169,7 @@ export function Sidebar({ items, title }: SidebarProps) {
                 <span
                   className={cn(
                     'flex-shrink-0',
-                    isActive ? 'text-[#002446] dark:text-brand-300' : 'menu-item-icon'
+                    isActive ? 'text-brand-500 dark:text-brand-400' : 'menu-item-icon'
                   )}
                 >
                   {item.icon}

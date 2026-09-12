@@ -113,7 +113,7 @@ export function TeacherCoursesClient({
           <Link href="/teacher/request-course">
             <Button
               variant="outline"
-              className="border-[#FF8928] text-[#FF8928] hover:bg-[#FF8928] hover:text-white flex items-center gap-1.5"
+              className="border-accent-500 text-accent-600 dark:text-accent-400 hover:bg-accent-500 hover:text-white dark:hover:bg-accent-600 flex items-center gap-1.5 transition-colors"
             >
               <Send className="h-4 w-4" /> Ajukan Course ke Admin
             </Button>
@@ -121,7 +121,7 @@ export function TeacherCoursesClient({
 
           <Button
             onClick={() => setIsCreateOpen(true)}
-            className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-1.5"
+            className="flex items-center gap-1.5"
           >
             <Plus className="h-4 w-4" /> Buat Langsung
           </Button>
@@ -131,15 +131,15 @@ export function TeacherCoursesClient({
       {courses.length === 0 ? (
         <Card className="text-center py-16">
           <CardContent className="space-y-4">
-            <BookOpen className="h-16 w-16 mx-auto text-gray-300" />
+            <BookOpen className="h-16 w-16 mx-auto text-gray-300 dark:text-gray-600" />
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-[#002446]">Belum Ada Course</h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Belum Ada Course</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
                 Anda belum memiliki course aktif. Buat course secara langsung atau ajukan request ke administrator sekolah.
               </p>
             </div>
             <div className="flex justify-center gap-3 pt-2">
-              <Button onClick={() => setIsCreateOpen(true)} className="bg-[#002446] text-white">
+              <Button onClick={() => setIsCreateOpen(true)}>
                 Buat Course Sekarang
               </Button>
               <Link href="/teacher/request-course">
@@ -155,7 +155,7 @@ export function TeacherCoursesClient({
             return (
               <Card
                 key={course.id}
-                className="flex flex-col justify-between border hover:shadow-md transition-shadow bg-white"
+                className="flex flex-col justify-between hover:shadow-md transition-shadow"
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
@@ -165,48 +165,48 @@ export function TeacherCoursesClient({
                     <Badge
                       className={
                         isActive
-                          ? 'bg-[#FF8928] text-white'
-                          : 'bg-gray-200 text-gray-700'
+                          ? 'bg-accent-500 text-white'
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                       }
                     >
                       {isActive ? 'Aktif' : 'Arsip'}
                     </Badge>
                   </div>
-                  <CardTitle className="text-xl font-bold text-[#002446] line-clamp-2 mt-2">
+                  <CardTitle className="text-xl font-bold line-clamp-2 mt-2">
                     {course.title}
                   </CardTitle>
-                  <div className="text-xs text-gray-500 font-medium">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                     Tahun Ajaran: {course.academicYear.name}
                   </div>
                 </CardHeader>
 
                 <CardContent className="space-y-3 text-sm">
                   {course.description && (
-                    <p className="text-gray-600 line-clamp-2 text-xs">
+                    <p className="text-gray-600 dark:text-gray-400 line-clamp-2 text-xs">
                       {course.description}
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between pt-3 border-t text-xs text-gray-600">
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-400">
                     <span className="flex items-center gap-1.5 font-medium">
-                      <Users className="h-4 w-4 text-[#FF8928]" />
+                      <Users className="h-4 w-4 text-accent-500" />
                       {course._count.enrollments} Siswa Terdaftar
                     </span>
                     <span className="flex items-center gap-1.5 font-medium">
-                      <Layers className="h-4 w-4 text-[#002446]" />
+                      <Layers className="h-4 w-4 text-brand-500 dark:text-brand-400" />
                       {course._count.modules} Modul
                     </span>
                   </div>
                 </CardContent>
 
-                <CardFooter className="pt-3 border-t bg-gray-50/50 flex flex-col sm:flex-row items-center gap-2">
+                <CardFooter className="pt-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 flex flex-col sm:flex-row items-center gap-2">
                   <Link
                     href={`/teacher/course/${course.id}/modules`}
                     className="w-full sm:flex-1"
                   >
                     <Button
                       size="sm"
-                      className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center justify-center gap-1 text-xs"
+                      className="w-full flex items-center justify-center gap-1 text-xs"
                     >
                       <Layers className="h-3.5 w-3.5" /> Modul
                     </Button>
@@ -219,7 +219,7 @@ export function TeacherCoursesClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center justify-center gap-1 text-xs"
+                      className="w-full flex items-center justify-center gap-1 text-xs"
                     >
                       <Users className="h-3.5 w-3.5" /> Siswa
                     </Button>
@@ -232,7 +232,7 @@ export function TeacherCoursesClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full border-[#FF8928] text-[#FF8928] hover:bg-[#FF8928] hover:text-white flex items-center justify-center gap-1 text-xs font-semibold"
+                      className="w-full border-accent-500 text-accent-600 dark:text-accent-400 hover:bg-accent-500 hover:text-white flex items-center justify-center gap-1 text-xs font-semibold transition-colors"
                     >
                       <FileSpreadsheet className="h-3.5 w-3.5" /> Nilai
                     </Button>
@@ -249,13 +249,13 @@ export function TeacherCoursesClient({
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleCreateDirect}>
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-[#002446]">
+              <DialogTitle className="text-xl font-bold">
                 Buat Course Langsung
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="tCourseTitle">Judul Course</Label>
+                <Label htmlFor="tCourseTitle" className="text-gray-700 dark:text-gray-300">Judul Course</Label>
                 <Input
                   id="tCourseTitle"
                   placeholder="misal: Fisika Dasar Semester 1"
@@ -266,7 +266,7 @@ export function TeacherCoursesClient({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tCourseDesc">Deskripsi</Label>
+                <Label htmlFor="tCourseDesc" className="text-gray-700 dark:text-gray-300">Deskripsi</Label>
                 <Input
                   id="tCourseDesc"
                   placeholder="Ringkasan materi atau tujuan pembelajaran"
@@ -277,12 +277,12 @@ export function TeacherCoursesClient({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tCourseYear">Tahun Ajaran</Label>
+                  <Label htmlFor="tCourseYear" className="text-gray-700 dark:text-gray-300">Tahun Ajaran</Label>
                   <select
                     id="tCourseYear"
                     value={academicYearId}
                     onChange={(e) => setAcademicYearId(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                    className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-brand-500 transition-colors"
                     required
                   >
                     {academicYears.map((y) => (
@@ -294,12 +294,12 @@ export function TeacherCoursesClient({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tCourseCat">Kategori</Label>
+                  <Label htmlFor="tCourseCat" className="text-gray-700 dark:text-gray-300">Kategori</Label>
                   <select
                     id="tCourseCat"
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                    className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-brand-500 transition-colors"
                   >
                     <option value="">-- Pilih Kategori (Mapel) --</option>
                     {categories.map((c) => (
@@ -322,7 +322,6 @@ export function TeacherCoursesClient({
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-[#002446] hover:bg-[#002446]/90 text-white"
               >
                 {loading ? 'Menyimpan...' : 'Buat Course'}
               </Button>

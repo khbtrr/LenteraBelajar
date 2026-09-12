@@ -63,7 +63,7 @@ export function Header({ userName, userRole }: HeaderProps) {
 
         {/* Mobile Brand Link */}
         <Link href="/" className="flex items-center gap-2 xl:hidden">
-          <span className="font-bold text-base text-[#002446] dark:text-white">
+          <span className="font-bold text-base text-gray-900 dark:text-white">
             LenteraBelajar
           </span>
         </Link>
@@ -90,7 +90,7 @@ export function Header({ userName, userRole }: HeaderProps) {
               className="flex items-center gap-3 px-2 py-1.5 h-auto rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <Avatar className="h-9 w-9 border border-gray-200 dark:border-gray-700 shadow-xs">
-                <AvatarFallback className="bg-[#002446] text-white font-semibold text-xs">
+                <AvatarFallback className="bg-brand-500 text-white font-semibold text-xs">
                   {initials}
                 </AvatarFallback>
               </Avatar>
