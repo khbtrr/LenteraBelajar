@@ -26,6 +26,7 @@ import {
   LiveProctorData,
   ProctorStudentData,
 } from '@/lib/actions/proctor';
+import { useDialog } from '@/context/DialogContext';
 import {
   Shield,
   ShieldAlert,
@@ -57,6 +58,7 @@ interface Props {
 
 export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Props) {
   const router = useRouter();
+  const { showAlert, showConfirm } = useDialog();
   const [data, setData] = useState<LiveProctorData>(initialData);
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -96,13 +98,15 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
       try {
         const freshData = await getLiveProctorData(quizId);
         setData(freshData);
-      } catch (err) {
-        console.error('Failed to poll proctor data', err);
+      } catch (e) {
+        console.error('Proctor poll error:', e);
       }
     }, 6000);
 
     return () => clearInterval(interval);
   }, [autoRefresh, quizId]);
+
+
 
   const handleManualRefresh = async () => {
     setLoading(true);
@@ -110,7 +114,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
       const freshData = await getLiveProctorData(quizId);
       setData(freshData);
     } catch (err: any) {
-      alert(err.message || 'Gagal memperbarui data');
+      await showAlert(err.message || 'Gagal memperbarui data', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -124,41 +128,54 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
   };
 
   const handleGrantExtraTime = async (attemptId: string, minutes: number) => {
-    if (!confirm(`Berikan tambahan waktu ${minutes} menit untuk siswa ini?`)) return;
+    const confirmed = await showConfirm(
+      `Berikan tambahan waktu ${minutes} menit untuk siswa ini?`,
+      { title: 'Beri Waktu Tambahan', confirmText: `+${minutes} Menit` }
+    );
+    if (!confirmed) return;
     setActionLoadingId(attemptId);
     try {
       await grantExtraTime(attemptId, minutes);
       await handleManualRefresh();
+      await showAlert(`Tambahan waktu ${minutes} menit berhasil diberikan.`, { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal menambah waktu');
+      await showAlert(err.message || 'Gagal menambah waktu', { type: 'error' });
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleForceSubmit = async (attemptId: string) => {
-    if (!confirm('Paksa kumpulkan lembar ujian siswa ini sekarang?')) return;
+    const confirmed = await showConfirm(
+      'Paksa kumpulkan lembar ujian siswa ini sekarang?',
+      { title: 'Paksa Kumpulkan', confirmText: 'Ya, Paksa Kumpulkan', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) return;
     setActionLoadingId(attemptId);
     try {
       await forceSubmitAttempt(attemptId, 'Dikumpulkan secara manual oleh pengawas ujian.');
       await handleManualRefresh();
+      await showAlert('Lembar ujian siswa berhasil dikumpulkan paksa.', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal mengumpulkan ujian siswa');
+      await showAlert(err.message || 'Gagal mengumpulkan ujian siswa', { type: 'error' });
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleResetAttempt = async (attemptId: string) => {
-    if (!confirm('PERINGATAN: Apakah Anda yakin ingin mereset ujian siswa ini? Seluruh jawaban yang telah diisi akan dihapus dan siswa dapat memulai kembali dari awal.')) {
-      return;
-    }
+    const confirmed = await showConfirm(
+      'PERINGATAN: Apakah Anda yakin ingin mereset ujian siswa ini?\n\nSeluruh jawaban yang telah diisi akan dihapus dan siswa dapat memulai kembali dari awal.',
+      { title: 'Reset Pengerjaan Siswa', confirmText: 'Ya, Reset Ujian', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) return;
     setActionLoadingId(attemptId);
     try {
       await resetStudentAttempt(attemptId);
       await handleManualRefresh();
+      await showAlert('Pengerjaan kuis siswa berhasil di-reset.', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal mereset ujian siswa');
+      await showAlert(err.message || 'Gagal mereset ujian siswa', { type: 'error' });
     } finally {
       setActionLoadingId(null);
     }
@@ -177,8 +194,9 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
 
       await handleManualRefresh();
       setIsSettingsOpen(false);
+      await showAlert('Pengaturan keamanan ujian berhasil diperbarui!', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal memperbarui pengaturan keamanan');
+      await showAlert(err.message || 'Gagal memperbarui pengaturan keamanan', { type: 'error' });
     } finally {
       setSavingSettings(false);
     }

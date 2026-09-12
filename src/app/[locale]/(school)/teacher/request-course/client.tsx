@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Send, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { requestCourse } from '@/lib/actions/course';
+import { useDialog } from '@/context/DialogContext';
 
 interface RequestItem {
   id: string;
@@ -43,10 +44,11 @@ export function TeacherRequestCourseClient({
   academicYears,
   categories,
 }: {
-  initialRequests: any[];
+  initialRequests: RequestItem[];
   academicYears: AcademicYear[];
   categories: Category[];
 }) {
+  const { showAlert } = useDialog();
   const [requests, setRequests] = useState<RequestItem[]>(initialRequests);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -60,7 +62,7 @@ export function TeacherRequestCourseClient({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!academicYearId) {
-      alert('Pilih Tahun Ajaran aktif');
+      await showAlert('Pilih Tahun Ajaran aktif terlebih dahulu', { type: 'warning' });
       return;
     }
     setLoading(true);
@@ -77,9 +79,10 @@ export function TeacherRequestCourseClient({
       setTitle('');
       setDescription('');
       setSuccessMsg('Pengajuan course berhasil dikirim ke Administrator!');
-    } catch (err) {
+      await showAlert('Pengajuan course Anda berhasil dikirim ke Administrator!', { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal mengirim pengajuan course');
+      await showAlert(err?.message || 'Gagal mengirim pengajuan course', { type: 'error' });
     } finally {
       setLoading(false);
     }

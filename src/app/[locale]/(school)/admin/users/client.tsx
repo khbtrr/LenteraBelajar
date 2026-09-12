@@ -25,6 +25,7 @@ import { Users, UserPlus, Upload, Search, KeyRound, ShieldAlert, CheckCircle } f
 import { createUser, bulkImportUsers, toggleUserActive, resetUserPassword } from '@/lib/actions/user';
 import { Role } from '@prisma/client';
 import * as XLSX from 'xlsx';
+import { useDialog } from '@/context/DialogContext';
 
 interface UserItem {
   id: string;
@@ -39,23 +40,22 @@ interface UserItem {
 }
 
 export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
+  const { showAlert, showConfirm } = useDialog();
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
 
-  // Single User Form
+  // Form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>(Role.STUDENT);
   const [nis, setNis] = useState('');
   const [nip, setNip] = useState('');
-
-  // Bulk Import State
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +66,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         email,
         role,
         nis: role === Role.STUDENT ? nis : undefined,
-        nip: role === Role.TEACHER || role === Role.SUPERVISOR ? nip : undefined,
+        nip: role === Role.TEACHER ? nip : undefined,
       });
 
       setUsers((prev) => [created, ...prev]);
@@ -75,9 +75,10 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
       setEmail('');
       setNis('');
       setNip('');
-    } catch (err) {
+      await showAlert(`Pengguna ${created.name} berhasil ditambahkan!`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat pengguna');
+      await showAlert(err?.message || 'Gagal membuat pengguna', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -108,7 +109,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         setPreviewData(parsed.filter((p) => p.email && p.name));
       } catch (err) {
         console.error(err);
-        alert('Format file tidak valid');
+        showAlert('Format file tidak valid atau rusak. Gunakan file Excel (.xlsx / .xls).', { type: 'error' });
       }
     };
     reader.readAsBinaryString(file);
@@ -121,12 +122,13 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
     try {
       const res = await bulkImportUsers(previewData);
       setImportStatus(`Berhasil mengimpor ${res.count} pengguna!`);
+      await showAlert(`Berhasil mengimpor ${res.count} pengguna! Halaman akan disegarkan.`, { type: 'success' });
       setTimeout(() => {
         window.location.reload();
-      }, 1000);
-    } catch (err) {
+      }, 500);
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal mengimpor data');
+      await showAlert(err?.message || 'Gagal mengimpor data', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -138,23 +140,27 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, isActive: updated.isActive } : u))
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal memperbarui status');
+      await showAlert(err?.message || 'Gagal memperbarui status', { type: 'error' });
     }
   };
 
   const handleResetPassword = async (user: UserItem) => {
     const defaultText = user.role === Role.STUDENT && user.nis ? `NIS (${user.nis})` : 'Lentera123!';
-    if (!confirm(`Reset password ${user.name} ke default: ${defaultText}? Pengguna akan diminta ganti password saat login.`)) {
+    const confirmed = await showConfirm(
+      `Reset password ${user.name} ke default: ${defaultText}?\n\nPengguna akan diminta mengganti password saat login berikutnya.`,
+      { title: 'Konfirmasi Reset Password', confirmText: 'Ya, Reset Password' }
+    );
+    if (!confirmed) {
       return;
     }
     try {
       await resetUserPassword(user.id);
-      alert(`Password ${user.name} berhasil di-reset ke: ${defaultText}`);
-    } catch (err) {
+      await showAlert(`Password ${user.name} berhasil di-reset ke: ${defaultText}`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal me-reset password');
+      await showAlert(err?.message || 'Gagal me-reset password', { type: 'error' });
     }
   };
 

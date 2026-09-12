@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table';
 import { School, Plus, Search, Users, BookOpen } from 'lucide-react';
 import { createSchool, toggleSchoolActive } from '@/lib/actions/school';
+import { useDialog } from '@/context/DialogContext';
 
 interface SchoolItem {
   id: string;
@@ -43,6 +44,7 @@ export function PlatformSchoolsClient({
 }: {
   initialSchools: any[];
 }) {
+  const { showAlert } = useDialog();
   const [schools, setSchools] = useState<SchoolItem[]>(initialSchools);
   const [search, setSearch] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -67,9 +69,10 @@ export function PlatformSchoolsClient({
       setName('');
       setCode('');
       setAddress('');
-    } catch (err) {
+      await showAlert(`Sekolah "${created.name}" berhasil ditambahkan!`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menambahkan sekolah');
+      await showAlert(err?.message || 'Gagal menambahkan sekolah', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -81,9 +84,13 @@ export function PlatformSchoolsClient({
       setSchools((prev) =>
         prev.map((s) => (s.id === school.id ? { ...s, isActive: updated.isActive } : s))
       );
-    } catch (err) {
+      await showAlert(
+        `Status sekolah ${school.name} berhasil diubah menjadi: ${updated.isActive ? 'Aktif' : 'Nonaktif'}`,
+        { type: 'info' }
+      );
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal mengubah status sekolah');
+      await showAlert(err?.message || 'Gagal mengubah status sekolah', { type: 'error' });
     }
   };
 

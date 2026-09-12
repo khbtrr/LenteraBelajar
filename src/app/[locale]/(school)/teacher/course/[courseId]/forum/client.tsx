@@ -33,6 +33,7 @@ import {
   deleteForumComment,
   ForumThreadItem,
 } from '@/lib/actions/forum';
+import { useDialog } from '@/context/DialogContext';
 import {
   Megaphone,
   MessageSquare,
@@ -67,6 +68,7 @@ export function TeacherCourseForumClient({
   initialThreadId,
 }: Props) {
   const router = useRouter();
+  const { showAlert, showConfirm } = useDialog();
   const [activeTab, setActiveTab] = useState<'announcements' | 'forum'>('announcements');
 
   // Pengumuman state
@@ -152,8 +154,9 @@ export function TeacherCourseForumClient({
       setAnnTitle('');
       setAnnContent('');
       router.refresh();
+      await showAlert('Pengumuman berhasil dipublikasikan!', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal membuat pengumuman');
+      await showAlert(err.message || 'Gagal membuat pengumuman', { type: 'error' });
     } finally {
       setLoadingAnn(false);
     }
@@ -167,18 +170,23 @@ export function TeacherCourseForumClient({
       );
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengubah pin pengumuman');
+      await showAlert(err.message || 'Gagal mengubah pin pengumuman', { type: 'error' });
     }
   };
 
   const handleDeleteAnnouncement = async (id: string) => {
-    if (!confirm('Hapus pengumuman ini?')) return;
+    const confirmed = await showConfirm(
+      'Apakah Anda yakin ingin menghapus pengumuman ini?',
+      { title: 'Hapus Pengumuman', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) return;
     try {
       await deleteCourseAnnouncement(id);
       setAnnouncements((prev) => prev.filter((a) => a.id !== id));
       router.refresh();
+      await showAlert('Pengumuman berhasil dihapus.', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus pengumuman');
+      await showAlert(err.message || 'Gagal menghapus pengumuman', { type: 'error' });
     }
   };
 
@@ -196,12 +204,16 @@ export function TeacherCourseForumClient({
       setCommentInputs((prev) => ({ ...prev, [annId]: '' }));
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal menambahkan komentar');
+      await showAlert(err.message || 'Gagal menambahkan komentar', { type: 'error' });
     }
   };
 
   const handleDeleteAnnouncementComment = async (annId: string, commentId: string) => {
-    if (!confirm('Hapus komentar ini?')) return;
+    const confirmed = await showConfirm(
+      'Apakah Anda yakin ingin menghapus komentar ini?',
+      { title: 'Hapus Komentar', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) return;
     try {
       await deleteAnnouncementComment(commentId);
       setAnnouncements((prev) =>
@@ -213,7 +225,7 @@ export function TeacherCourseForumClient({
       );
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus komentar');
+      await showAlert(err.message || 'Gagal menghapus komentar', { type: 'error' });
     }
   };
 
@@ -236,8 +248,9 @@ export function TeacherCourseForumClient({
       setThreadContent('');
       router.refresh();
       setSelectedThreadId(created.id);
+      await showAlert('Topik diskusi berhasil dibuat!', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal membuat topik diskusi');
+      await showAlert(err.message || 'Gagal membuat topik diskusi', { type: 'error' });
     } finally {
       setLoadingThread(false);
     }
@@ -262,7 +275,7 @@ export function TeacherCourseForumClient({
       setActiveThreadDetail(updated);
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengirim balasan');
+      await showAlert(err.message || 'Gagal mengirim balasan', { type: 'error' });
     } finally {
       setSubmittingReply(false);
     }
@@ -278,8 +291,9 @@ export function TeacherCourseForumClient({
         prev.map((t) => (t.id === selectedThreadId ? { ...t, isSolved: true } : t))
       );
       router.refresh();
+      await showAlert('Balasan ini berhasil ditandai sebagai Jawaban Terbaik!', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal menandai jawaban');
+      await showAlert(err.message || 'Gagal menandai jawaban', { type: 'error' });
     }
   };
 
@@ -297,12 +311,16 @@ export function TeacherCourseForumClient({
       }
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengubah pin diskusi');
+      await showAlert(err.message || 'Gagal mengubah pin diskusi', { type: 'error' });
     }
   };
 
   const handleDeleteThread = async (threadId: string) => {
-    if (!confirm('Hapus topik diskusi ini beserta seluruh balasannya?')) return;
+    const confirmed = await showConfirm(
+      'Hapus topik diskusi ini beserta seluruh balasannya?',
+      { title: 'Hapus Topik Diskusi', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) return;
     try {
       await deleteForumThread(threadId);
       setThreads((prev) => prev.filter((t) => t.id !== threadId));
@@ -311,13 +329,18 @@ export function TeacherCourseForumClient({
         setActiveThreadDetail(null);
       }
       router.refresh();
+      await showAlert('Topik diskusi berhasil dihapus.', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus topik diskusi');
+      await showAlert(err.message || 'Gagal menghapus topik diskusi', { type: 'error' });
     }
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Hapus balasan ini?')) return;
+    const confirmed = await showConfirm(
+      'Apakah Anda yakin ingin menghapus balasan ini?',
+      { title: 'Hapus Balasan', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) return;
     try {
       await deleteForumComment(commentId);
       if (selectedThreadId) {
@@ -326,7 +349,7 @@ export function TeacherCourseForumClient({
       }
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus balasan');
+      await showAlert(err.message || 'Gagal menghapus balasan', { type: 'error' });
     }
   };
 

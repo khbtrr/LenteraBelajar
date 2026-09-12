@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FolderTree, Plus, Trash2, ChevronRight, Folder } from 'lucide-react';
 import { createCategory, deleteCategory } from '@/lib/actions/category';
+import { useDialog } from '@/context/DialogContext';
 
 interface CategoryNode {
   id: string;
@@ -34,6 +35,7 @@ export function CategoriesClient({
   initialTree: CategoryNode[];
   flatCategories: CategoryNode[];
 }) {
+  const { showAlert, showConfirm } = useDialog();
   const [tree, setTree] = useState<CategoryNode[]>(initialTree);
   const [categories, setCategories] = useState<CategoryNode[]>(flatCategories);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -47,26 +49,32 @@ export function CategoriesClient({
     try {
       const created = await createCategory({
         name,
-        parentId: parentId || null,
+        parentId: parentId || undefined,
       });
 
-      const newCategory = { ...created, _count: { courses: 0 }, children: [] };
-      setCategories((prev) => [...prev, newCategory]);
+      const newNode: CategoryNode = {
+        id: created.id,
+        name: created.name,
+        slug: created.slug,
+        parentId: created.parentId,
+        children: [],
+        _count: { courses: 0 },
+      };
 
-      // Re-structure tree or reload
-      if (!parentId) {
-        setTree((prev) => [...prev, newCategory]);
+      setCategories((prev) => [...prev, newNode]);
+
+      if (!created.parentId) {
+        setTree((prev) => [...prev, newNode]);
       } else {
-        // Find parent and attach
         const attachChild = (nodes: CategoryNode[]): CategoryNode[] => {
           return nodes.map((node) => {
-            if (node.id === parentId) {
+            if (node.id === created.parentId) {
               return {
                 ...node,
-                children: [...(node.children || []), newCategory],
+                children: [...(node.children || []), newNode],
               };
             }
-            if (node.children?.length) {
+            if (node.children) {
               return {
                 ...node,
                 children: attachChild(node.children),
@@ -81,16 +89,21 @@ export function CategoriesClient({
       setIsCreateOpen(false);
       setName('');
       setParentId('');
-    } catch (err) {
+      await showAlert(`Kategori "${created.name}" berhasil dibuat!`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat kategori');
+      await showAlert(err?.message || 'Gagal membuat kategori', { type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Hapus kategori "${name}"? Kategori di dalamnya juga akan terpengaruh.`)) {
+    const confirmed = await showConfirm(
+      `Hapus kategori "${name}"?\n\nKategori dan sub-kategori di dalamnya juga akan terpengaruh.`,
+      { title: 'Hapus Kategori', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) {
       return;
     }
     setLoading(true);
@@ -106,9 +119,10 @@ export function CategoriesClient({
       };
       setTree((prev) => removeNode(prev));
       setCategories((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
+      await showAlert(`Kategori "${name}" berhasil dihapus.`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menghapus kategori');
+      await showAlert(err?.message || 'Gagal menghapus kategori', { type: 'error' });
     } finally {
       setLoading(false);
     }

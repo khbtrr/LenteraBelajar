@@ -19,6 +19,7 @@ import {
   setActiveAcademicYear,
   archiveAcademicYear,
 } from '@/lib/actions/academic-year';
+import { useDialog } from '@/context/DialogContext';
 
 interface AcademicYear {
   id: string;
@@ -36,6 +37,7 @@ export function AcademicYearsClient({
 }: {
   initialYears: AcademicYear[];
 }) {
+  const { showAlert, showConfirm } = useDialog();
   const [years, setYears] = useState<AcademicYear[]>(initialYears);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState<AcademicYear | null>(null);
@@ -57,7 +59,7 @@ export function AcademicYearsClient({
         endDate,
         makeActive,
       });
-      // Update local state
+
       if (makeActive) {
         setYears((prev) =>
           prev.map((y) => ({
@@ -66,6 +68,7 @@ export function AcademicYearsClient({
           }))
         );
       }
+
       setYears((prev) => [
         { ...created, _count: { courses: 0 } },
         ...prev,
@@ -74,16 +77,21 @@ export function AcademicYearsClient({
       setName('');
       setStartDate('');
       setEndDate('');
-    } catch (err) {
+      await showAlert(`Tahun ajaran ${created.name} berhasil dibuat!`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat tahun ajaran');
+      await showAlert(err?.message || 'Gagal membuat tahun ajaran', { type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleSetActive = async (id: string) => {
-    if (!confirm('Aktifkan tahun ajaran ini? Tahun ajaran aktif lainnya akan diarsipkan.')) {
+    const confirmed = await showConfirm(
+      'Aktifkan tahun ajaran ini? Tahun ajaran aktif lainnya akan diarsipkan secara otomatis.',
+      { title: 'Konfirmasi Aktivasi Tahun Ajaran', confirmText: 'Ya, Aktifkan' }
+    );
+    if (!confirmed) {
       return;
     }
     setLoading(true);
@@ -95,9 +103,10 @@ export function AcademicYearsClient({
           status: y.id === id ? 'ACTIVE' : 'ARCHIVED',
         }))
       );
-    } catch (err) {
+      await showAlert('Tahun ajaran berhasil diaktifkan!', { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal mengaktifkan tahun ajaran');
+      await showAlert(err?.message || 'Gagal mengaktifkan tahun ajaran', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -114,9 +123,10 @@ export function AcademicYearsClient({
         )
       );
       setArchiveTarget(null);
-    } catch (err) {
+      await showAlert('Tahun ajaran berhasil diarsipkan!', { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal mengarsipkan tahun ajaran');
+      await showAlert(err?.message || 'Gagal mengarsipkan tahun ajaran', { type: 'error' });
     } finally {
       setLoading(false);
     }

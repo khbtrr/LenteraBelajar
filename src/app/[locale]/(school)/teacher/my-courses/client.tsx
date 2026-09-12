@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { BookOpen, Plus, Users, Layers, Send, ExternalLink, FileSpreadsheet, CalendarCheck, MessageSquare } from 'lucide-react';
 import { createCourse } from '@/lib/actions/course';
 import { Link } from '@/i18n/navigation';
+import { useDialog } from '@/context/DialogContext';
 
 interface CourseItem {
   id: string;
@@ -43,13 +44,16 @@ export function TeacherCoursesClient({
   initialCourses,
   academicYears,
   categories,
+  canCreateDirect = true,
   currentUserId,
 }: {
-  initialCourses: any[];
+  initialCourses: CourseItem[];
   academicYears: AcademicYear[];
   categories: Category[];
+  canCreateDirect?: boolean;
   currentUserId: string;
 }) {
+  const { showAlert } = useDialog();
   const [courses, setCourses] = useState<CourseItem[]>(initialCourses);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -65,7 +69,7 @@ export function TeacherCoursesClient({
   const handleCreateDirect = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!academicYearId) {
-      alert('Pilih Tahun Ajaran aktif terlebih dahulu');
+      await showAlert('Pilih Tahun Ajaran aktif terlebih dahulu', { type: 'warning' });
       return;
     }
     setLoading(true);
@@ -94,9 +98,10 @@ export function TeacherCoursesClient({
       setIsCreateOpen(false);
       setTitle('');
       setDescription('');
-    } catch (err) {
+      await showAlert(`Course "${created.title}" berhasil dibuat!`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat course');
+      await showAlert(err?.message || 'Gagal membuat course', { type: 'error' });
     } finally {
       setLoading(false);
     }

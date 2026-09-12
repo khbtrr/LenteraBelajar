@@ -24,6 +24,7 @@ import {
 import { BookOpen, Plus, Search, Users, Layers, ExternalLink } from 'lucide-react';
 import { createCourse } from '@/lib/actions/course';
 import { Link } from '@/i18n/navigation';
+import { useDialog } from '@/context/DialogContext';
 
 interface CourseItem {
   id: string;
@@ -60,18 +61,19 @@ export function AdminCoursesClient({
   categories,
   teachers,
 }: {
-  initialCourses: any[];
+  initialCourses: CourseItem[];
   academicYears: AcademicYear[];
   categories: Category[];
   teachers: Teacher[];
 }) {
+  const { showAlert } = useDialog();
   const [courses, setCourses] = useState<CourseItem[]>(initialCourses);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Form
+  // Form states
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [academicYearId, setAcademicYearId] = useState(
@@ -83,7 +85,7 @@ export function AdminCoursesClient({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!academicYearId) {
-      alert('Pilih Tahun Ajaran terlebih dahulu');
+      await showAlert('Pilih Tahun Ajaran aktif terlebih dahulu', { type: 'warning' });
       return;
     }
     setLoading(true);
@@ -114,9 +116,10 @@ export function AdminCoursesClient({
       setIsCreateOpen(false);
       setTitle('');
       setDescription('');
-    } catch (err) {
+      await showAlert(`Course "${created.title}" berhasil dibuat!`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat course');
+      await showAlert(err?.message || 'Gagal membuat course', { type: 'error' });
     } finally {
       setLoading(false);
     }

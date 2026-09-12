@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ArrowLeft, CheckCircle2, Clock, HelpCircle, Award, User, Shield } from 'lucide-react';
+import { useDialog } from '@/context/DialogContext';
 
 interface QuizAttemptsClientProps {
   data: {
@@ -56,6 +57,7 @@ interface QuizAttemptsClientProps {
 }
 
 export function TeacherQuizAttemptsClient({ data }: QuizAttemptsClientProps) {
+  const { showAlert } = useDialog();
   const [attempts, setAttempts] = useState(data.attempts);
   const [selectedAttempt, setSelectedAttempt] = useState<(typeof attempts)[0] | null>(null);
   const [gradingAnswer, setGradingAnswer] = useState<{
@@ -83,57 +85,46 @@ export function TeacherQuizAttemptsClient({ data }: QuizAttemptsClientProps) {
 
   const handleSaveEssayGrade = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gradingAnswer || !selectedAttempt) return;
+    if (!gradingAnswer) return;
 
     setLoading(true);
     try {
-      const res = await gradeQuizEssayAnswer(gradingAnswer.answerId, {
+      await gradeQuizEssayAnswer(gradingAnswer.answerId, {
         score: Number(gradingAnswer.score),
         teacherNote: gradingAnswer.note,
       });
 
-      // Update local attempts state
+      // Update local state
       setAttempts((prev) =>
-        prev.map((att) => {
-          if (att.id === selectedAttempt.id) {
-            const updatedAnswers = att.answers.map((a) => {
-              if (a.id === gradingAnswer.answerId) {
-                return {
-                  ...a,
-                  score: Number(gradingAnswer.score),
-                  teacherNote: gradingAnswer.note,
-                };
-              }
-              return a;
-            });
-            return {
-              ...att,
-              score: res.score,
-              answers: updatedAnswers,
-            };
-          }
-          return att;
-        })
-      );
-
-      // Also update selectedAttempt modal view
-      setSelectedAttempt((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          score: res.score,
-          answers: prev.answers.map((a) =>
+        prev.map((att) => ({
+          ...att,
+          answers: att.answers.map((a) =>
             a.id === gradingAnswer.answerId
               ? { ...a, score: Number(gradingAnswer.score), teacherNote: gradingAnswer.note }
               : a
           ),
-        };
-      });
+        }))
+      );
+
+      if (selectedAttempt) {
+        setSelectedAttempt((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            answers: prev.answers.map((a) =>
+              a.id === gradingAnswer.answerId
+                ? { ...a, score: Number(gradingAnswer.score), teacherNote: gradingAnswer.note }
+                : a
+            ),
+          };
+        });
+      }
 
       setGradingAnswer(null);
-    } catch (err) {
+      await showAlert('Nilai essay berhasil disimpan!', { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menyimpan nilai essay');
+      await showAlert(err?.message || 'Gagal menyimpan nilai essay', { type: 'error' });
     } finally {
       setLoading(false);
     }

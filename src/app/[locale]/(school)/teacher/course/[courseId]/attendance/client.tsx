@@ -28,6 +28,7 @@ import {
   AttendanceSessionItem,
 } from '@/lib/actions/attendance';
 import { AttendanceStatus } from '@prisma/client';
+import { useDialog } from '@/context/DialogContext';
 import {
   Calendar,
   Clock,
@@ -83,6 +84,7 @@ export function TeacherAttendanceClient({
   recapData,
 }: Props) {
   const router = useRouter();
+  const { showAlert, showConfirm } = useDialog();
   const [activeTab, setActiveTab] = useState<'sessions' | 'matrix'>('sessions');
   const [sessions, setSessions] = useState<AttendanceSessionItem[]>(initialSessions);
   const [loading, setLoading] = useState(false);
@@ -173,8 +175,9 @@ export function TeacherAttendanceClient({
       setNewToken('');
       router.refresh();
       setExpandedSessionId(created.id);
+      await showAlert(`Sesi presensi "${created.title}" berhasil dibuat!`, { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal membuat sesi presensi');
+      await showAlert(err.message || 'Gagal membuat sesi presensi', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -191,12 +194,16 @@ export function TeacherAttendanceClient({
       }
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengubah status sesi');
+      await showAlert(err.message || 'Gagal mengubah status sesi', { type: 'error' });
     }
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus sesi presensi ini beserta seluruh data kehadirannya?')) {
+    const confirmed = await showConfirm(
+      'Apakah Anda yakin ingin menghapus sesi presensi ini beserta seluruh riwayat kehadirannya?',
+      { title: 'Hapus Sesi Presensi', confirmText: 'Ya, Hapus Sesi', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -205,8 +212,9 @@ export function TeacherAttendanceClient({
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       if (expandedSessionId === sessionId) setExpandedSessionId(null);
       router.refresh();
+      await showAlert('Sesi presensi berhasil dihapus.', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus sesi');
+      await showAlert(err.message || 'Gagal menghapus sesi', { type: 'error' });
     }
   };
 
@@ -226,7 +234,7 @@ export function TeacherAttendanceClient({
       await updateAttendanceRecord(recordId, newStatus);
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengupdate status kehadiran');
+      await showAlert(err.message || 'Gagal mengupdate status kehadiran', { type: 'error' });
       setActiveSessionDetails({ ...activeSessionDetails, records: previousRecords });
     }
   };
@@ -238,7 +246,11 @@ export function TeacherAttendanceClient({
   };
 
   const handleSyncGradebook = async () => {
-    if (!confirm('Sinkronkan nilai persentase kehadiran ke Buku Nilai (Gradebook) sekarang?')) {
+    const confirmed = await showConfirm(
+      'Sinkronkan nilai persentase kehadiran seluruh siswa ke Buku Nilai (Gradebook) sekarang?',
+      { title: 'Sinkronkan ke Gradebook', confirmText: 'Ya, Sinkronkan' }
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -247,9 +259,10 @@ export function TeacherAttendanceClient({
     try {
       const res = await syncAttendanceToGradebook(course.id, 'Nilai Presensi', 100);
       setSyncSuccessMessage(`Berhasil menyinkronkan nilai presensi untuk ${res.count} siswa ke Gradebook!`);
+      await showAlert(`Berhasil menyinkronkan nilai presensi untuk ${res.count} siswa ke Buku Nilai!`, { type: 'success' });
       setTimeout(() => setSyncSuccessMessage(null), 5000);
     } catch (err: any) {
-      alert(err.message || 'Gagal menyinkronkan ke Buku Nilai');
+      await showAlert(err.message || 'Gagal menyinkronkan ke Buku Nilai', { type: 'error' });
     } finally {
       setSyncing(false);
     }

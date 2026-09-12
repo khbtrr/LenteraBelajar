@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { reviewCourseRequest } from '@/lib/actions/course';
+import { useDialog } from '@/context/DialogContext';
 
 interface CourseRequestItem {
   id: string;
@@ -39,6 +40,7 @@ export function CourseRequestsClient({
 }: {
   initialRequests: any[];
 }) {
+  const { showAlert } = useDialog();
   const [requests, setRequests] = useState<CourseRequestItem[]>(initialRequests);
   const [selectedRequest, setSelectedRequest] = useState<CourseRequestItem | null>(null);
   const [reviewAction, setReviewAction] = useState<'APPROVE' | 'REJECT' | null>(null);
@@ -49,7 +51,8 @@ export function CourseRequestsClient({
     if (!selectedRequest || !reviewAction) return;
     setLoading(true);
     try {
-      await reviewCourseRequest(selectedRequest.id, reviewAction, adminNote);
+      await reviewCourseRequest(selectedRequest.id, reviewAction, adminNote || undefined);
+
       setRequests((prev) =>
         prev.map((r) =>
           r.id === selectedRequest.id
@@ -64,9 +67,15 @@ export function CourseRequestsClient({
       setSelectedRequest(null);
       setReviewAction(null);
       setAdminNote('');
-    } catch (err) {
+      await showAlert(
+        reviewAction === 'APPROVE'
+          ? 'Pengajuan course berhasil disetujui!'
+          : 'Pengajuan course ditolak.',
+        { type: reviewAction === 'APPROVE' ? 'success' : 'info' }
+      );
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal memproses pengajuan course');
+      await showAlert(err?.message || 'Gagal memproses pengajuan course', { type: 'error' });
     } finally {
       setLoading(false);
     }

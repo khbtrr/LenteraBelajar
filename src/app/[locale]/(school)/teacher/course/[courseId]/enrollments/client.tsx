@@ -27,6 +27,7 @@ import {
   manualEnrollStudent,
   removeEnrollment,
 } from '@/lib/actions/cohort';
+import { useDialog } from '@/context/DialogContext';
 
 interface EnrolledUser {
   id: string;
@@ -129,15 +130,22 @@ export function CourseEnrollmentsClient({
     }
   };
 
+  const { showAlert, showConfirm } = useDialog();
+
   const handleRemoveStudent = async (userId: string, userName: string) => {
-    if (!confirm(`Keluarkan siswa "${userName}" dari course ini?`)) return;
+    const confirmed = await showConfirm(
+      `Keluarkan siswa "${userName}" dari course ini? Siswa tidak akan memiliki akses ke materi dan kuis lagi.`,
+      { title: 'Keluarkan Siswa', confirmText: 'Ya, Keluarkan', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) return;
     setLoading(true);
     try {
       await removeEnrollment(course.id, userId);
       setEnrollments((prev) => prev.filter((e) => e.user.id !== userId));
-    } catch (err) {
+      await showAlert(`Siswa "${userName}" berhasil dikeluarkan dari course.`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal mengeluarkan siswa');
+      await showAlert(err?.message || 'Gagal mengeluarkan siswa', { type: 'error' });
     } finally {
       setLoading(false);
     }

@@ -27,6 +27,7 @@ import {
   addStudentToCohort,
   removeStudentFromCohort,
 } from '@/lib/actions/cohort';
+import { useDialog } from '@/context/DialogContext';
 
 interface Student {
   id: string;
@@ -49,9 +50,10 @@ export function CohortsClient({
   initialCohorts,
   availableStudents,
 }: {
-  initialCohorts: any[];
+  initialCohorts: CohortItem[];
   availableStudents: Student[];
 }) {
+  const { showAlert, showConfirm } = useDialog();
   const [cohorts, setCohorts] = useState<CohortItem[]>(initialCohorts);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [cohortName, setCohortName] = useState('');
@@ -76,9 +78,10 @@ export function CohortsClient({
       ]);
       setCohortName('');
       setIsCreateOpen(false);
-    } catch (err) {
+      await showAlert(`Grup kohort "${created.name}" berhasil dibuat!`, { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat grup kohort');
+      await showAlert(err?.message || 'Gagal membuat grup kohort', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -109,9 +112,10 @@ export function CohortsClient({
         );
       }
       setSelectedStudentId('');
-    } catch (err) {
+      await showAlert('Siswa berhasil ditambahkan ke grup kohort!', { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menambahkan siswa ke kohort');
+      await showAlert(err?.message || 'Gagal menambahkan siswa ke kohort', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -119,6 +123,12 @@ export function CohortsClient({
 
   const handleRemoveMember = async (userId: string) => {
     if (!selectedCohort) return;
+    const confirmed = await showConfirm(
+      'Keluarkan siswa ini dari grup kohort?',
+      { title: 'Keluarkan dari Kohort', confirmText: 'Ya, Keluarkan', confirmVariant: 'destructive' }
+    );
+    if (!confirmed) return;
+
     setLoading(true);
     try {
       await removeStudentFromCohort(selectedCohort.id, userId);
@@ -137,9 +147,10 @@ export function CohortsClient({
       setCohorts((prev) =>
         prev.map((c) => (c.id === selectedCohort.id ? updatedCohort : c))
       );
-    } catch (err) {
+      await showAlert('Siswa berhasil dikeluarkan dari kohort.', { type: 'success' });
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal mengeluarkan siswa dari kohort');
+      await showAlert(err?.message || 'Gagal mengeluarkan siswa dari kohort', { type: 'error' });
     } finally {
       setLoading(false);
     }

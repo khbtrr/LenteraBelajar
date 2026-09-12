@@ -25,6 +25,7 @@ import {
   addForumComment,
   ForumThreadItem,
 } from '@/lib/actions/forum';
+import { useDialog } from '@/context/DialogContext';
 import {
   Megaphone,
   MessageSquare,
@@ -58,6 +59,7 @@ export function StudentCourseForumClient({
   initialModuleId,
 }: Props) {
   const router = useRouter();
+  const { showAlert } = useDialog();
   const [activeTab, setActiveTab] = useState<'announcements' | 'forum'>('announcements');
 
   // Announcements
@@ -140,7 +142,7 @@ export function StudentCourseForumClient({
       setCommentInputs((prev) => ({ ...prev, [annId]: '' }));
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengirim tanggapan');
+      await showAlert(err.message || 'Gagal mengirim tanggapan', { type: 'error' });
     } finally {
       setSubmittingComment(false);
     }
@@ -165,8 +167,9 @@ export function StudentCourseForumClient({
       setNewContent('');
       router.refresh();
       setSelectedThreadId(created.id);
+      await showAlert('Pertanyaan berhasil diajukan ke forum!', { type: 'success' });
     } catch (err: any) {
-      alert(err.message || 'Gagal mengirim pertanyaan');
+      await showAlert(err.message || 'Gagal mengirim pertanyaan', { type: 'error' });
     } finally {
       setSubmittingQuestion(false);
     }
@@ -191,7 +194,7 @@ export function StudentCourseForumClient({
       setActiveThreadDetail(updated);
       router.refresh();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengirim balasan');
+      await showAlert(err.message || 'Gagal mengirim balasan', { type: 'error' });
     } finally {
       setSubmittingReply(false);
     }

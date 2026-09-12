@@ -3,26 +3,29 @@ import ComponentCard from "@/components/common/ComponentCard";
 import CookieConsent from "@/components/ui/notification/CookieConsent";
 import UpdateNotification from "@/components/ui/notification/UpdateNotification";
 import Notification from "./Notification";
+import { useDialog } from "@/context/DialogContext";
 
 export default function NotificationExample() {
+  const { showAlert } = useDialog();
+
   const handleLater = () => {
-    alert("Later button clicked");
+    showAlert("Later button clicked", { type: "info" });
   };
 
   const handleUpdate = () => {
-    alert("Update Now button clicked");
+    showAlert("Update Now button clicked", { type: "info" });
   };
 
   const handleCookieSettings = () => {
-    alert("Cookie Settings clicked");
+    showAlert("Cookie Settings clicked", { type: "info" });
   };
 
   const handleDenyAll = () => {
-    alert("Deny All clicked");
+    showAlert("Deny All clicked", { type: "info" });
   };
 
   const handleAcceptAll = () => {
-    alert("Accept All clicked");
+    showAlert("Accept All clicked", { type: "success" });
   };
   return (
     <div className="space-y-5 sm:space-y-6">
