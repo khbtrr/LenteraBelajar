@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { getCourseById } from '@/lib/actions/course';
 import { getCourseModules } from '@/lib/actions/module';
 import { getQuizStatusForStudent } from '@/lib/actions/quiz';
+import { getPinnedAnnouncement } from '@/lib/actions/announcement';
+import { getCourseAttendanceSessions } from '@/lib/actions/attendance';
 import { StudentCourseModulesClient } from './client';
 
 export default async function StudentCourseModulesPage({
@@ -10,14 +12,18 @@ export default async function StudentCourseModulesPage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
-  const [course, modules] = await Promise.all([
+  const [course, modules, pinnedAnnouncement, sessions] = await Promise.all([
     getCourseById(courseId),
     getCourseModules(courseId),
+    getPinnedAnnouncement(courseId),
+    getCourseAttendanceSessions(courseId),
   ]);
 
   if (!course) {
     notFound();
   }
+
+  const activeSession = sessions.find((s) => s.isOpen && s.allowSelfCheckin) || null;
 
   // Fetch quiz statuses for all quizzes across all modules
   const quizStatusMap: Record<string, any> = {};
@@ -47,7 +53,13 @@ export default async function StudentCourseModulesPage({
         </p>
       </div>
 
-      <StudentCourseModulesClient course={course} modules={modules} quizStatusMap={quizStatusMap} />
+      <StudentCourseModulesClient
+        course={course}
+        modules={modules}
+        quizStatusMap={quizStatusMap}
+        pinnedAnnouncement={pinnedAnnouncement}
+        activeSession={activeSession}
+      />
     </div>
   );
 }

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Plus, Users, Layers, Send, ExternalLink, FileSpreadsheet } from 'lucide-react';
+import { BookOpen, Plus, Users, Layers, Send, ExternalLink, FileSpreadsheet, CalendarCheck, MessageSquare } from 'lucide-react';
 import { createCourse } from '@/lib/actions/course';
 import { Link } from '@/i18n/navigation';
 
@@ -199,44 +199,74 @@ export function TeacherCoursesClient({
                   </div>
                 </CardContent>
 
-                <CardFooter className="pt-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 flex flex-col sm:flex-row items-center gap-2">
-                  <Link
-                    href={`/teacher/course/${course.id}/modules`}
-                    className="w-full sm:flex-1"
-                  >
-                    <Button
-                      size="sm"
-                      className="w-full flex items-center justify-center gap-1 text-xs"
+                <CardFooter className="pt-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 flex flex-col gap-2">
+                  <div className="w-full grid grid-cols-3 gap-2">
+                    <Link
+                      href={`/teacher/course/${course.id}/modules`}
+                      className="w-full"
                     >
-                      <Layers className="h-3.5 w-3.5" /> Modul
-                    </Button>
-                  </Link>
+                      <Button
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-1 text-xs"
+                      >
+                        <Layers className="h-3.5 w-3.5" /> Modul
+                      </Button>
+                    </Link>
 
-                  <Link
-                    href={`/teacher/course/${course.id}/enrollments`}
-                    className="w-full sm:flex-1"
-                  >
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full flex items-center justify-center gap-1 text-xs"
+                    <Link
+                      href={`/teacher/course/${course.id}/enrollments`}
+                      className="w-full"
                     >
-                      <Users className="h-3.5 w-3.5" /> Siswa
-                    </Button>
-                  </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-1 text-xs"
+                      >
+                        <Users className="h-3.5 w-3.5" /> Siswa
+                      </Button>
+                    </Link>
 
-                  <Link
-                    href={`/teacher/course/${course.id}/gradebook`}
-                    className="w-full sm:flex-1"
-                  >
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full border-accent-500 text-accent-600 dark:text-accent-400 hover:bg-accent-500 hover:text-white flex items-center justify-center gap-1 text-xs font-semibold transition-colors"
+                    <Link
+                      href={`/teacher/course/${course.id}/gradebook`}
+                      className="w-full"
                     >
-                      <FileSpreadsheet className="h-3.5 w-3.5" /> Nilai
-                    </Button>
-                  </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-accent-500 text-accent-600 dark:text-accent-400 hover:bg-accent-500 hover:text-white flex items-center justify-center gap-1 text-xs font-semibold transition-colors"
+                      >
+                        <FileSpreadsheet className="h-3.5 w-3.5" /> Nilai
+                      </Button>
+                    </Link>
+                  </div>
+
+                  <div className="w-full grid grid-cols-2 gap-2 pt-1 border-t border-gray-100 dark:border-gray-800">
+                    <Link
+                      href={`/teacher/course/${course.id}/attendance`}
+                      className="w-full"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-medium"
+                      >
+                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600" /> Presensi
+                      </Button>
+                    </Link>
+
+                    <Link
+                      href={`/teacher/course/${course.id}/forum`}
+                      className="w-full"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-1 text-xs text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-medium"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 text-blue-600" /> Forum
+                      </Button>
+                    </Link>
+                  </div>
                 </CardFooter>
               </Card>
             );

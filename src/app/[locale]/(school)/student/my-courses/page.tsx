@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, User, Layers, CheckCircle } from 'lucide-react';
+import { BookOpen, User, Layers, CheckCircle, CalendarCheck, MessageSquare } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 
@@ -103,7 +103,7 @@ export default async function StudentMyCoursesPage() {
                   </div>
                 </CardContent>
 
-                <CardFooter className="pt-3 border-t bg-gray-50/50">
+                <CardFooter className="pt-3 border-t bg-gray-50/50 flex flex-col gap-2">
                   <Link
                     href={`/student/course/${course.id}/modules`}
                     className="w-full"
@@ -112,9 +112,37 @@ export default async function StudentMyCoursesPage() {
                       className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center justify-center gap-1.5"
                       size="sm"
                     >
-                      <BookOpen className="h-4 w-4" /> Masuk ke Kelas
+                      <BookOpen className="h-4 w-4" /> Masuk ke Materi
                     </Button>
                   </Link>
+
+                  <div className="w-full grid grid-cols-2 gap-2">
+                    <Link
+                      href={`/student/course/${course.id}/attendance`}
+                      className="w-full"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-1 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                      >
+                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600" /> Presensi
+                      </Button>
+                    </Link>
+
+                    <Link
+                      href={`/student/course/${course.id}/forum`}
+                      className="w-full"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full flex items-center justify-center gap-1 text-xs border-[#002446] text-[#002446] hover:bg-blue-50"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 text-[#002446]" /> Forum & Info
+                      </Button>
+                    </Link>
+                  </div>
                 </CardFooter>
               </Card>
             );

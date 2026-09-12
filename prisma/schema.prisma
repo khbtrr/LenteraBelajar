@@ -49,6 +49,11 @@ model User {
   notifications         Notification[]
   cohortMemberships     CohortMember[]
   courseRequests        CourseRequest[]
+  attendanceRecords     AttendanceRecord[]
+  courseAnnouncements   CourseAnnouncement[]
+  announcementComments  AnnouncementComment[]
+  forumThreads          ForumThread[]
+  forumComments         ForumComment[]
 
   @@index([schoolId])
   @@index([email])
@@ -122,6 +127,9 @@ model Course {
   grades                 Grade[]
   questionBank           QuestionBank[]
   questionBankCategories QuestionBankCategory[]
+  attendanceSessions     AttendanceSession[]
+  announcements          CourseAnnouncement[]
+  forumThreads           ForumThread[]
 
   @@index([schoolId])
   @@index([teacherId])
@@ -218,8 +226,10 @@ model Module {
 
   course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   contents    Content[]
-  quizzes     Quiz[]
-  assignments Assignment[]
+  quizzes            Quiz[]
+  assignments        Assignment[]
+  attendanceSessions AttendanceSession[]
+  forumThreads       ForumThread[]
 
   @@index([courseId])
 }
@@ -391,6 +401,7 @@ enum GradeType {
   QUIZ
   ASSIGNMENT
   MANUAL
+  ATTENDANCE
 }
 
 model Notification {
@@ -450,3 +461,125 @@ model QuizBankSelection {
 
   @@index([quizId])
 }
+
+model AttendanceSession {
+  id               String             @id @default(cuid())
+  courseId         String
+  moduleId         String?
+  title            String
+  date             DateTime           @default(now())
+  startTime        DateTime?
+  endTime          DateTime?
+  token            String?
+  allowSelfCheckin Boolean            @default(true)
+  isOpen           Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  course   Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module   Module?            @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  records  AttendanceRecord[]
+
+  @@index([courseId])
+  @@index([moduleId])
+}
+
+model AttendanceRecord {
+  id        String           @id @default(cuid())
+  sessionId String
+  userId    String
+  status    AttendanceStatus @default(ABSENT)
+  checkInAt DateTime?
+  notes     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  SICK
+  PERMISSION
+  ABSENT
+}
+
+model CourseAnnouncement {
+  id        String                @id @default(cuid())
+  courseId  String
+  authorId  String
+  title     String
+  content   String                @db.Text
+  isPinned  Boolean               @default(false)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  course   Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  author   User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments AnnouncementComment[]
+
+  @@index([courseId])
+  @@index([authorId])
+}
+
+model AnnouncementComment {
+  id             String             @id @default(cuid())
+  announcementId String
+  authorId       String
+  content        String             @db.Text
+  createdAt      DateTime           @default(now())
+
+  announcement CourseAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@index([authorId])
+}
+
+model ForumThread {
+  id        String         @id @default(cuid())
+  courseId  String
+  moduleId  String?
+  authorId  String
+  title     String
+  content   String         @db.Text
+  isPinned  Boolean        @default(false)
+  isSolved  Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  course   Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module   Module?        @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments ForumComment[]
+
+  @@index([courseId])
+  @@index([moduleId])
+  @@index([authorId])
+}
+
+model ForumComment {
+  id        String         @id @default(cuid())
+  threadId  String
+  authorId  String
+  parentId  String?
+  content   String         @db.Text
+  isAnswer  Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  thread   ForumThread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent   ForumComment?  @relation("NestedReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  ForumComment[] @relation("NestedReplies")
+
+  @@index([threadId])
+  @@index([authorId])
+  @@index([parentId])
+}
+

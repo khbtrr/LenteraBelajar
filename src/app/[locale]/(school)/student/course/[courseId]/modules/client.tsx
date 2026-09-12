@@ -14,6 +14,11 @@ import {
   Layers,
   ArrowRight,
   CheckCircle2,
+  CalendarCheck,
+  MessageSquare,
+  Megaphone,
+  Pin,
+  Trophy,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 
@@ -21,13 +26,136 @@ export function StudentCourseModulesClient({
   course,
   modules,
   quizStatusMap,
+  pinnedAnnouncement,
+  activeSession,
 }: {
   course: any;
   modules: any[];
   quizStatusMap: Record<string, any>;
+  pinnedAnnouncement?: any | null;
+  activeSession?: any | null;
 }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Top Quick Actions Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/student/course/${course.id}/attendance`}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center gap-1.5 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+            >
+              <CalendarCheck className="h-4 w-4 text-emerald-600" />
+              Presensi Kehadiran
+            </Button>
+          </Link>
+
+          <Link href={`/student/course/${course.id}/forum`}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center gap-1.5 border-[#002446] text-[#002446] hover:bg-blue-50"
+            >
+              <MessageSquare className="h-4 w-4 text-[#002446]" />
+              Forum & Pengumuman
+            </Button>
+          </Link>
+
+          <Link href="/student/grades">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center gap-1.5 text-gray-600 hover:bg-gray-50"
+            >
+              <Trophy className="h-4 w-4 text-[#FF8928]" />
+              Buku Nilai
+            </Button>
+          </Link>
+        </div>
+
+        <span className="text-xs text-gray-500 font-medium">
+          {modules.length} Modul Tersedia
+        </span>
+      </div>
+
+      {/* Active Attendance Session Banner */}
+      {activeSession && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-white to-blue-50 border-2 border-emerald-500/70 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-600 text-white rounded-lg shadow-sm">
+              <CalendarCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                  Sesi Presensi Aktif
+                </span>
+              </div>
+              <h4 className="text-sm font-bold text-[#002446] mt-0.5">
+                {activeSession.title}
+              </h4>
+              <p className="text-xs text-gray-500">
+                Guru sedang membuka sesi presensi pertemuan ini. Segera masukkan kode token untuk check-in.
+              </p>
+            </div>
+          </div>
+
+          <Link href={`/student/course/${course.id}/attendance`}>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 whitespace-nowrap"
+            >
+              Check-in Sekarang <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Pinned Announcement Banner */}
+      {pinnedAnnouncement && (
+        <div className="p-4 rounded-xl bg-amber-50/90 border border-[#FF8928]/40 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-[#FF8928] text-white rounded-lg mt-0.5">
+              <Megaphone className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <Badge className="bg-[#FF8928] text-white text-[10px] py-0 px-1.5 flex items-center gap-1">
+                  <Pin className="h-2.5 w-2.5 fill-white" /> Pengumuman Penting
+                </Badge>
+                <span className="text-xs text-gray-500">
+                  {new Date(pinnedAnnouncement.createdAt).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                </span>
+              </div>
+              <h4 className="text-sm font-bold text-[#002446]">
+                {pinnedAnnouncement.title}
+              </h4>
+              <p className="text-xs text-gray-700 line-clamp-1">
+                {pinnedAnnouncement.content}
+              </p>
+            </div>
+          </div>
+
+          <Link href={`/student/course/${course.id}/forum`}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-[#FF8928] text-[#FF8928] hover:bg-amber-100/50 text-xs font-semibold whitespace-nowrap"
+            >
+              Lihat Pengumuman
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {modules.length === 0 ? (
         <Card className="text-center py-16">
           <CardContent className="space-y-3">
@@ -41,15 +169,26 @@ export function StudentCourseModulesClient({
       ) : (
         modules.map((mod, index) => (
           <Card key={mod.id} className="border border-gray-200 overflow-hidden shadow-sm bg-white">
-            <CardHeader className="bg-gray-50/80 border-b py-3 px-5 flex flex-row items-center gap-3">
-              <span className="flex items-center justify-center h-8 w-8 rounded-full bg-[#002446] text-white text-sm font-bold">
-                {index + 1}
-              </span>
-              <div>
+            <CardHeader className="bg-gray-50/80 border-b py-3 px-5 flex flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center justify-center h-8 w-8 rounded-full bg-[#002446] text-white text-sm font-bold">
+                  {index + 1}
+                </span>
                 <CardTitle className="text-lg font-bold text-[#002446]">
                   {mod.title}
                 </CardTitle>
               </div>
+
+              <Link href={`/student/course/${course.id}/forum?moduleId=${mod.id}`}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-gray-600 hover:text-[#002446] flex items-center gap-1"
+                >
+                  <MessageSquare className="h-3.5 w-3.5 text-[#FF8928]" />
+                  <span className="hidden sm:inline">Tanya di Forum Modul</span>
+                </Button>
+              </Link>
             </CardHeader>
 
             <CardContent className="p-6 space-y-6">
