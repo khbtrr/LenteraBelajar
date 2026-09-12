@@ -41,6 +41,10 @@ import {
   Upload,
   X,
   Edit,
+  Shield,
+  ShieldAlert,
+  KeyRound,
+  RefreshCw,
 } from 'lucide-react';
 import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
 import { createQuiz, deleteQuiz, addQuizQuestion, updateQuizQuestion, getQuizWithQuestions } from '@/lib/actions/quiz';
@@ -147,6 +151,10 @@ export function TeacherCourseModulesClient({
   const [questionsPerPage, setQuestionsPerPage] = useState('0');
   const [quizMaxAttempts, setQuizMaxAttempts] = useState('1');
   const [quizPassingGrade, setQuizPassingGrade] = useState('');
+  const [requireToken, setRequireToken] = useState(false);
+  const [quizToken, setQuizToken] = useState('');
+  const [enableLockdown, setEnableLockdown] = useState(false);
+  const [maxTabSwitches, setMaxTabSwitches] = useState('3');
 
   // Question builder inside quiz creation
   const [questions, setQuestions] = useState<
@@ -566,6 +574,10 @@ export function TeacherCourseModulesClient({
         questionsPerPage: Number(questionsPerPage) || 0,
         maxAttempts: quizMaxAttempts === 'unlimited' ? null : Number(quizMaxAttempts),
         passingGrade: quizPassingGrade ? Number(quizPassingGrade) : null,
+        requireToken,
+        token: requireToken ? quizToken : undefined,
+        enableLockdown,
+        maxTabSwitches: Number(maxTabSwitches) || 3,
       });
 
       // Add all drafted questions
@@ -601,6 +613,10 @@ export function TeacherCourseModulesClient({
       setQuestions([]);
       setQuizMaxAttempts('1');
       setQuizPassingGrade('');
+      setRequireToken(false);
+      setQuizToken('');
+      setEnableLockdown(false);
+      setMaxTabSwitches('3');
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
@@ -1127,17 +1143,37 @@ export function TeacherCourseModulesClient({
                                   {new Date(q.deadline).toLocaleDateString('id-ID')}
                                 </span>
                               )}
+                              {q.requireToken && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-400 text-amber-800 bg-amber-50 font-mono">
+                                  Token: {q.token}
+                                </Badge>
+                              )}
+                              {q.enableLockdown && (
+                                <Badge className="text-[10px] px-1.5 py-0 bg-rose-100 text-rose-800 hover:bg-rose-100">
+                                  Lockdown CBT
+                                </Badge>
+                              )}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-1">
+                            <Link href={`/teacher/course/${course.id}/quiz-attempts/${q.id}/proctor`}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-bold flex items-center gap-1"
+                              >
+                                <Shield className="h-3 w-3 text-emerald-600" />
+                                Live Proctor
+                              </Button>
+                            </Link>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleEditQuizClick(q.id)}
                               className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
                             >
-                              Edit Kuis
+                              Edit
                             </Button>
                             <Link href={`/teacher/course/${course.id}/quiz-attempts/${q.id}`}>
                               <Button
@@ -1145,7 +1181,7 @@ export function TeacherCourseModulesClient({
                                 variant="outline"
                                 className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100"
                               >
-                                Riwayat & Koreksi
+                                Riwayat
                               </Button>
                             </Link>
                             <Button
@@ -1517,6 +1553,104 @@ export function TeacherCourseModulesClient({
                     onChange={(e) => setQuizPassingGrade(e.target.value)}
                   />
                   <p className="text-[11px] text-gray-500">Opsional. Nilai 0-100.</p>
+                </div>
+              </div>
+
+              {/* CBT & Keamanan Ujian Lanjutan (Token & Lockdown) */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-[#002446]" />
+                  <span className="text-xs font-bold text-[#002446] uppercase tracking-wider">
+                    Keamanan Ujian & CBT
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Token Akses */}
+                  <div className="space-y-2 p-3 bg-white rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="qzRequireToken"
+                          checked={requireToken}
+                          onChange={(e) => {
+                            setRequireToken(e.target.checked);
+                            if (e.target.checked && !quizToken) {
+                              setQuizToken(Math.random().toString(36).substring(2, 8).toUpperCase());
+                            }
+                          }}
+                          className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                        />
+                        <Label htmlFor="qzRequireToken" className="text-xs font-bold cursor-pointer text-gray-800">
+                          Wajibkan Token Masuk
+                        </Label>
+                      </div>
+                      {requireToken && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setQuizToken(Math.random().toString(36).substring(2, 8).toUpperCase())}
+                          className="h-6 px-2 text-[10px] text-[#FF8928] hover:bg-amber-50"
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" /> Acak
+                        </Button>
+                      )}
+                    </div>
+
+                    {requireToken && (
+                      <div className="pt-1">
+                        <Input
+                          placeholder="misal: PAS2026"
+                          value={quizToken}
+                          onChange={(e) => setQuizToken(e.target.value.toUpperCase())}
+                          maxLength={8}
+                          className="font-mono text-center text-sm font-bold tracking-widest uppercase h-9 bg-gray-50"
+                          required={requireToken}
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          Siswa harus memasukkan token ini sebelum dapat mulai mengerjakan.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Lockdown CBT & Anti-Curang */}
+                  <div className="space-y-2 p-3 bg-white rounded-lg border border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="qzEnableLockdown"
+                        checked={enableLockdown}
+                        onChange={(e) => setEnableLockdown(e.target.checked)}
+                        className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                      />
+                      <Label htmlFor="qzEnableLockdown" className="text-xs font-bold cursor-pointer text-gray-800">
+                        Mode Lockdown CBT
+                      </Label>
+                    </div>
+
+                    <p className="text-[10px] text-gray-500">
+                      Wajib fullscreen, blokir klik kanan, copy-paste, dan deteksi pindah tab.
+                    </p>
+
+                    {enableLockdown && (
+                      <div className="pt-1 flex items-center justify-between gap-2 border-t border-gray-100">
+                        <span className="text-[11px] text-gray-600 font-medium">Batas Pindah Tab:</span>
+                        <select
+                          value={maxTabSwitches}
+                          onChange={(e) => setMaxTabSwitches(e.target.value)}
+                          className="h-7 px-2 text-xs border border-gray-300 rounded bg-white text-gray-800 font-bold"
+                        >
+                          <option value="1">1 kali (Sangat Ketat)</option>
+                          <option value="2">2 kali</option>
+                          <option value="3">3 kali (Standar)</option>
+                          <option value="5">5 kali (Longgar)</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

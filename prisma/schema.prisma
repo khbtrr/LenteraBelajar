@@ -273,6 +273,10 @@ model Quiz {
   maxAttempts      Int?     @default(1)  // null = unlimited
   passingGrade     Float?               // null = no passing grade (0-100)
   useQuestionBank  Boolean  @default(false)
+  requireToken     Boolean  @default(false)
+  token            String?
+  enableLockdown   Boolean  @default(false)
+  maxTabSwitches   Int      @default(3)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -305,14 +309,20 @@ enum QuestionType {
 }
 
 model QuizAttempt {
-  id               String    @id @default(cuid())
-  quizId           String
-  userId           String
-  startedAt        DateTime  @default(now())
-  submittedAt      DateTime?
-  score            Float?
-  isGraded         Boolean   @default(false)
-  questionSnapshot Json?     // Snapshot of randomly selected questions for bank-soal mode
+  id                String    @id @default(cuid())
+  quizId            String
+  userId            String
+  startedAt         DateTime  @default(now())
+  submittedAt       DateTime?
+  score             Float?
+  isGraded          Boolean   @default(false)
+  questionSnapshot  Json?     // Snapshot of randomly selected questions for bank-soal mode
+  tabSwitchCount    Int       @default(0)
+  isTerminated      Boolean   @default(false)
+  terminationReason String?
+  extraTimeMinutes  Int       @default(0)
+  lastActiveAt      DateTime  @default(now())
+  deviceInfo        String?
 
   quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
   user    User         @relation(fields: [userId], references: [id])

@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Calendar, HelpCircle, ArrowLeft, ArrowRight, Trophy, AlertTriangle, CheckCircle2, XCircle, Target, RotateCcw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Clock, Calendar, HelpCircle, ArrowLeft, ArrowRight, Trophy, AlertTriangle, CheckCircle2, XCircle, Target, RotateCcw, KeyRound, Shield, ShieldAlert } from 'lucide-react';
 import { startOrGetQuizAttempt } from '@/lib/actions/quiz';
 import { StudentQuizClient } from './client';
 import { Link } from '@/i18n/navigation';
@@ -13,6 +15,11 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
   const [quizData, setQuizData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tokenInput, setTokenInput] = useState('');
+
+  const isLockdown = Boolean(quiz.enableLockdown || status.enableLockdown);
+  const isRequireToken = Boolean(quiz.requireToken || status.requireToken);
+  const maxTabSwitches = quiz.maxTabSwitches || status.maxTabSwitches || 3;
 
   const canAttempt = status.status !== 'EXPIRED' && (
     status.status !== 'COMPLETED' || 
@@ -22,10 +29,15 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
   const isInProgress = status.status === 'IN_PROGRESS';
 
   const handleStart = async () => {
+    if (isRequireToken && !isInProgress && !tokenInput.trim()) {
+      setError('Harap masukkan token akses ujian yang diberikan guru pengawas.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const data = await startOrGetQuizAttempt(quiz.id);
+      const data = await startOrGetQuizAttempt(quiz.id, tokenInput.trim());
       setQuizData(data);
     } catch (err: any) {
       setError(err.message || 'Gagal memulai kuis');
@@ -45,6 +57,8 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
         durationMinutes={quizData.durationMinutes}
         questions={quizData.questions}
         questionsPerPage={quizData.questionsPerPage}
+        enableLockdown={quizData.enableLockdown}
+        maxTabSwitches={quizData.maxTabSwitches}
       />
     );
   }
@@ -137,6 +151,50 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
               </div>
             </div>
           </CardContent>
+        </Card>
+      )}
+
+      {/* Lockdown Rules Card */}
+      {isLockdown && (
+        <Card className="border-2 border-rose-300 bg-rose-50/60 shadow-sm">
+          <CardContent className="p-5 space-y-2">
+            <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
+              <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0" />
+              Peraturan Mode Ujian Aman (CBT Lockdown)
+            </div>
+            <ul className="text-xs text-rose-700 space-y-1 list-disc pl-5">
+              <li>Ujian akan secara otomatis meminta tampilan <strong>Layar Penuh (Fullscreen)</strong>.</li>
+              <li>Dilarang berpindah tab browser, membuka aplikasi lain, atau meminimalkan layar.</li>
+              <li>
+                Batas toleransi meninggalkan layar ujian adalah <strong>{maxTabSwitches} kali</strong>. Jika melanggar melebihi batas, lembar ujian Anda akan <strong>otomatis ter-submit</strong>.
+              </li>
+              <li>Fungsi klik kanan, copy-paste, dan pintasan keyboard tertentu dinonaktifkan demi integritas ujian.</li>
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Token Input Box */}
+      {isRequireToken && !isInProgress && canAttempt && status.status !== 'EXPIRED' && (
+        <Card className="border border-gray-200 bg-white shadow-sm p-4 text-center space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="cbtTokenInput" className="text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5">
+              <KeyRound className="h-4 w-4 text-[#FF8928]" /> Masukkan Token Akses Ujian
+            </Label>
+            <p className="text-[11px] text-gray-500">
+              Minta kode token kepada guru atau pengawas di ruangan ujian Anda.
+            </p>
+          </div>
+          <div className="max-w-xs mx-auto">
+            <Input
+              id="cbtTokenInput"
+              placeholder="Contoh: PAS2026"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
+              maxLength={8}
+              className="font-mono text-center text-lg font-bold tracking-widest uppercase h-11 bg-gray-50 border-2 border-gray-300 focus:border-[#002446]"
+            />
+          </div>
         </Card>
       )}
 

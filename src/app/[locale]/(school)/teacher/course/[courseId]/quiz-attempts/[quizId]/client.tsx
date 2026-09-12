@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, CheckCircle2, Clock, HelpCircle, Award, User } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, HelpCircle, Award, User, Shield } from 'lucide-react';
 
 interface QuizAttemptsClientProps {
   data: {
@@ -164,11 +164,19 @@ export function TeacherQuizAttemptsClient({ data }: QuizAttemptsClientProps) {
           </p>
         </div>
 
-        <Link href={`/teacher/course/${data.quiz.courseId}/gradebook`}>
-          <Button variant="outline" className="border-[#002446] text-[#002446] hover:bg-gray-100">
-            Lihat Buku Nilai
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/teacher/course/${data.quiz.courseId}/quiz-attempts/${data.quiz.id}/proctor`}>
+            <Button className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5 font-bold">
+              <Shield className="h-4 w-4 text-emerald-400" />
+              Live Proctoring
+            </Button>
+          </Link>
+          <Link href={`/teacher/course/${data.quiz.courseId}/gradebook`}>
+            <Button variant="outline" className="border-[#002446] text-[#002446] hover:bg-gray-100">
+              Lihat Buku Nilai
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Attempts Table */}

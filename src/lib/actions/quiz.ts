@@ -51,6 +51,10 @@ export async function createQuiz(data: {
   passingGrade?: number | null;
   useQuestionBank?: boolean;
   bankSelections?: { categoryId: string; count: number }[];
+  requireToken?: boolean;
+  token?: string;
+  enableLockdown?: boolean;
+  maxTabSwitches?: number;
 }) {
   await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
 
@@ -71,6 +75,10 @@ export async function createQuiz(data: {
       maxAttempts: data.maxAttempts ?? null,
       passingGrade: data.passingGrade ?? null,
       useQuestionBank: Boolean(data.useQuestionBank),
+      requireToken: Boolean(data.requireToken),
+      token: data.requireToken ? (data.token ? data.token.trim().toUpperCase() : null) : null,
+      enableLockdown: Boolean(data.enableLockdown),
+      maxTabSwitches: data.maxTabSwitches !== undefined ? Number(data.maxTabSwitches) : 3,
       questionBankSelections: (data.useQuestionBank && data.bankSelections?.length) ? {
         create: data.bankSelections.map(s => ({
           categoryId: s.categoryId,
@@ -194,6 +202,10 @@ export async function updateQuizSettings(
     questionsPerPage?: number;
     maxAttempts?: number | null;
     passingGrade?: number | null;
+    requireToken?: boolean;
+    token?: string | null;
+    enableLockdown?: boolean;
+    maxTabSwitches?: number;
   }
 ) {
   await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
@@ -210,6 +222,10 @@ export async function updateQuizSettings(
       questionsPerPage: data.questionsPerPage !== undefined ? data.questionsPerPage : undefined,
       maxAttempts: data.maxAttempts !== undefined ? data.maxAttempts : undefined,
       passingGrade: data.passingGrade !== undefined ? data.passingGrade : undefined,
+      requireToken: data.requireToken !== undefined ? data.requireToken : undefined,
+      token: data.requireToken ? (data.token ? data.token.trim().toUpperCase() : null) : data.requireToken === false ? null : undefined,
+      enableLockdown: data.enableLockdown !== undefined ? data.enableLockdown : undefined,
+      maxTabSwitches: data.maxTabSwitches !== undefined ? data.maxTabSwitches : undefined,
     },
   });
 
@@ -293,10 +309,13 @@ export async function getQuizStatusForStudent(quizId: string) {
       submittedAt: submittedAttempts[0].submittedAt
     } : null,
     hasActiveAttempt,
+    requireToken: quiz.requireToken,
+    enableLockdown: quiz.enableLockdown,
+    maxTabSwitches: quiz.maxTabSwitches,
   };
 }
 
-export async function startOrGetQuizAttempt(quizId: string) {
+export async function startOrGetQuizAttempt(quizId: string, token?: string) {
   const session = await requireAuth();
 
   const quiz = await db.quiz.findUnique({
@@ -339,6 +358,15 @@ export async function startOrGetQuizAttempt(quizId: string) {
       answers: true,
     },
   });
+
+  // Verify token if required and starting a new attempt
+  if (quiz.requireToken && !attempt) {
+    const inputToken = (token || '').trim().toUpperCase();
+    const correctToken = (quiz.token || '').trim().toUpperCase();
+    if (!inputToken || inputToken !== correctToken) {
+      throw new Error('Token akses ujian tidak sesuai atau belum dimasukkan');
+    }
+  }
 
   let questions: any[] = [];
 
@@ -460,16 +488,23 @@ export async function startOrGetQuizAttempt(quizId: string) {
     });
   }
 
+  const effectiveDuration = quiz.duration
+    ? quiz.duration + (attempt?.extraTimeMinutes || 0)
+    : null;
+
   return {
     attempt,
     quizTitle: quiz.title,
-    durationMinutes: quiz.duration,
+    durationMinutes: effectiveDuration,
     questions,
     maxAttempts: quiz.maxAttempts,
     submittedCount,
     passingGrade: quiz.passingGrade,
     questionsPerPage: quiz.questionsPerPage ?? 0,
     shuffleOptions: quiz.shuffleOptions ?? false,
+    enableLockdown: quiz.enableLockdown,
+    maxTabSwitches: quiz.maxTabSwitches,
+    requireToken: quiz.requireToken,
   };
 }
 

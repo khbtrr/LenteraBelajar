@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Clock, CheckCircle2, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Send, LayoutGrid, AlertCircle } from 'lucide-react';
+import { Clock, CheckCircle2, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Send, LayoutGrid, AlertCircle, ShieldAlert, Maximize2, ShieldCheck, Lock } from 'lucide-react';
 import { submitQuizAttempt } from '@/lib/actions/quiz';
+import { recordTabSwitch, pingAttemptHeartbeat } from '@/lib/actions/proctor';
 import { Link } from '@/i18n/navigation';
 
 interface QuestionOption {
@@ -30,6 +31,8 @@ export function StudentQuizClient({
   durationMinutes,
   questions,
   questionsPerPage = 0,
+  enableLockdown = false,
+  maxTabSwitches = 3,
 }: {
   courseId: string;
   quizId: string;
@@ -38,11 +41,20 @@ export function StudentQuizClient({
   durationMinutes: number | null;
   questions: Question[];
   questionsPerPage?: number;
+  enableLockdown?: boolean;
+  maxTabSwitches?: number;
 }) {
   const storageKey = `quiz_draft_${initialAttempt.id}`;
 
-  // Check if attempt is already submitted
-  const [isSubmitted, setIsSubmitted] = useState(Boolean(initialAttempt.submittedAt));
+  // Check if attempt is already submitted or terminated
+  const [isSubmitted, setIsSubmitted] = useState(Boolean(initialAttempt.submittedAt || initialAttempt.isTerminated));
+  const [isTerminated, setIsTerminated] = useState(Boolean(initialAttempt.isTerminated));
+  const [terminationReason, setTerminationReason] = useState<string | null>(initialAttempt.terminationReason || null);
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(initialAttempt.tabSwitchCount || 0);
+  const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
+  const [violationWarning, setViolationWarning] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const isHandlingViolationRef = useRef(false);
   const [submissionResult, setSubmissionResult] = useState<{
     score: number | null;
     isGraded: boolean;
@@ -133,7 +145,9 @@ export function StudentQuizClient({
   const calculateRemainingSeconds = () => {
     if (!durationMinutes) return null;
     const startTime = new Date(initialAttempt.startedAt).getTime();
-    const durationMs = durationMinutes * 60 * 1000;
+    // Add extra proctor granted time if available
+    const extraMinutes = initialAttempt.extraTimeMinutes || 0;
+    const durationMs = (durationMinutes + extraMinutes) * 60 * 1000;
     const endTime = startTime + durationMs;
     const now = Date.now();
     const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
@@ -145,6 +159,131 @@ export function StudentQuizClient({
   );
 
   const hasAutoSubmitted = useRef(false);
+
+  // Heartbeat ping to proctor server every 15 seconds
+  useEffect(() => {
+    if (isSubmitted || isTerminated) return;
+
+    const interval = setInterval(() => {
+      pingAttemptHeartbeat(initialAttempt.id).catch(() => {});
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [initialAttempt.id, isSubmitted, isTerminated]);
+
+  // Request Fullscreen helper
+  const enterFullscreen = useCallback(async () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if ((document.documentElement as any).webkitRequestFullscreen) {
+        await (document.documentElement as any).webkitRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } catch (e) {
+      console.warn('Fullscreen request denied or not allowed:', e);
+    }
+  }, []);
+
+  // Handle Tab Switch / Violation Event
+  const handleTabViolation = useCallback(async () => {
+    if (isSubmitted || isTerminated || isHandlingViolationRef.current) return;
+    isHandlingViolationRef.current = true;
+
+    try {
+      const result = await recordTabSwitch(initialAttempt.id);
+      setTabSwitchCount(result.tabSwitchCount);
+
+      if (result.isTerminated) {
+        setIsTerminated(true);
+        setTerminationReason(result.message || 'Kuis dibatalkan karena melanggar batas perpindahan tab/layar ujian.');
+        setIsSubmitted(true);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(storageKey);
+        }
+      } else {
+        const remainingAllowed = Math.max(0, maxTabSwitches - result.tabSwitchCount);
+        setViolationWarning(
+          `Terdeteksi meninggalkan jendela atau tab ujian! Pelanggaran ke-${result.tabSwitchCount} dari batas ${maxTabSwitches}. Sisa toleransi: ${remainingAllowed} kali lagi sebelum kuis ditutup otomatis.`
+        );
+        setIsViolationModalOpen(true);
+      }
+    } catch (err) {
+      console.error('Failed to log tab violation:', err);
+    } finally {
+      setTimeout(() => {
+        isHandlingViolationRef.current = false;
+      }, 1500);
+    }
+  }, [initialAttempt.id, isSubmitted, isTerminated, maxTabSwitches, storageKey]);
+
+  // Browser Lockdown Effects
+  useEffect(() => {
+    if (!enableLockdown || isSubmitted || isTerminated) return;
+
+    // Check fullscreen state change
+    const handleFullscreenChange = () => {
+      const active = Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      setIsFullscreen(active);
+    };
+
+    // Block context menu (Right-click)
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Block keyboard shortcuts (Ctrl+C, Ctrl+V, Ctrl+U, F12, PrintScreen, etc.)
+    const handleKeySecurity = (e: KeyboardEvent) => {
+      // F12 or devtools
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl / Cmd shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase();
+        if (['c', 'v', 'u', 'p', 's', 'a', 'x'].includes(key)) {
+          e.preventDefault();
+          return false;
+        }
+      }
+      // PrintScreen
+      if (e.key === 'PrintScreen') {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    // Tab Switch / Window Blur Detection
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handleTabViolation();
+      }
+    };
+
+    const handleWindowBlur = () => {
+      // Trigger if window loses focus completely
+      handleTabViolation();
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('keydown', handleKeySecurity, true);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+
+    // Prompt user to enter fullscreen initially
+    enterFullscreen();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('keydown', handleKeySecurity, true);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [enableLockdown, isSubmitted, isTerminated, enterFullscreen, handleTabViolation]);
 
   useEffect(() => {
     if (isSubmitted || remainingSeconds === null) return;
@@ -297,6 +436,34 @@ export function StudentQuizClient({
   const answeredCount = Object.keys(answers).filter((k) => answers[k]?.trim()).length;
 
   if (isSubmitted) {
+    if (isTerminated) {
+      return (
+        <div className="max-w-2xl mx-auto py-12 space-y-6">
+          <Card className="border-red-300 bg-white shadow-lg text-center p-8">
+            <CardContent className="space-y-4 pt-4">
+              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                <ShieldAlert className="h-10 w-10" />
+              </div>
+              <h2 className="text-2xl font-bold text-red-700">
+                Pengerjaan Kuis Dibatalkan!
+              </h2>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm max-w-md mx-auto leading-relaxed">
+                {terminationReason || 'Anda terdeteksi melakukan pelanggaran integritas (berpindah tab / keluar layar ujian melebihi batas yang ditentukan). Pengerjaan telah dihentikan secara otomatis oleh sistem.'}
+              </div>
+              <p className="text-xs text-gray-500">
+                Hubungi guru pengawas atau pengampu mata pelajaran jika Anda merasa ini merupakan kesalahan teknis.
+              </p>
+              <div className="pt-4">
+                <Button onClick={() => window.location.href = `/student/course/${courseId}/quiz/${quizId}`} className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
+                  <ArrowLeft className="h-4 w-4" /> Kembali ke Detail Kuis
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-2xl mx-auto py-12 space-y-6">
         <Card className="border-green-200 bg-white shadow-md text-center p-8">
@@ -411,12 +578,42 @@ export function StudentQuizClient({
   );
 
   return (
-    <div className={`space-y-6 mx-auto pb-16 ${isOnePerPage ? 'max-w-5xl' : 'max-w-3xl'}`}>
+    <div className={`space-y-6 mx-auto pb-16 ${enableLockdown ? 'select-none' : ''} ${isOnePerPage ? 'max-w-5xl' : 'max-w-3xl'}`}>
+      {/* Lockdown Status & Fullscreen Alert Banner if exited fullscreen */}
+      {enableLockdown && !isFullscreen && (
+        <div className="bg-red-500 text-white px-4 py-2.5 rounded-xl shadow-md flex items-center justify-between animate-pulse">
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+            <ShieldAlert className="w-5 h-5 shrink-0" />
+            <span>Mode Ujian Terkunci (CBT Lockdown). Harap berada dalam layar penuh!</span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={enterFullscreen}
+            className="bg-white text-red-700 hover:bg-gray-100 font-bold text-xs h-7 px-3 shrink-0 flex items-center gap-1.5"
+          >
+            <Maximize2 className="w-3.5 h-3.5" /> Layar Penuh
+          </Button>
+        </div>
+      )}
+
       {/* Sticky Countdown Header */}
       <div className="sticky top-20 z-20 bg-white/95 backdrop-blur shadow-sm border border-gray-200 rounded-xl p-4 flex items-center justify-between">
         <div>
-          <h2 className="font-bold text-[#002446] text-base">{quizTitle}</h2>
-          <div className="text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <h2 className="font-bold text-[#002446] text-base">{quizTitle}</h2>
+            {enableLockdown && (
+              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[10px] flex items-center gap-1">
+                <Lock className="w-3 h-3" /> CBT Lockdown
+              </Badge>
+            )}
+            {enableLockdown && tabSwitchCount > 0 && (
+              <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">
+                Pelanggaran: {tabSwitchCount}/{maxTabSwitches}
+              </Badge>
+            )}
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">
             Terjawab: <strong>{answeredCount}</strong> dari {questions.length} Soal
           </div>
         </div>
@@ -656,6 +853,40 @@ export function StudentQuizClient({
               className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
             >
               Tutup & Coba Lagi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tab Switch / Violation Warning Modal */}
+      <Dialog open={isViolationModalOpen} onOpenChange={setIsViolationModalOpen}>
+        <DialogContent className="max-w-md p-6 bg-white border-2 border-amber-400 text-center shadow-2xl">
+          <DialogHeader className="space-y-3 text-center sm:text-center">
+            <div className="mx-auto w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 animate-bounce">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-[#002446]">
+              Peringatan Integritas Ujian!
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-700 leading-relaxed font-medium">
+              {violationWarning}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 text-left">
+            <strong>PERHATIAN:</strong> Setiap tindakan meninggalkan layar ujian, membuka aplikasi lain, membuka tab browser lain, atau split screen dicatat oleh pengawas secara langsung.
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => {
+                setIsViolationModalOpen(false);
+                enterFullscreen();
+              }}
+              className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold py-2"
+            >
+              Saya Mengerti & Kembali Mengerjakan
             </Button>
           </DialogFooter>
         </DialogContent>
