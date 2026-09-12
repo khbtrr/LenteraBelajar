@@ -176,23 +176,42 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
 
       {/* Token Input Box */}
       {isRequireToken && !isInProgress && canAttempt && status.status !== 'EXPIRED' && (
-        <Card className="border border-gray-200 bg-white shadow-sm p-4 text-center space-y-3">
+        <Card className="border-2 border-[#002446]/20 bg-linear-to-b from-blue-50/50 to-white shadow-md p-5 text-center space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="cbtTokenInput" className="text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5">
-              <KeyRound className="h-4 w-4 text-[#FF8928]" /> Masukkan Token Akses Ujian
+            <Label htmlFor="cbtTokenInput" className="text-sm font-bold text-[#002446] flex items-center justify-center gap-2">
+              <KeyRound className="h-4 w-4 text-[#FF8928]" /> Token Akses Ujian
             </Label>
-            <p className="text-[11px] text-gray-500">
-              Minta kode token kepada guru atau pengawas di ruangan ujian Anda.
+            <p className="text-xs text-gray-500">
+              Token untuk membuka kuis ini tersedia langsung di bawah:
             </p>
           </div>
-          <div className="max-w-xs mx-auto">
+
+          {/* Token Display Pill */}
+          {quiz.token && (
+            <div className="flex items-center justify-center gap-2">
+              <div className="px-4 py-2 bg-blue-100/70 border border-blue-300 rounded-lg text-[#002446] font-mono text-xl font-extrabold tracking-widest select-all">
+                {quiz.token}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setTokenInput(quiz.token)}
+                className="text-xs border-[#002446]/30 text-[#002446] hover:bg-[#002446] hover:text-white font-medium h-10"
+              >
+                Gunakan Token
+              </Button>
+            </div>
+          )}
+
+          <div className="max-w-xs mx-auto pt-1">
             <Input
               id="cbtTokenInput"
-              placeholder="Contoh: PAS2026"
+              placeholder={quiz.token ? `Ketik atau klik tombol (${quiz.token})` : "Masukkan Token"}
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
-              maxLength={8}
-              className="font-mono text-center text-lg font-bold tracking-widest uppercase h-11 bg-gray-50 border-2 border-gray-300 focus:border-[#002446]"
+              maxLength={12}
+              className="font-mono text-center text-lg font-bold tracking-widest uppercase h-11 bg-white border-2 border-gray-300 focus:border-[#002446]"
             />
           </div>
         </Card>
