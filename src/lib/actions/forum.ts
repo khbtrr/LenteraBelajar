@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
+import { awardXp } from './gamification';
 
 export interface ForumCommentItem {
   id: string;
@@ -196,6 +197,19 @@ export async function createForumThread(data: {
         link: `/teacher/course/${course.id}/forum?threadId=${thread.id}`,
       },
     });
+
+    // Gamification XP (+10 XP)
+    try {
+      await awardXp(
+        session.user.id,
+        10,
+        `Memulai topik diskusi: "${data.title.slice(0, 30)}..."`,
+        'FORUM',
+        data.courseId
+      );
+    } catch (xpErr) {
+      console.error('Failed to award XP for forum thread:', xpErr);
+    }
   }
 
   revalidatePath(`/teacher/course/${data.courseId}/forum`);
@@ -253,6 +267,21 @@ export async function addForumComment(data: {
         link: targetLink,
       },
     });
+  }
+
+  // Gamification XP for student reply (+10 XP)
+  if (session.user.role === 'STUDENT') {
+    try {
+      await awardXp(
+        session.user.id,
+        10,
+        'Memberikan tanggapan diskusi di forum',
+        'FORUM',
+        thread.courseId
+      );
+    } catch (xpErr) {
+      console.error('Failed to award XP for forum comment:', xpErr);
+    }
   }
 
   revalidatePath(`/teacher/course/${thread.courseId}/forum`);

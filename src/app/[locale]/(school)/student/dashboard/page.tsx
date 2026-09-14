@@ -18,6 +18,9 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { getUserGamificationProfile } from '@/lib/actions/gamification';
+import { BADGE_CATALOG } from '@/lib/gamification-constants';
+import { Flame, Medal, Award } from 'lucide-react';
 
 export default async function StudentDashboard() {
   const session = await auth();
@@ -25,7 +28,7 @@ export default async function StudentDashboard() {
 
   if (!session?.user) return null;
 
-  const [enrollments, upcomingDeadlines] = await Promise.all([
+  const [enrollments, upcomingDeadlines, gamificationProfile] = await Promise.all([
     db.enrollment.findMany({
       where: { userId: session.user.id },
       include: {
@@ -42,6 +45,7 @@ export default async function StudentDashboard() {
       take: 6,
     }),
     getStudentUpcomingDeadlines(),
+    getUserGamificationProfile(session.user.id),
   ]);
 
   const enrollmentCount = enrollments.length;
@@ -69,6 +73,76 @@ export default async function StudentDashboard() {
           </Button>
         </Link>
       </div>
+
+      {/* Gamification Progress Widget */}
+      {gamificationProfile && (
+        <Card className="border border-amber-200/80 bg-linear-to-r from-amber-50/40 via-white to-orange-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 shadow-sm overflow-hidden">
+          <CardContent className="p-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              {/* Level & Title */}
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-amber-400 to-[#FF8928] text-white flex flex-col items-center justify-center font-black shadow-md shrink-0">
+                  <span className="text-[10px] uppercase tracking-wider font-bold">Level</span>
+                  <span className="text-xl leading-none">{gamificationProfile.level}</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-[#002446] dark:text-gray-100">
+                      {gamificationProfile.title}
+                    </h2>
+                    <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-300 border-amber-300 text-[11px]">
+                      {gamificationProfile.totalXp.toLocaleString()} XP
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Tingkatkan terus prestasimu untuk membuka gelar dan lencana baru.
+                  </p>
+                </div>
+              </div>
+
+              {/* XP Progress Bar to Next Level */}
+              <div className="flex-1 max-w-md space-y-1.5">
+                <div className="flex justify-between text-xs font-semibold">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Progres Level {gamificationProfile.level + 1}
+                  </span>
+                  <span className="text-[#FF8928] font-bold">
+                    {gamificationProfile.currentLevelXp} / {gamificationProfile.nextLevelRequiredXp} XP ({gamificationProfile.progressPercent}%)
+                  </span>
+                </div>
+                <div className="w-full bg-gray-100 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div
+                    className="bg-linear-to-r from-amber-400 to-[#FF8928] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${gamificationProfile.progressPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Streak Flame & Achievements Link */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400">
+                  <Flame className="h-5 w-5 fill-orange-500 text-orange-500 animate-pulse" />
+                  <div>
+                    <div className="text-xs font-black leading-none">{gamificationProfile.streakDays} Hari</div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400">Streak Belajar</div>
+                  </div>
+                </div>
+
+                <Link href="/student/achievements">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs border-[#002446] text-[#002446] hover:bg-blue-50 dark:border-blue-400 dark:text-blue-300 dark:hover:bg-gray-800 flex items-center gap-1.5"
+                  >
+                    <Award className="h-4 w-4 text-amber-500" />
+                    Lemari Lencana ({gamificationProfile.totalAchievementsCount})
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

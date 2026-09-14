@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,8 +20,11 @@ import {
   Megaphone,
   Pin,
   Trophy,
+  Sparkles,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { LeaderboardModal } from '@/components/course/leaderboard-modal';
+import { markLessonCompleted } from '@/lib/actions/gamification';
 
 export function StudentCourseModulesClient({
   course,
@@ -28,13 +32,33 @@ export function StudentCourseModulesClient({
   quizStatusMap,
   pinnedAnnouncement,
   activeSession,
+  completedLessonIds = [],
 }: {
   course: any;
   modules: any[];
   quizStatusMap: Record<string, any>;
   pinnedAnnouncement?: any | null;
   activeSession?: any | null;
+  completedLessonIds?: string[];
 }) {
+  const [completedIds, setCompletedIds] = useState<string[]>(completedLessonIds);
+  const [markingId, setMarkingId] = useState<string | null>(null);
+
+  const handleMarkLesson = async (contentId: string) => {
+    if (completedIds.includes(contentId)) return;
+    setMarkingId(contentId);
+    try {
+      const res = await markLessonCompleted(contentId, course.id);
+      if (res.success) {
+        setCompletedIds((prev) => [...prev, contentId]);
+      }
+    } catch (err) {
+      console.error('Failed to mark lesson completed:', err);
+    } finally {
+      setMarkingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Quick Actions Bar */}
@@ -72,6 +96,9 @@ export function StudentCourseModulesClient({
               Buku Nilai
             </Button>
           </Link>
+
+          {/* Class Leaderboard Modal Trigger */}
+          <LeaderboardModal courseId={course.id} />
         </div>
 
         <span className="text-xs text-gray-500 font-medium">
@@ -273,6 +300,30 @@ export function StudentCourseModulesClient({
                             )}
                           </div>
                         )}
+
+                        {/* Mark completed button / badge */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                          <span className="text-[11px] text-gray-500">
+                            Aktivitas Pembelajaran
+                          </span>
+                          {completedIds.includes(cnt.id) ? (
+                            <Badge className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 flex items-center gap-1 text-xs">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                              Selesai Dibaca (+10 XP)
+                            </Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMarkLesson(cnt.id)}
+                              disabled={markingId === cnt.id}
+                              className="text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-950/30 flex items-center gap-1.5 h-8"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                              {markingId === cnt.id ? 'Menyimpan...' : 'Tandai Selesai (+10 XP)'}
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

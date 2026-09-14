@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { AttendanceStatus } from '@prisma/client';
+import { awardXp } from './gamification';
 
 export interface AttendanceSessionItem {
   id: string;
@@ -201,6 +202,17 @@ export async function studentCheckIn(sessionId: string, token: string) {
     return { success: false, error: 'Batas waktu sesi presensi telah berakhir.' };
   }
 
+  const existingRecord = await db.attendanceRecord.findUnique({
+    where: {
+      sessionId_userId: {
+        sessionId,
+        userId,
+      },
+    },
+  });
+
+  const wasAlreadyPresent = existingRecord?.status === AttendanceStatus.PRESENT;
+
   // Upsert attendance record
   await db.attendanceRecord.upsert({
     where: {
@@ -220,6 +232,20 @@ export async function studentCheckIn(sessionId: string, token: string) {
       checkInAt: new Date(),
     },
   });
+
+  if (!wasAlreadyPresent) {
+    try {
+      await awardXp(
+        userId,
+        15,
+        `Melakukan presensi mandiri: ${attendanceSession.title}`,
+        'ATTENDANCE',
+        attendanceSession.courseId
+      );
+    } catch (xpErr) {
+      console.error('Failed to award XP for attendance check-in:', xpErr);
+    }
+  }
 
   revalidatePath(`/student/course/${attendanceSession.courseId}/attendance`);
   revalidatePath(`/teacher/course/${attendanceSession.courseId}/attendance`);

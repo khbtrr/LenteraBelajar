@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { QuestionType, GradeType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { createBulkNotifications } from './notification';
+import { awardXp } from './gamification';
 
 export async function getQuizById(quizId: string) {
   const session = await requireAuth();
@@ -706,6 +707,28 @@ export async function submitQuizAttempt(
            sourceId: attempt.id,
          },
        });
+    }
+
+    // Gamification XP Award
+    try {
+      const passingGrade = attempt.quiz.passingGrade ?? 75;
+      if (currentAttemptScore !== null && currentAttemptScore >= passingGrade) {
+        let earnedXp = 50;
+        let reason = `Menyelesaikan kuis: ${attempt.quiz.title} (Lulus KKM)`;
+        if (currentAttemptScore === 100) {
+          earnedXp += 50; // Bonus perfect score (+100 XP total)
+          reason = `Nilai sempurna (100) kuis: ${attempt.quiz.title}`;
+        }
+        await awardXp(
+          session.user.id,
+          earnedXp,
+          reason,
+          'QUIZ',
+          attempt.quiz.module.courseId
+        );
+      }
+    } catch (xpErr) {
+      console.error('Failed to award XP for quiz attempt:', xpErr);
     }
   }
 

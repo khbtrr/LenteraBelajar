@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { createNotification, createBulkNotifications } from './notification';
+import { awardXp } from './gamification';
 
 export async function getAssignmentById(assignmentId: string) {
   const session = await requireAuth();
@@ -206,8 +207,21 @@ export async function submitAssignment(data: {
         link: `/teacher/course/${assignment.module.course.id}/submissions/${assignment.id}`,
       });
     }
+
+    // Gamification XP Award (only on initial submission)
+    if (!existing && assignment) {
+      const isOntime = !assignment.deadline || new Date() <= new Date(assignment.deadline);
+      const xpAmount = isOntime ? 40 : 20;
+      await awardXp(
+        session.user.id,
+        xpAmount,
+        `Mengumpulkan tugas: ${assignment.title} (${isOntime ? 'Tepat Waktu' : 'Terlambat'})`,
+        'ASSIGNMENT',
+        assignment.module.course.id
+      );
+    }
   } catch (err) {
-    console.error('Failed to notify teacher on submitAssignment:', err);
+    console.error('Failed to notify teacher or award XP on submitAssignment:', err);
   }
 
   revalidatePath('/[locale]/student/course/[courseId]/assignment/[assignmentId]', 'page');

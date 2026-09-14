@@ -40,6 +40,11 @@ model User {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  xp               Int                  @default(0)
+  level            Int                  @default(1)
+  streakDays       Int                  @default(0)
+  lastActiveDate   DateTime?
+
   school                School?              @relation(fields: [schoolId], references: [id])
   teacherCourses        Course[]             @relation("CourseTeacher")
   enrollments           Enrollment[]
@@ -54,6 +59,9 @@ model User {
   announcementComments  AnnouncementComment[]
   forumThreads          ForumThread[]
   forumComments         ForumComment[]
+  achievements          UserAchievement[]
+  xpLogs                XpLog[]
+  lessonProgresses      LessonProgress[]
 
   @@index([schoolId])
   @@index([email])
@@ -597,5 +605,48 @@ model ForumComment {
   @@index([threadId])
   @@index([authorId])
   @@index([parentId])
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  badgeCode     String
+  badgeName     String
+  badgeCategory String
+  icon          String
+  unlockedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeCode])
+  @@index([userId])
+}
+
+model XpLog {
+  id         String   @id @default(cuid())
+  userId     String
+  courseId   String?
+  amount     Int
+  reason     String
+  actionType String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  contentId   String
+  courseId    String
+  completedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+  @@index([userId, courseId])
 }
 

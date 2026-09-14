@@ -15,6 +15,7 @@ import {
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { NotificationDropdown } from '@/components/layout/notification-dropdown';
 import { ThemeToggleButton } from '@/components/common/ThemeToggleButton';
+import { GamificationChip } from '@/components/layout/gamification-chip';
 import { useSidebar } from '@/context/SidebarContext';
 import { signOut } from 'next-auth/react';
 import { Link } from '@/i18n/navigation';
@@ -79,6 +80,9 @@ export function Header({ userName, userRole }: HeaderProps) {
 
         {/* Notification Dropdown */}
         <NotificationDropdown />
+
+        {/* Gamification Streak & Level Chip (Students) */}
+        <GamificationChip userRole={userRole} />
 
         <div className="h-6 w-[1px] bg-gray-200 dark:bg-gray-800 hidden sm:block mx-1" />
 

@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
 import { getCourseById } from '@/lib/actions/course';
 import { getCourseModules } from '@/lib/actions/module';
 import { getQuizStatusForStudent } from '@/lib/actions/quiz';
@@ -12,16 +14,25 @@ export default async function StudentCourseModulesPage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
-  const [course, modules, pinnedAnnouncement, sessions] = await Promise.all([
+  const session = await auth();
+  const [course, modules, pinnedAnnouncement, sessions, completedLessons] = await Promise.all([
     getCourseById(courseId),
     getCourseModules(courseId),
     getPinnedAnnouncement(courseId),
     getCourseAttendanceSessions(courseId),
+    session?.user?.id
+      ? db.lessonProgress.findMany({
+          where: { userId: session.user.id, courseId },
+          select: { contentId: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   if (!course) {
     notFound();
   }
+
+  const completedLessonIds = completedLessons.map((l: any) => l.contentId);
 
   const activeSession = sessions.find((s) => s.isOpen && s.allowSelfCheckin) || null;
 
@@ -59,6 +70,7 @@ export default async function StudentCourseModulesPage({
         quizStatusMap={quizStatusMap}
         pinnedAnnouncement={pinnedAnnouncement}
         activeSession={activeSession}
+        completedLessonIds={completedLessonIds}
       />
     </div>
   );
