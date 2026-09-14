@@ -66,6 +66,16 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}/change-password`, request.url));
   }
 
+  // Shared authenticated routes accessible to any logged-in role
+  const sharedRoutes = ['/calendar', '/notifications', '/change-password'];
+  const isSharedRoute = sharedRoutes.some(
+    (route) => strippedPath === route || strippedPath.startsWith(route + '/')
+  );
+
+  if (isSharedRoute) {
+    return intlResponse;
+  }
+
   // Role-based route protection
   const role = session.user.role;
   const allowedPrefixes: Record<string, string[]> = {
@@ -84,11 +94,6 @@ export default async function middleware(request: NextRequest) {
     const locale = pathname.split('/')[1] || 'id';
     const homePath = roleHomePaths[role] || '/login';
     return NextResponse.redirect(new URL(`/${locale}${homePath}`, request.url));
-  }
-
-  // If trying to access change-password, allow it
-  if (strippedPath.startsWith('/change-password')) {
-    return intlResponse;
   }
 
   if (!hasAccess) {
