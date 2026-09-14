@@ -21,6 +21,7 @@ import { Link } from '@/i18n/navigation';
 import { getUserGamificationProfile } from '@/lib/actions/gamification';
 import { BADGE_CATALOG } from '@/lib/gamification-constants';
 import { Flame, Medal, Award } from 'lucide-react';
+import { MiniCalendarWidget } from '@/components/calendar/mini-calendar-widget';
 
 export default async function StudentDashboard() {
   const session = await auth();
@@ -282,64 +283,72 @@ export default async function StudentDashboard() {
         </Card>
       )}
 
-      {/* Courses Grid */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#002446]">Mata Pelajaran Saya</h2>
-          <Link href="/student/my-courses">
-            <Button variant="ghost" size="sm" className="text-xs text-blue-700 hover:text-blue-900">
-              Lihat Semua ({enrollmentCount}) &rarr;
-            </Button>
-          </Link>
+      {/* Content Layout: Courses (Left 2 cols) & Mini Calendar Widget (Right 1 col) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Courses Grid */}
+        <div className="lg:col-span-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[#002446]">Mata Pelajaran Saya</h2>
+            <Link href="/student/my-courses">
+              <Button variant="ghost" size="sm" className="text-xs text-blue-700 hover:text-blue-900">
+                Lihat Semua ({enrollmentCount}) &rarr;
+              </Button>
+            </Link>
+          </div>
+
+          {enrollments.length === 0 ? (
+            <Card className="p-8 text-center text-gray-400">
+              <BookOpen className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+              <p className="text-sm">Anda belum terdaftar pada mata pelajaran manapun.</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {enrollments.map((enr) => {
+                const c = enr.course;
+                return (
+                  <Card key={c.id} className="hover:shadow-md transition-all border flex flex-col justify-between">
+                    <CardHeader className="p-4 pb-2 space-y-1">
+                      <span className="text-[11px] font-semibold text-[#FF8928] uppercase">
+                        {c.category?.name || 'Mata Pelajaran'}
+                      </span>
+                      <CardTitle className="text-base font-bold text-[#002446] line-clamp-1">
+                        {c.title}
+                      </CardTitle>
+                      <p className="text-xs text-gray-500">
+                        Guru: <strong>{c.teacher.name}</strong>
+                      </p>
+                    </CardHeader>
+
+                    <CardContent className="p-4 pt-0">
+                      <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t">
+                        <span>{c._count.modules} Modul Materi</span>
+                        <span>{c.academicYear?.name}</span>
+                      </div>
+                    </CardContent>
+
+                    <div className="p-4 pt-0">
+                      <Link href={`/student/course/${c.id}/modules`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs border-[#002446]/30 text-[#002446] hover:bg-[#002446] hover:text-white font-semibold flex items-center justify-center gap-1"
+                        >
+                          <span>Buka Materi</span>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {enrollments.length === 0 ? (
-          <Card className="p-8 text-center text-gray-400">
-            <BookOpen className="h-10 w-10 mx-auto text-gray-300 mb-2" />
-            <p className="text-sm">Anda belum terdaftar pada mata pelajaran manapun.</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {enrollments.map((enr) => {
-              const c = enr.course;
-              return (
-                <Card key={c.id} className="hover:shadow-md transition-all border flex flex-col justify-between">
-                  <CardHeader className="p-4 pb-2 space-y-1">
-                    <span className="text-[11px] font-semibold text-[#FF8928] uppercase">
-                      {c.category?.name || 'Mata Pelajaran'}
-                    </span>
-                    <CardTitle className="text-base font-bold text-[#002446] line-clamp-1">
-                      {c.title}
-                    </CardTitle>
-                    <p className="text-xs text-gray-500">
-                      Guru: <strong>{c.teacher.name}</strong>
-                    </p>
-                  </CardHeader>
-
-                  <CardContent className="p-4 pt-0">
-                    <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t">
-                      <span>{c._count.modules} Modul Materi</span>
-                      <span>{c.academicYear?.name}</span>
-                    </div>
-                  </CardContent>
-
-                  <div className="p-4 pt-0">
-                    <Link href={`/student/course/${c.id}/modules`}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-xs border-[#002446]/30 text-[#002446] hover:bg-[#002446] hover:text-white font-semibold flex items-center justify-center gap-1"
-                      >
-                        <span>Buka Materi</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+        {/* Sidebar Mini Calendar */}
+        <div className="space-y-4">
+          <MiniCalendarWidget />
+        </div>
       </div>
     </div>
   );

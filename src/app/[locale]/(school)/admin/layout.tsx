@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import {
   LayoutDashboard,
   Calendar,
+  CalendarDays,
   FolderTree,
   BookOpen,
   Users,
@@ -33,6 +34,7 @@ export default async function AdminLayout({
     { label: t('cohorts'), href: '/admin/cohorts', icon: <UsersRound className="h-5 w-5" /> },
     { label: t('users'), href: '/admin/users', icon: <Users className="h-5 w-5" /> },
     { label: t('courseRequests'), href: '/admin/course-requests', icon: <FileCheck className="h-5 w-5" /> },
+    { label: 'Kalender Akademik', href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
     { label: t('settings'), href: '/admin/settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
