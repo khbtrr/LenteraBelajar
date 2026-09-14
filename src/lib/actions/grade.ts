@@ -21,6 +21,12 @@ export interface CourseGradebookData {
     academicYear: { name: string };
     category: { name: string } | null;
   };
+  modules?: Array<{
+    id: string;
+    title: string;
+    quizzes: Array<{ id: string; title: string }>;
+    assignments: Array<{ id: string; title: string; maxScore: number }>;
+  }>;
   quizzes: Array<{ id: string; title: string }>;
   assignments: Array<{ id: string; title: string; maxScore: number }>;
   students: StudentGradeItem[];
@@ -180,6 +186,12 @@ export async function getCourseGradebook(courseId: string): Promise<CourseGradeb
       academicYear: { name: course.academicYear.name },
       category: course.category ? { name: course.category.name } : null,
     },
+    modules: course.modules.map((m) => ({
+      id: m.id,
+      title: m.title,
+      quizzes: m.quizzes.map((q) => ({ id: q.id, title: q.title })),
+      assignments: m.assignments.map((a) => ({ id: a.id, title: a.title, maxScore: a.maxScore })),
+    })),
     quizzes,
     assignments,
     students,

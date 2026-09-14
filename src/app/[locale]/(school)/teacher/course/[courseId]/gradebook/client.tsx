@@ -1,16 +1,19 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { CourseGradebookData } from '@/lib/actions/grade';
 import { exportToExcel, exportToCsv } from '@/lib/export';
+import { EraporAutofillModal } from '@/components/gradebook/erapor-autofill-modal';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Download, FileSpreadsheet, Search, Trophy, CheckCircle2, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Download, FileSpreadsheet, Search, Trophy, CheckCircle2, TrendingUp, Sparkles } from 'lucide-react';
 
 export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) {
   const [search, setSearch] = useState('');
+  const [isEraporModalOpen, setIsEraporModalOpen] = useState(false);
 
   const filteredStudents = data.students.filter(
     (s) =>
@@ -85,13 +88,23 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => setIsEraporModalOpen(true)}
+            className="bg-linear-to-r from-[#002446] to-[#013567] hover:from-[#001b33] hover:to-[#002446] text-white flex items-center gap-2 text-sm font-bold shadow-sm border border-[#FF8928]/40"
+          >
+            <Sparkles className="h-4 w-4 text-[#FF8928]" />
+            <span>Auto-Fill Template e-Rapor</span>
+            <Badge className="bg-[#FF8928] text-white text-[9px] px-1.5 py-0 uppercase">Baru</Badge>
+          </Button>
+
           <Button
             onClick={handleExportExcel}
-            className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 text-sm"
+            variant="outline"
+            className="border-[#002446]/30 text-[#002446] hover:bg-gray-100 flex items-center gap-2 text-sm"
           >
-            <FileSpreadsheet className="h-4 w-4 text-[#FF8928]" />
-            Ekspor Excel (.xlsx)
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+            Rekap Excel (.xlsx)
           </Button>
           <Button
             onClick={handleExportCsv}
@@ -311,6 +324,13 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal Auto-Fill e-Rapor */}
+      <EraporAutofillModal
+        isOpen={isEraporModalOpen}
+        onClose={() => setIsEraporModalOpen(false)}
+        gradebookData={data}
+      />
     </div>
   );
 }
