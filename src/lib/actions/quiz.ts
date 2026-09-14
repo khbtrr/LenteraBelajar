@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { QuestionType, GradeType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { createBulkNotifications } from './notification';
 
 export async function getQuizById(quizId: string) {
   const session = await requireAuth();
@@ -87,6 +88,32 @@ export async function createQuiz(data: {
       } : undefined
     },
   });
+
+  // Notify enrolled students
+  try {
+    const moduleData = await db.module.findUnique({
+      where: { id: data.moduleId },
+      include: {
+        course: {
+          include: {
+            enrollments: { select: { userId: true } },
+          },
+        },
+      },
+    });
+
+    if (moduleData && moduleData.course.enrollments.length > 0) {
+      const studentIds = moduleData.course.enrollments.map((e) => e.userId);
+      await createBulkNotifications(studentIds, {
+        title: `Kuis Baru: ${quiz.title}`,
+        message: `Kuis baru telah diterbitkan di ${moduleData.course.title}${quiz.duration ? ` (${quiz.duration} menit)` : ''}${quiz.deadline ? `. Batas pengerjaan: ${new Date(quiz.deadline).toLocaleDateString('id-ID')}` : ''}.`,
+        type: 'QUIZ',
+        link: `/student/course/${moduleData.course.id}/quiz/${quiz.id}`,
+      });
+    }
+  } catch (err) {
+    console.error('Failed to notify students on createQuiz:', err);
+  }
 
   revalidatePath('/[locale]/teacher/course/[courseId]/modules', 'page');
   return quiz;

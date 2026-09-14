@@ -3,6 +3,7 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { createNotification } from './notification';
 
 export interface StudentGradeItem {
   id: string;
@@ -333,6 +334,19 @@ export async function gradeAssignmentSubmission(
     },
   });
 
+  // Notify student
+  try {
+    await createNotification({
+      userId: submission.userId,
+      title: `Nilai Tugas Keluar: ${submission.assignment.title}`,
+      message: `Guru telah memberikan nilai: ${data.score}/${submission.assignment.maxScore}${data.teacherNote ? `. Catatan: "${data.teacherNote}"` : ''}`,
+      type: 'GRADE',
+      link: `/student/course/${submission.assignment.module.courseId}/assignment/${submission.assignment.id}`,
+    });
+  } catch (err) {
+    console.error('Failed to notify student on gradeAssignmentSubmission:', err);
+  }
+
   revalidatePath(`/teacher/course/${submission.assignment.module.courseId}/submissions/${submission.assignmentId}`);
   revalidatePath(`/teacher/course/${submission.assignment.module.courseId}/gradebook`);
   return updated;
@@ -459,6 +473,21 @@ export async function gradeQuizEssayAnswer(
       sourceId: answer.attempt.quizId,
     },
   });
+
+  // Notify student if all essay answers have been graded
+  if (allGraded) {
+    try {
+      await createNotification({
+        userId: answer.attempt.userId,
+        title: `Koreksi Kuis Selesai: ${answer.attempt.quiz.title}`,
+        message: `Guru telah selesai menilai jawaban essay Anda. Nilai akhir: ${finalPercentage}/100.`,
+        type: 'GRADE',
+        link: `/student/course/${answer.attempt.quiz.module.courseId}/quiz/${answer.attempt.quiz.id}`,
+      });
+    } catch (err) {
+      console.error('Failed to notify student on gradeQuizEssayAnswer:', err);
+    }
+  }
 
   revalidatePath(`/teacher/course/${answer.attempt.quiz.module.courseId}/quiz-attempts/${answer.attempt.quizId}`);
   revalidatePath(`/teacher/course/${answer.attempt.quiz.module.courseId}/gradebook`);

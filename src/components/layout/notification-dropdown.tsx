@@ -147,6 +147,17 @@ export function NotificationDropdown() {
             ))
           )}
         </div>
+
+        <div className="p-2 border-t bg-gray-50/80 text-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/notifications')}
+            className="w-full text-xs text-[#002446] hover:text-[#002446] hover:bg-gray-100 font-bold"
+          >
+            Lihat Semua Riwayat Notifikasi &rarr;
+          </Button>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

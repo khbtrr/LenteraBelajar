@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
+import { createNotification, createBulkNotifications } from './notification';
 
 export async function getAssignmentById(assignmentId: string) {
   const session = await requireAuth();
@@ -65,6 +66,32 @@ export async function createAssignment(data: {
       order: count,
     },
   });
+
+  // Notify enrolled students
+  try {
+    const moduleData = await db.module.findUnique({
+      where: { id: data.moduleId },
+      include: {
+        course: {
+          include: {
+            enrollments: { select: { userId: true } },
+          },
+        },
+      },
+    });
+
+    if (moduleData && moduleData.course.enrollments.length > 0) {
+      const studentIds = moduleData.course.enrollments.map((e) => e.userId);
+      await createBulkNotifications(studentIds, {
+        title: `Tugas Baru: ${assignment.title}`,
+        message: `Guru telah menambahkan tugas baru di ${moduleData.course.title}${assignment.deadline ? `. Batas pengumpulan: ${new Date(assignment.deadline).toLocaleDateString('id-ID')}` : ''}.`,
+        type: 'ASSIGNMENT',
+        link: `/student/course/${moduleData.course.id}/assignment/${assignment.id}`,
+      });
+    }
+  } catch (err) {
+    console.error('Failed to notify students on createAssignment:', err);
+  }
 
   revalidatePath('/[locale]/teacher/course/[courseId]/modules', 'page');
   return assignment;
@@ -153,6 +180,34 @@ export async function submitAssignment(data: {
         submittedAt: new Date(),
       },
     });
+  }
+
+  // Notify course teacher
+  try {
+    const assignment = await db.assignment.findUnique({
+      where: { id: data.assignmentId },
+      include: {
+        module: {
+          include: {
+            course: {
+              select: { id: true, title: true, teacherId: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (assignment?.module.course.teacherId) {
+      await createNotification({
+        userId: assignment.module.course.teacherId,
+        title: `Pengumpulan Tugas: ${session.user.name}`,
+        message: `Siswa telah mengumpulkan tugas "${assignment.title}" pada mata pelajaran ${assignment.module.course.title}.`,
+        type: 'SUBMISSION',
+        link: `/teacher/course/${assignment.module.course.id}/submissions/${assignment.id}`,
+      });
+    }
+  } catch (err) {
+    console.error('Failed to notify teacher on submitAssignment:', err);
   }
 
   revalidatePath('/[locale]/student/course/[courseId]/assignment/[assignmentId]', 'page');

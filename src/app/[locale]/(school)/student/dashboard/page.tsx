@@ -1,8 +1,23 @@
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getStudentUpcomingDeadlines } from '@/lib/actions/notification';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  BookOpen,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  ArrowRight,
+  ClipboardList,
+  HelpCircle,
+  Calendar,
+  Sparkles,
+  CheckCircle2,
+} from 'lucide-react';
+import { Link } from '@/i18n/navigation';
 
 export default async function StudentDashboard() {
   const session = await auth();
@@ -10,35 +25,247 @@ export default async function StudentDashboard() {
 
   if (!session?.user) return null;
 
-  const enrollmentCount = await db.enrollment.count({
-    where: { userId: session.user.id },
-  });
+  const [enrollments, upcomingDeadlines] = await Promise.all([
+    db.enrollment.findMany({
+      where: { userId: session.user.id },
+      include: {
+        course: {
+          include: {
+            teacher: { select: { id: true, name: true } },
+            category: { select: { name: true } },
+            academicYear: { select: { name: true } },
+            _count: { select: { modules: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+    }),
+    getStudentUpcomingDeadlines(),
+  ]);
+
+  const enrollmentCount = enrollments.length;
+  const urgentCount = upcomingDeadlines.filter((d) => d.isUrgent).length;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#002446]">
-        {t('welcome', { name: session.user.name })}
-      </h1>
+      {/* Welcome Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r from-[#002446] to-[#013567] text-white p-6 rounded-2xl shadow-sm">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-[#FF8928]" />
+            <h1 className="text-2xl font-bold">
+              {t('welcome', { name: session.user.name })}
+            </h1>
+          </div>
+          <p className="text-xs text-white/80">
+            Selamat datang di Portal Belajar Anda. Periksa materi terbaru, kuis, dan tugas yang harus dikumpulkan.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
+        <Link href="/student/my-courses">
+          <Button className="bg-[#FF8928] hover:bg-[#ff7b10] text-white font-bold text-xs shrink-0">
+            Lihat Semua Course
+          </Button>
+        </Link>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="bg-white border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">{t('totalCourses')}</CardTitle>
-            <BookOpen className="h-5 w-5 text-[#FF8928]" />
+            <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {t('totalCourses')}
+            </CardTitle>
+            <BookOpen className="h-4 w-4 text-[#002446]" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-[#002446]">{enrollmentCount}</p>
+            <p className="text-2xl font-black text-[#002446]">{enrollmentCount}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Mata pelajaran terdaftar</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="bg-white border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">{t('activeCourses')}</CardTitle>
-            <CheckCircle className="h-5 w-5 text-[#FF8928]" />
+            <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Tenggat Mendekati (&lt; 48 Jam)
+            </CardTitle>
+            <Clock className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-[#002446]">{enrollmentCount}</p>
+            <p className="text-2xl font-black text-amber-600">{upcomingDeadlines.length}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Tugas & kuis belum dikumpulkan</p>
           </CardContent>
         </Card>
+
+        <Card className="bg-white border shadow-xs">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Sangat Mendesak (&le; 24 Jam)
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-rose-600" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-black text-rose-600">{urgentCount}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Jatuh tempo hari ini</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* WIDGET: UPCOMING DEADLINES (< 48 JAM) */}
+      {upcomingDeadlines.length > 0 && (
+        <Card className="border-2 border-amber-300/80 bg-linear-to-b from-amber-50/40 to-white shadow-sm overflow-hidden">
+          <CardHeader className="pb-3 border-b bg-amber-50/60 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-600 animate-pulse" />
+              <div>
+                <CardTitle className="text-base font-bold text-[#002446]">
+                  Tenggat Waktu Mendesak (&lt; 48 Jam)
+                </CardTitle>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Segera selesaikan tugas atau kuis berikut sebelum batas waktu berakhir.
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-amber-600 text-white text-xs font-bold px-2.5 py-0.5">
+              {upcomingDeadlines.length} Menunggu
+            </Badge>
+          </CardHeader>
+
+          <CardContent className="p-0 divide-y divide-gray-100">
+            {upcomingDeadlines.map((item) => {
+              const isQuiz = item.type === 'QUIZ';
+
+              return (
+                <div
+                  key={`${item.type}-${item.id}`}
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-amber-50/30 transition-colors"
+                >
+                  <div className="flex items-start gap-3 flex-1">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        isQuiz ? 'bg-orange-100 text-[#FF8928]' : 'bg-purple-100 text-purple-700'
+                      }`}
+                    >
+                      {isQuiz ? <HelpCircle className="h-5 w-5" /> : <ClipboardList className="h-5 w-5" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-gray-900">{item.title}</span>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${
+                            isQuiz
+                              ? 'border-orange-300 text-orange-700 bg-orange-50'
+                              : 'border-purple-300 text-purple-700 bg-purple-50'
+                          }`}
+                        >
+                          {isQuiz ? 'Kuis CBT' : 'Tugas'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Mata Pelajaran: <strong>{item.courseTitle}</strong> • Batas:{' '}
+                        {new Date(item.deadline).toLocaleString('id-ID', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                    <Badge
+                      className={`text-xs font-bold px-2 py-1 ${
+                        item.isUrgent
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}
+                    >
+                      {item.hoursLeft <= 1 ? 'Sisa < 1 Jam!' : `Sisa ${item.hoursLeft} Jam`}
+                    </Badge>
+
+                    <Link href={item.link}>
+                      <Button
+                        size="sm"
+                        className={`text-xs font-bold text-white flex items-center gap-1.5 ${
+                          item.isUrgent
+                            ? 'bg-rose-600 hover:bg-rose-700'
+                            : 'bg-[#FF8928] hover:bg-[#ff7b10]'
+                        }`}
+                      >
+                        <span>Kerjakan Sekarang</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Courses Grid */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-[#002446]">Mata Pelajaran Saya</h2>
+          <Link href="/student/my-courses">
+            <Button variant="ghost" size="sm" className="text-xs text-blue-700 hover:text-blue-900">
+              Lihat Semua ({enrollmentCount}) &rarr;
+            </Button>
+          </Link>
+        </div>
+
+        {enrollments.length === 0 ? (
+          <Card className="p-8 text-center text-gray-400">
+            <BookOpen className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+            <p className="text-sm">Anda belum terdaftar pada mata pelajaran manapun.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {enrollments.map((enr) => {
+              const c = enr.course;
+              return (
+                <Card key={c.id} className="hover:shadow-md transition-all border flex flex-col justify-between">
+                  <CardHeader className="p-4 pb-2 space-y-1">
+                    <span className="text-[11px] font-semibold text-[#FF8928] uppercase">
+                      {c.category?.name || 'Mata Pelajaran'}
+                    </span>
+                    <CardTitle className="text-base font-bold text-[#002446] line-clamp-1">
+                      {c.title}
+                    </CardTitle>
+                    <p className="text-xs text-gray-500">
+                      Guru: <strong>{c.teacher.name}</strong>
+                    </p>
+                  </CardHeader>
+
+                  <CardContent className="p-4 pt-0">
+                    <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t">
+                      <span>{c._count.modules} Modul Materi</span>
+                      <span>{c.academicYear?.name}</span>
+                    </div>
+                  </CardContent>
+
+                  <div className="p-4 pt-0">
+                    <Link href={`/student/course/${c.id}/modules`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs border-[#002446]/30 text-[#002446] hover:bg-[#002446] hover:text-white font-semibold flex items-center justify-center gap-1"
+                      >
+                        <span>Buka Materi</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

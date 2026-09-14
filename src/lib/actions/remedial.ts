@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
+import { createBulkNotifications } from './notification';
 
 export interface RemedialStudentInfo {
   userId: string;
@@ -241,6 +242,20 @@ export async function generateRemedialQuiz(data: {
       questions: true,
     },
   });
+
+  // Notify targeted remedial students
+  try {
+    if (data.targetStudentIds && data.targetStudentIds.length > 0) {
+      await createBulkNotifications(data.targetStudentIds, {
+        title: `Program Remedial: ${remedialQuiz.title}`,
+        message: `Anda didaftarkan pada kuis remedial untuk ${parentQuiz.title}. Silakan kerjakan untuk memperbaiki nilai Anda.`,
+        type: 'REMEDIAL',
+        link: `/student/course/${parentQuiz.module.courseId}/quiz/${remedialQuiz.id}`,
+      });
+    }
+  } catch (err) {
+    console.error('Failed to notify remedial students on generateRemedialQuiz:', err);
+  }
 
   revalidatePath(`/teacher/course/${parentQuiz.module.courseId}/modules`);
   revalidatePath(`/teacher/course/${parentQuiz.module.courseId}/quiz-attempts/${parentQuiz.id}`);
