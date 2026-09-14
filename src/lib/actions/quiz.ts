@@ -262,6 +262,9 @@ export async function getQuizStatusForStudent(quizId: string) {
         where: { userId: session.user.id },
         orderBy: { startedAt: 'desc' },
       },
+      parentQuiz: {
+        select: { id: true, title: true, passingGrade: true }
+      }
     },
   });
 
@@ -297,6 +300,15 @@ export async function getQuizStatusForStudent(quizId: string) {
     status = 'IN_PROGRESS';
   }
 
+  // Check if targeted for remedial
+  let isTargeted = true;
+  if (quiz.isRemedial && quiz.targetStudentIds) {
+    const targetIds = Array.isArray(quiz.targetStudentIds) ? (quiz.targetStudentIds as string[]) : [];
+    if (targetIds.length > 0) {
+      isTargeted = targetIds.includes(session.user.id);
+    }
+  }
+
   return {
     status,
     submittedCount,
@@ -312,6 +324,9 @@ export async function getQuizStatusForStudent(quizId: string) {
     requireToken: quiz.requireToken,
     enableLockdown: quiz.enableLockdown,
     maxTabSwitches: quiz.maxTabSwitches,
+    isRemedial: quiz.isRemedial,
+    parentQuiz: quiz.parentQuiz,
+    isTargeted,
   };
 }
 
@@ -329,6 +344,14 @@ export async function startOrGetQuizAttempt(quizId: string, token?: string) {
   });
 
   if (!quiz) throw new Error('Quiz not found');
+
+  // Check remedial eligibility
+  if (quiz.isRemedial && quiz.targetStudentIds) {
+    const targetIds = Array.isArray(quiz.targetStudentIds) ? (quiz.targetStudentIds as string[]) : [];
+    if (targetIds.length > 0 && !targetIds.includes(session.user.id)) {
+      throw new Error('Anda tidak terdaftar sebagai peserta kuis remedial ini.');
+    }
+  }
 
   // Check deadline
   if (quiz.deadline && new Date() > new Date(quiz.deadline)) {
@@ -521,6 +544,7 @@ export async function submitQuizAttempt(
         include: {
           questions: true,
           module: true,
+          parentQuiz: true,
         },
       },
     },
@@ -607,6 +631,12 @@ export async function submitQuizAttempt(
 
   // Record into Grade table if fully graded
   if (isFullyGraded) {
+    const isRemedial = attempt.quiz.isRemedial && !!attempt.quiz.parentQuiz;
+    const targetQuizTitle = isRemedial ? attempt.quiz.parentQuiz!.title : attempt.quiz.title;
+    const passingLimit = isRemedial && attempt.quiz.parentQuiz?.passingGrade 
+      ? attempt.quiz.parentQuiz.passingGrade 
+      : 100;
+
     // Find all submitted attempts for this user and quiz to get the best score
     const allAttempts = await db.quizAttempt.findMany({
       where: {
@@ -617,28 +647,32 @@ export async function submitQuizAttempt(
       }
     });
     
-    const bestScore = Math.max(...allAttempts.map(a => a.score as number), currentAttemptScore as number);
+    let bestScore = Math.max(...allAttempts.map(a => a.score as number), currentAttemptScore as number);
+    if (isRemedial) {
+      bestScore = Math.min(bestScore, passingLimit);
+    }
 
     const existingGrade = await db.grade.findFirst({
        where: {
           userId: session.user.id,
           courseId: attempt.quiz.module.courseId,
           type: GradeType.QUIZ,
-          label: attempt.quiz.title
+          label: targetQuizTitle
        }
     });
 
     if (existingGrade) {
+       const finalScore = isRemedial ? Math.max(existingGrade.score, bestScore) : bestScore;
        await db.grade.update({
          where: { id: existingGrade.id },
-         data: { score: bestScore, sourceId: attempt.id }
+         data: { score: finalScore, sourceId: attempt.id }
        });
     } else {
        await db.grade.create({
          data: {
            courseId: attempt.quiz.module.courseId,
            userId: session.user.id,
-           label: attempt.quiz.title,
+           label: targetQuizTitle,
            score: bestScore,
            maxScore: 100,
            type: GradeType.QUIZ,

@@ -1153,6 +1153,11 @@ export function TeacherCourseModulesClient({
                                   Lockdown CBT
                                 </Badge>
                               )}
+                              {q.isRemedial && (
+                                <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-900 border border-amber-300">
+                                  Remedial
+                                </Badge>
+                              )}
                             </div>
                           </div>
 

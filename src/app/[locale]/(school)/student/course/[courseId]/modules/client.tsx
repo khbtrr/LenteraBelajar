@@ -301,8 +301,13 @@ export function StudentCourseModulesClient({
                         <Card key={quiz.id} className={`border ${statusType === 'EXPIRED' ? 'border-red-200 bg-red-50/30' : statusType === 'COMPLETED' ? 'border-green-200 bg-green-50/20' : 'border-amber-200 bg-amber-50/30'} hover:shadow-md transition-all`}>
                           <CardHeader className="p-4 pb-2">
                             <div className="flex items-center justify-between">
-                              <CardTitle className="text-base font-bold text-[#002446]">
-                                {quiz.title}
+                              <CardTitle className="text-base font-bold text-[#002446] flex items-center gap-2">
+                                <span>{quiz.title}</span>
+                                {quiz.isRemedial && (
+                                  <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-900 border border-amber-300">
+                                    Remedial
+                                  </Badge>
+                                )}
                               </CardTitle>
                               {/* Status Badge */}
                               {statusType === 'NOT_STARTED' && (
@@ -359,7 +364,11 @@ export function StudentCourseModulesClient({
                             )}
 
                             {/* Action Button */}
-                            {statusType === 'EXPIRED' ? (
+                            {status?.isTargeted === false ? (
+                              <Button size="sm" disabled className="w-full bg-gray-200 text-gray-500 cursor-not-allowed">
+                                Bukan Peserta Remedial
+                              </Button>
+                            ) : statusType === 'EXPIRED' ? (
                               <Button size="sm" disabled className="w-full bg-gray-200 text-gray-500 cursor-not-allowed">
                                 Batas Waktu Habis
                               </Button>

@@ -277,15 +277,21 @@ model Quiz {
   token            String?
   enableLockdown   Boolean  @default(false)
   maxTabSwitches   Int      @default(3)
+  isRemedial       Boolean  @default(false)
+  parentQuizId     String?
+  targetStudentIds Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   module                Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  parentQuiz            Quiz?               @relation("QuizRemedials", fields: [parentQuizId], references: [id], onDelete: SetNull)
+  remedials             Quiz[]              @relation("QuizRemedials")
   questions             QuizQuestion[]
   attempts              QuizAttempt[]
   questionBankSelections QuizBankSelection[]
 
   @@index([moduleId])
+  @@index([parentQuizId])
 }
 
 model QuizQuestion {

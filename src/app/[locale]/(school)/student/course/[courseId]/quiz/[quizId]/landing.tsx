@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Clock, Calendar, HelpCircle, ArrowLeft, ArrowRight, Trophy, AlertTriangle, CheckCircle2, XCircle, Target, RotateCcw, KeyRound, Shield, ShieldAlert } from 'lucide-react';
+import { Clock, Calendar, HelpCircle, ArrowLeft, ArrowRight, Trophy, AlertTriangle, CheckCircle2, XCircle, Target, RotateCcw, KeyRound, Shield, ShieldAlert, Sparkles } from 'lucide-react';
 import { startOrGetQuizAttempt } from '@/lib/actions/quiz';
 import { StudentQuizClient } from './client';
 import { Link } from '@/i18n/navigation';
@@ -114,6 +114,34 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
             <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
               <Target className="h-4 w-4 text-blue-600" />
               Nilai Minimal Lulus (KKM): <strong>{quiz.passingGrade}</strong>
+            </div>
+          )}
+
+          {(quiz.isRemedial || status.isRemedial) && (
+            <div className="flex items-start gap-3 p-3.5 bg-amber-500/10 border border-amber-300 rounded-lg text-amber-900 text-sm">
+              <Sparkles className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold flex items-center gap-2">
+                  <span>Program Remedial Terarah</span>
+                  <Badge className="bg-amber-600 text-white hover:bg-amber-700 text-[10px] uppercase">Remedial</Badge>
+                </div>
+                <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                  Kuis ini diselenggarakan sebagai perbaikan kompetensi{status.parentQuiz?.title ? ` untuk ujian "${status.parentQuiz.title}"` : ''}. 
+                  Nilai yang diperoleh akan dicatat ke Buku Nilai dengan batas maksimal sebesar KKM (<strong>{status.parentQuiz?.passingGrade || quiz.passingGrade || 75}</strong>).
+                </p>
+              </div>
+            </div>
+          )}
+
+          {status.isTargeted === false && (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-sm flex items-center gap-3">
+              <ShieldAlert className="h-5 w-5 shrink-0 text-rose-600" />
+              <div>
+                <div className="font-bold">Bukan Peserta Remedial</div>
+                <div className="text-xs text-rose-700 mt-0.5">
+                  Kuis ini dikhususkan bagi siswa yang terdaftar dalam program remedial. Akun Anda tidak termasuk dalam daftar target kuis ini.
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
@@ -227,7 +255,11 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
 
       {/* Action Button */}
       <div className="flex justify-center">
-        {status.status === 'EXPIRED' ? (
+        {status.isTargeted === false ? (
+          <Button disabled size="lg" className="bg-gray-300 text-gray-600 cursor-not-allowed px-12">
+            Bukan Peserta Remedial
+          </Button>
+        ) : status.status === 'EXPIRED' ? (
           <Button disabled size="lg" className="bg-gray-300 text-gray-600 cursor-not-allowed px-12">
             Batas Waktu Habis
           </Button>
