@@ -796,13 +796,14 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
 
       {/* Add/Edit Question Modal */}
       <Dialog open={isQuestionModalOpen} onOpenChange={setIsQuestionModalOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-[700px] max-h-[90vh] overflow-y-auto overflow-x-hidden p-6">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] p-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border">
+          <DialogHeader className="p-5 sm:p-6 pb-3 border-b border-gray-100 shrink-0 bg-white">
             <DialogTitle className="text-xl font-bold text-[#002446]">
               {editingQuestion ? 'Edit Soal' : 'Tambah Soal Baru'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-5 py-3">
+
+          <div className="p-5 sm:p-6 py-4 overflow-y-auto overflow-x-hidden flex-1 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Tipe Soal</Label>
@@ -1043,9 +1044,11 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsQuestionModalOpen(false)} disabled={loading}>Batal</Button>
-            <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white" onClick={handleSaveQuestion} disabled={loading}>
+          <DialogFooter className="p-4 sm:px-6 border-t border-gray-100 bg-gray-50/90 shrink-0 flex items-center justify-end gap-2.5">
+            <Button variant="outline" onClick={() => setIsQuestionModalOpen(false)} disabled={loading}>
+              Batal
+            </Button>
+            <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium" onClick={handleSaveQuestion} disabled={loading}>
               {loading ? 'Menyimpan...' : 'Simpan Soal'}
             </Button>
           </DialogFooter>
@@ -1054,11 +1057,11 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
 
       {/* Import Modal */}
       <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] p-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border">
+          <DialogHeader className="p-5 sm:p-6 pb-3 border-b border-gray-100 shrink-0 bg-white">
             <DialogTitle className="text-xl font-bold text-[#002446]">Impor Soal dari Word</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="p-5 sm:p-6 py-4 overflow-y-auto overflow-x-hidden flex-1 space-y-4">
             <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-4">
               <div className="flex flex-col items-center justify-center">
                 <FileUp className="w-10 h-10 text-slate-300 mb-2" />
@@ -1140,11 +1143,11 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="p-4 sm:px-6 border-t border-gray-100 bg-gray-50/90 shrink-0 flex items-center justify-end gap-2.5">
             <Button variant="outline" onClick={() => { setIsImportModalOpen(false); setImportPreview([]); setImportWarnings([]); setImportFile(null); }} disabled={loading}>
               Batal
             </Button>
-            <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white" onClick={handleConfirmImport} disabled={loading || importPreview.length === 0}>
+            <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium" onClick={handleConfirmImport} disabled={loading || importPreview.length === 0}>
               {loading ? 'Mengimpor...' : `Konfirmasi Impor (${importPreview.length} Soal)`}
             </Button>
           </DialogFooter>
