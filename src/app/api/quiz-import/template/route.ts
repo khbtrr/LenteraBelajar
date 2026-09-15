@@ -44,6 +44,12 @@ export async function GET() {
               text: '- Soal Cerita / Wacana Multi-Soal: Gunakan awalan dengan rentang nomor soal, contoh: [Cerita: 5-7] Teks bacaan... [/Cerita] atau [Wacana untuk soal 5-7]. Teks wacana otomatis hanya disematkan pada nomor soal terkait dan otomatis selesai di nomor berikutnya.',
             }),
             new Paragraph({
+              text: '- Soal Audio (Listening): Tambahkan tag [Audio: url-audio.mp3] atau [Audio: url-audio.mp3, maxPlay: 2] untuk membatasi putaran 2 kali. Bisa ditaruh di butir soal atau di dalam [Wacana].',
+            }),
+            new Paragraph({
+              text: '- Soal Video: Tambahkan tag [Video: url-video.mp4] atau [YouTube: https://youtube.com/watch?v=...].',
+            }),
+            new Paragraph({
               text: '- Beri jarak 1 baris kosong antar butir soal.',
             }),
             new Paragraph({
@@ -74,14 +80,17 @@ export async function GET() {
             new Paragraph({ text: 'Poin: 10' }),
             new Paragraph({ text: '' }),
 
-            // Soal 3
+            // Soal 3 (Listening Audio Example)
             new Paragraph({
-              text: '3. Planet terdekat dari matahari dalam tata surya kita adalah...',
+              text: '3. [Audio: https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg, maxPlay: 2]',
             }),
-            new Paragraph({ text: 'A. *Merkurius' }),
-            new Paragraph({ text: 'B. Venus' }),
-            new Paragraph({ text: 'C. Bumi' }),
-            new Paragraph({ text: 'D. Mars' }),
+            new Paragraph({
+              text: 'Listen to the audio clip above. Where does the dialogue take place?',
+            }),
+            new Paragraph({ text: 'A. Airport' }),
+            new Paragraph({ text: 'B. *Coffee shop' }),
+            new Paragraph({ text: 'C. Hospital' }),
+            new Paragraph({ text: 'D. Library' }),
             new Paragraph({ text: 'Poin: 10' }),
             new Paragraph({ text: '' }),
 

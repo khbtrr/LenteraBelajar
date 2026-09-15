@@ -11,7 +11,26 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from '@/i18n/navigation';
-import { ArrowLeft, Plus, Trash2, Pencil, FileUp, FileDown, HelpCircle, BookOpen, Search, CheckCircle2, AlertTriangle, Database, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Pencil,
+  FileUp,
+  FileDown,
+  HelpCircle,
+  BookOpen,
+  Search,
+  CheckCircle2,
+  AlertTriangle,
+  Database,
+  AlertCircle,
+  Headphones,
+  Video,
+  UploadCloud,
+  Link2,
+} from 'lucide-react';
+import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
 import {
   createQuestionBankCategory,
   updateQuestionBankCategory,
@@ -21,6 +40,57 @@ import {
   deleteBankQuestion,
   bulkAddQuestionsToBank,
 } from '@/lib/actions/question-bank';
+
+function extractMediaFromText(text: string) {
+  if (!text) return { type: 'NONE' as const, url: '', maxPlay: null, cleanText: '' };
+
+  const audioPlaceholder = text.match(/<div class="quiz-media-audio[^"]*"\s+data-src="([^"]+)"(?:\s+data-max-play="(\d+)")?[^>]*><\/div>/i);
+  const audioTag = text.match(/\[(?:Audio|Suara):\s*([^,\]]+)(?:,\s*(?:maxPlay|putar):\s*(\d+))?\]/i);
+
+  if (audioPlaceholder) {
+    return {
+      type: 'AUDIO' as const,
+      url: audioPlaceholder[1],
+      maxPlay: audioPlaceholder[2] ? parseInt(audioPlaceholder[2], 10) : null,
+      cleanText: text.replace(audioPlaceholder[0], '').trim(),
+    };
+  }
+  if (audioTag) {
+    return {
+      type: 'AUDIO' as const,
+      url: audioTag[1].trim(),
+      maxPlay: audioTag[2] ? parseInt(audioTag[2], 10) : null,
+      cleanText: text.replace(audioTag[0], '').trim(),
+    };
+  }
+
+  const videoPlaceholder = text.match(/<div class="quiz-media-video[^"]*"\s+data-src="([^"]+)"[^>]*><\/div>/i);
+  const videoTag = text.match(/\[(?:Video|YouTube|Tonton):\s*([^\]]+)\]/i);
+
+  if (videoPlaceholder) {
+    return {
+      type: 'VIDEO' as const,
+      url: videoPlaceholder[1],
+      maxPlay: null,
+      cleanText: text.replace(videoPlaceholder[0], '').trim(),
+    };
+  }
+  if (videoTag) {
+    return {
+      type: 'VIDEO' as const,
+      url: videoTag[1].trim(),
+      maxPlay: null,
+      cleanText: text.replace(videoTag[0], '').trim(),
+    };
+  }
+
+  return {
+    type: 'NONE' as const,
+    url: '',
+    maxPlay: null,
+    cleanText: text,
+  };
+}
 
 type Option = { id?: string; text: string; isCorrect: boolean };
 type Question = {
@@ -80,6 +150,13 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
     { id: 'A', text: '', isCorrect: true },
     { id: 'B', text: '', isCorrect: false },
   ]);
+
+  // Media States for Question (Audio / Video)
+  const [mediaType, setMediaType] = useState<'NONE' | 'AUDIO' | 'VIDEO'>('NONE');
+  const [mediaSourceType, setMediaSourceType] = useState<'UPLOAD' | 'URL'>('UPLOAD');
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaMaxPlay, setMediaMaxPlay] = useState<string>('unlimited');
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
   // Import Modal States
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -192,28 +269,77 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
     setQuestionText('');
     setQuestionPoints(10);
     setQuestionOptions([{ text: '', isCorrect: true }, { text: '', isCorrect: false }]);
+    setMediaType('NONE');
+    setMediaSourceType('UPLOAD');
+    setMediaUrl('');
+    setMediaMaxPlay('unlimited');
     setIsQuestionModalOpen(true);
   };
 
   const openEditQuestion = (q: Question) => {
     setEditingQuestion(q);
     setQuestionType(q.type);
-    setQuestionText(q.text);
     setQuestionPoints(q.points);
     if (q.type === 'MULTIPLE_CHOICE' && q.options) {
       setQuestionOptions(q.options);
     } else {
       setQuestionOptions([{ text: '', isCorrect: true }, { text: '', isCorrect: false }]);
     }
+
+    const extracted = extractMediaFromText(q.text);
+    setMediaType(extracted.type);
+    setMediaUrl(extracted.url);
+    setMediaMaxPlay(extracted.maxPlay ? String(extracted.maxPlay) : 'unlimited');
+    setQuestionText(extracted.cleanText);
+    setMediaSourceType(extracted.url.startsWith('/api/files/') ? 'UPLOAD' : 'URL');
+
     setIsQuestionModalOpen(true);
+  };
+
+  const handleUploadMediaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingMedia(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Gagal mengunggah berkas media');
+      }
+      const data = await res.json();
+      setMediaUrl(data.url);
+    } catch (err: any) {
+      console.error(err);
+      setNoticeModal({
+        title: 'Upload Gagal',
+        message: err?.message || 'Gagal mengunggah berkas audio/video.',
+        type: 'error',
+      });
+    } finally {
+      setIsUploadingMedia(false);
+    }
   };
 
   const handleSaveQuestion = async () => {
     if (!questionText.trim()) return;
     setLoading(true);
     try {
+      let finalText = questionText.trim();
+      if (mediaType === 'AUDIO' && mediaUrl.trim()) {
+        const limitAttr = mediaMaxPlay !== 'unlimited' && Number(mediaMaxPlay) > 0 ? ` data-max-play="${mediaMaxPlay}"` : '';
+        finalText = `${finalText}\n<div class="quiz-media-audio my-3" data-src="${mediaUrl.trim()}"${limitAttr}></div>`;
+      } else if (mediaType === 'VIDEO' && mediaUrl.trim()) {
+        finalText = `${finalText}\n<div class="quiz-media-video my-3" data-src="${mediaUrl.trim()}"></div>`;
+      }
+
       const data = {
-        text: questionText,
+        text: finalText,
         type: questionType,
         points: questionPoints,
         categoryId: selectedCategoryId === 'uncategorized' ? null : selectedCategoryId,
@@ -618,6 +744,16 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                           <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">
                             {q.points} Poin
                           </Badge>
+                          {q.text && (q.text.includes('quiz-media-audio') || /\[(?:Audio|Suara):/i.test(q.text)) && (
+                            <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300 text-xs flex items-center gap-1">
+                              <Headphones className="w-3 h-3" /> Listening
+                            </Badge>
+                          )}
+                          {q.text && (q.text.includes('quiz-media-video') || /\[(?:Video|YouTube):/i.test(q.text)) && (
+                            <Badge className="bg-rose-100 text-rose-800 border-rose-300 text-xs flex items-center gap-1">
+                              <Video className="w-3 h-3" /> Video
+                            </Badge>
+                          )}
                           {q.categoryId && (
                             <Badge variant="secondary" className="bg-slate-100">
                               {categories.find((c: any) => c.id === q.categoryId)?.name || 'Kategori'}
@@ -634,7 +770,7 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                         </div>
                       </div>
 
-                      <div className="text-slate-800 line-clamp-2" dangerouslySetInnerHTML={{ __html: q.text }} />
+                      <QuestionTextRenderer text={q.text} questionId={q.id} className="text-slate-800" />
 
                       {q.type === 'MULTIPLE_CHOICE' && q.options && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
@@ -695,6 +831,136 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                 onChange={(e) => setQuestionText(e.target.value)} 
                 disabled={loading}
               />
+            </div>
+
+            {/* Media Audio / Video Attachment */}
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-bold text-[#002446] flex items-center gap-2">
+                  <Headphones className="w-4 h-4 text-[#FF8928]" />
+                  Media Soal (Listening / Video)
+                </Label>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={mediaType === 'NONE' ? 'default' : 'outline'}
+                    className={`h-7 text-xs ${mediaType === 'NONE' ? 'bg-[#002446] text-white' : 'text-gray-600'}`}
+                    onClick={() => {
+                      setMediaType('NONE');
+                      setMediaUrl('');
+                    }}
+                  >
+                    Tanpa Media
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={mediaType === 'AUDIO' ? 'default' : 'outline'}
+                    className={`h-7 text-xs ${mediaType === 'AUDIO' ? 'bg-indigo-600 text-white' : 'text-gray-600'}`}
+                    onClick={() => setMediaType('AUDIO')}
+                  >
+                    <Headphones className="w-3.5 h-3.5 mr-1" /> Audio
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={mediaType === 'VIDEO' ? 'default' : 'outline'}
+                    className={`h-7 text-xs ${mediaType === 'VIDEO' ? 'bg-rose-600 text-white' : 'text-gray-600'}`}
+                    onClick={() => setMediaType('VIDEO')}
+                  >
+                    <Video className="w-3.5 h-3.5 mr-1" /> Video
+                  </Button>
+                </div>
+              </div>
+
+              {mediaType !== 'NONE' && (
+                <div className="space-y-3 pt-2 border-t border-gray-200">
+                  {/* Source Toggle */}
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className="text-gray-500 font-medium">Sumber:</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="qbMediaSource"
+                        checked={mediaSourceType === 'UPLOAD'}
+                        onChange={() => setMediaSourceType('UPLOAD')}
+                        className="text-[#002446]"
+                      />
+                      <span>Upload Berkas ({mediaType === 'AUDIO' ? 'MP3/WAV' : 'MP4/WebM'})</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="qbMediaSource"
+                        checked={mediaSourceType === 'URL'}
+                        onChange={() => setMediaSourceType('URL')}
+                        className="text-[#002446]"
+                      />
+                      <span>Tautan URL {mediaType === 'VIDEO' ? '/ YouTube' : ''}</span>
+                    </label>
+                  </div>
+
+                  {/* Input Source */}
+                  {mediaSourceType === 'UPLOAD' ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept={mediaType === 'AUDIO' ? 'audio/*' : 'video/*'}
+                        onChange={handleUploadMediaFile}
+                        disabled={isUploadingMedia || loading}
+                        className="text-xs"
+                      />
+                      {isUploadingMedia && <span className="text-xs text-amber-600 font-medium animate-pulse">Mengunggah...</span>}
+                    </div>
+                  ) : (
+                    <Input
+                      type="url"
+                      placeholder={mediaType === 'AUDIO' ? 'https://example.com/audio.mp3' : 'https://www.youtube.com/watch?v=... atau link video'}
+                      value={mediaUrl}
+                      onChange={(e) => setMediaUrl(e.target.value)}
+                      className="text-xs"
+                    />
+                  )}
+
+                  {mediaUrl && (
+                    <div className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded border border-emerald-200 truncate flex items-center justify-between">
+                      <span className="truncate">Media aktif: <strong>{mediaUrl}</strong></span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setMediaUrl('')}
+                        className="h-5 px-2 text-[10px] text-red-600 hover:bg-red-100"
+                      >
+                        Hapus
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Max plays setting for Audio */}
+                  {mediaType === 'AUDIO' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <Label className="text-xs text-gray-600">Batas Pemutaran Siswa (Listening Quota)</Label>
+                        <select
+                          value={mediaMaxPlay}
+                          onChange={(e) => setMediaMaxPlay(e.target.value)}
+                          className="w-full mt-1 h-9 rounded-md border border-gray-300 px-3 text-xs bg-white"
+                        >
+                          <option value="unlimited">Bebas Putar (Tanpa Batas)</option>
+                          <option value="1">Maksimal 1 Kali Putar</option>
+                          <option value="2">Maksimal 2 Kali Putar (Standar Ujian)</option>
+                          <option value="3">Maksimal 3 Kali Putar</option>
+                        </select>
+                      </div>
+                      <p className="text-[11px] text-gray-500 self-end pb-1">
+                        Siswa tidak dapat mengulang audio setelah kuota putar yang ditentukan habis.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {questionType === 'MULTIPLE_CHOICE' && (

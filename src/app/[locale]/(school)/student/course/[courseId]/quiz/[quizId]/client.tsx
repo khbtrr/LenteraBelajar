@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Clock, CheckCircle2, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Send, LayoutGrid, AlertCircle, ShieldAlert, Maximize2, ShieldCheck, Lock } from 'lucide-react';
 import { submitQuizAttempt } from '@/lib/actions/quiz';
 import { recordTabSwitch, pingAttemptHeartbeat } from '@/lib/actions/proctor';
+import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
 import { Link } from '@/i18n/navigation';
 
 interface QuestionOption {
@@ -525,9 +526,11 @@ export function StudentQuizClient({
       </CardHeader>
 
       <CardContent className="p-5 pt-0 space-y-4">
-        <div
+        <QuestionTextRenderer
+          text={q.text}
+          questionId={q.id}
+          attemptId={initialAttempt.id}
           className="text-base text-gray-800 font-medium leading-relaxed whitespace-pre-line [&_img]:max-w-full [&_img]:max-h-96 [&_img]:rounded-lg [&_img]:my-3 [&_img]:border [&_img]:border-gray-200 [&_img]:shadow-xs"
-          dangerouslySetInnerHTML={{ __html: q.text }}
         />
 
         {/* Multiple Choice Options */}

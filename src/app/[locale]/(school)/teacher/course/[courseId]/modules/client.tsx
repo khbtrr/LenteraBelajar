@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
   BookOpen,
@@ -42,11 +43,63 @@ import {
   X,
   Edit,
   Shield,
-  ShieldAlert,
+  Headphones,
   KeyRound,
   RefreshCw,
 } from 'lucide-react';
+import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
 import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
+
+function extractMediaFromText(text: string) {
+  if (!text) return { type: 'NONE' as const, url: '', maxPlay: null, cleanText: '' };
+
+  const audioPlaceholder = text.match(/<div class="quiz-media-audio[^"]*"\s+data-src="([^"]+)"(?:\s+data-max-play="(\d+)")?[^>]*><\/div>/i);
+  const audioTag = text.match(/\[(?:Audio|Suara):\s*([^,\]]+)(?:,\s*(?:maxPlay|putar):\s*(\d+))?\]/i);
+
+  if (audioPlaceholder) {
+    return {
+      type: 'AUDIO' as const,
+      url: audioPlaceholder[1],
+      maxPlay: audioPlaceholder[2] ? parseInt(audioPlaceholder[2], 10) : null,
+      cleanText: text.replace(audioPlaceholder[0], '').trim(),
+    };
+  }
+  if (audioTag) {
+    return {
+      type: 'AUDIO' as const,
+      url: audioTag[1].trim(),
+      maxPlay: audioTag[2] ? parseInt(audioTag[2], 10) : null,
+      cleanText: text.replace(audioTag[0], '').trim(),
+    };
+  }
+
+  const videoPlaceholder = text.match(/<div class="quiz-media-video[^"]*"\s+data-src="([^"]+)"[^>]*><\/div>/i);
+  const videoTag = text.match(/\[(?:Video|YouTube|Tonton):\s*([^\]]+)\]/i);
+
+  if (videoPlaceholder) {
+    return {
+      type: 'VIDEO' as const,
+      url: videoPlaceholder[1],
+      maxPlay: null,
+      cleanText: text.replace(videoPlaceholder[0], '').trim(),
+    };
+  }
+  if (videoTag) {
+    return {
+      type: 'VIDEO' as const,
+      url: videoTag[1].trim(),
+      maxPlay: null,
+      cleanText: text.replace(videoTag[0], '').trim(),
+    };
+  }
+
+  return {
+    type: 'NONE' as const,
+    url: '',
+    maxPlay: null,
+    cleanText: text,
+  };
+}
 import { createQuiz, deleteQuiz, addQuizQuestion, updateQuizQuestion, getQuizWithQuestions } from '@/lib/actions/quiz';
 import { getQuestionBankByCategory } from '@/lib/actions/question-bank';
 import { createAssignment, updateAssignment, deleteAssignment } from '@/lib/actions/assignment';
@@ -177,6 +230,13 @@ export function TeacherCourseModulesClient({
     { id: 'D', text: '', isCorrect: false },
   ]);
 
+  // Media states for new draft question
+  const [qMediaType, setQMediaType] = useState<'NONE' | 'AUDIO' | 'VIDEO'>('NONE');
+  const [qMediaSource, setQMediaSource] = useState<'UPLOAD' | 'URL'>('UPLOAD');
+  const [qMediaUrl, setQMediaUrl] = useState('');
+  const [qMediaMaxPlay, setQMediaMaxPlay] = useState<string>('unlimited');
+  const [qIsUploading, setQIsUploading] = useState(false);
+
   // Bank Soal Selection States inside Quiz Creation
   const [quizInputMode, setQuizInputMode] = useState<'manual' | 'bank'>('manual');
   const [bankData, setBankData] = useState<{ categories: any[]; uncategorized: any[] } | null>(null);
@@ -186,6 +246,11 @@ export function TeacherCourseModulesClient({
   // Edit Question Modal State
   const [editingQuiz, setEditingQuiz] = useState<any>(null);
   const [editQuestionModal, setEditQuestionModal] = useState<{ id?: string; questionId?: string; type: QuestionType; text: string; points: number; options: any[] } | null>(null);
+  const [editQMediaType, setEditQMediaType] = useState<'NONE' | 'AUDIO' | 'VIDEO'>('NONE');
+  const [editQMediaSource, setEditQMediaSource] = useState<'UPLOAD' | 'URL'>('UPLOAD');
+  const [editQMediaUrl, setEditQMediaUrl] = useState('');
+  const [editQMediaMaxPlay, setEditQMediaMaxPlay] = useState<string>('unlimited');
+  const [editQIsUploading, setEditQIsUploading] = useState(false);
 
   // Delete Quiz Confirmation Modal State
   const [quizToDelete, setQuizToDelete] = useState<{
@@ -401,6 +466,14 @@ export function TeacherCourseModulesClient({
   const handleAddQuestionToQuizDraft = () => {
     if (!qText.trim()) return;
 
+    let finalText = qText.trim();
+    if (qMediaType === 'AUDIO' && qMediaUrl.trim()) {
+      const limitAttr = qMediaMaxPlay !== 'unlimited' && Number(qMediaMaxPlay) > 0 ? ` data-max-play="${qMediaMaxPlay}"` : '';
+      finalText = `${finalText}\n<div class="quiz-media-audio my-3" data-src="${qMediaUrl.trim()}"${limitAttr}></div>`;
+    } else if (qMediaType === 'VIDEO' && qMediaUrl.trim()) {
+      finalText = `${finalText}\n<div class="quiz-media-video my-3" data-src="${qMediaUrl.trim()}"></div>`;
+    }
+
     if (qType === QuestionType.MULTIPLE_CHOICE) {
       const validOptions = mcOptions.filter((o) => o.text.trim());
       if (validOptions.length < 2) {
@@ -423,22 +496,79 @@ export function TeacherCourseModulesClient({
       
       setQuestions((prev) => [
         ...prev,
-        { type: QuestionType.MULTIPLE_CHOICE, text: qText, points: Number(qPoints), options: validOptions },
+        { type: QuestionType.MULTIPLE_CHOICE, text: finalText, points: Number(qPoints), options: validOptions },
       ]);
     } else {
       setQuestions((prev) => [
         ...prev,
-        { type: QuestionType.ESSAY, text: qText, points: Number(qPoints), options: [] },
+        { type: QuestionType.ESSAY, text: finalText, points: Number(qPoints), options: [] },
       ]);
     }
 
     setQText('');
+    setQMediaType('NONE');
+    setQMediaUrl('');
+    setQMediaMaxPlay('unlimited');
     setMcOptions([
       { id: 'A', text: '', isCorrect: true },
       { id: 'B', text: '', isCorrect: false },
       { id: 'C', text: '', isCorrect: false },
       { id: 'D', text: '', isCorrect: false },
     ]);
+  };
+
+  const handleUploadDraftMediaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setQIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Gagal mengunggah berkas');
+      }
+      const data = await res.json();
+      setQMediaUrl(data.url);
+    } catch (err: any) {
+      console.error(err);
+      setNoticeModal({
+        title: 'Upload Gagal',
+        message: err?.message || 'Gagal mengunggah media audio/video.',
+        type: 'error',
+      });
+    } finally {
+      setQIsUploading(false);
+    }
+  };
+
+  const handleUploadEditQMediaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setEditQIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Gagal mengunggah berkas');
+      }
+      const data = await res.json();
+      setEditQMediaUrl(data.url);
+    } catch (err: any) {
+      console.error(err);
+      setNoticeModal({
+        title: 'Upload Gagal',
+        message: err?.message || 'Gagal mengunggah media audio/video.',
+        type: 'error',
+      });
+    } finally {
+      setEditQIsUploading(false);
+    }
   };
 
   const handleFetchBankData = async () => {
@@ -870,6 +1000,22 @@ export function TeacherCourseModulesClient({
     }
   };
 
+  const handleOpenEditQuestionModal = (q: any) => {
+    const extracted = extractMediaFromText(q.text);
+    setEditQMediaType(extracted.type);
+    setEditQMediaUrl(extracted.url);
+    setEditQMediaMaxPlay(extracted.maxPlay ? String(extracted.maxPlay) : 'unlimited');
+    setEditQMediaSource(extracted.url.startsWith('/api/files/') ? 'UPLOAD' : 'URL');
+    setEditQuestionModal({
+      id: q.id,
+      questionId: q.id,
+      type: q.type,
+      text: extracted.cleanText,
+      points: q.points,
+      options: q.options || [],
+    });
+  };
+
   const handleSaveEditedQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editQuestionModal || !editingQuiz) return;
@@ -902,8 +1048,16 @@ export function TeacherCourseModulesClient({
         return;
       }
 
+      let finalText = editQuestionModal.text.trim();
+      if (editQMediaType === 'AUDIO' && editQMediaUrl.trim()) {
+        const limitAttr = editQMediaMaxPlay !== 'unlimited' && Number(editQMediaMaxPlay) > 0 ? ` data-max-play="${editQMediaMaxPlay}"` : '';
+        finalText = `${finalText}\n<div class="quiz-media-audio my-3" data-src="${editQMediaUrl.trim()}"${limitAttr}></div>`;
+      } else if (editQMediaType === 'VIDEO' && editQMediaUrl.trim()) {
+        finalText = `${finalText}\n<div class="quiz-media-video my-3" data-src="${editQMediaUrl.trim()}"></div>`;
+      }
+
       await updateQuizQuestion(questionId, {
-        text: editQuestionModal.text,
+        text: finalText,
         points: editQuestionModal.points,
         options: opts
       });
@@ -1742,6 +1896,133 @@ export function TeacherCourseModulesClient({
                       />
                       <p className="text-[10px] text-gray-500">Default: 10 poin</p>
                     </div>
+                  </div>
+
+                  {/* Media Soal (Listening Audio / Video) */}
+                  <div className="p-3 rounded-lg border border-gray-200 bg-white space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold text-[#002446] flex items-center gap-1.5">
+                        <Headphones className="w-3.5 h-3.5 text-[#FF8928]" />
+                        Media Soal (Audio / Video)
+                      </Label>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={qMediaType === 'NONE' ? 'default' : 'outline'}
+                          className={`h-6 text-[11px] px-2 ${qMediaType === 'NONE' ? 'bg-[#002446] text-white' : 'text-gray-600'}`}
+                          onClick={() => {
+                            setQMediaType('NONE');
+                            setQMediaUrl('');
+                          }}
+                        >
+                          Tanpa Media
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={qMediaType === 'AUDIO' ? 'default' : 'outline'}
+                          className={`h-6 text-[11px] px-2 ${qMediaType === 'AUDIO' ? 'bg-indigo-600 text-white' : 'text-gray-600'}`}
+                          onClick={() => setQMediaType('AUDIO')}
+                        >
+                          <Headphones className="w-3 h-3 mr-1" /> Audio
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={qMediaType === 'VIDEO' ? 'default' : 'outline'}
+                          className={`h-6 text-[11px] px-2 ${qMediaType === 'VIDEO' ? 'bg-rose-600 text-white' : 'text-gray-600'}`}
+                          onClick={() => setQMediaType('VIDEO')}
+                        >
+                          <Video className="w-3 h-3 mr-1" /> Video
+                        </Button>
+                      </div>
+                    </div>
+
+                    {qMediaType !== 'NONE' && (
+                      <div className="space-y-2 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="text-gray-500 font-medium">Sumber:</span>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="qDraftMediaSource"
+                              checked={qMediaSource === 'UPLOAD'}
+                              onChange={() => setQMediaSource('UPLOAD')}
+                              className="text-[#002446]"
+                            />
+                            <span>Upload ({qMediaType === 'AUDIO' ? 'MP3/WAV' : 'MP4/WebM'})</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="qDraftMediaSource"
+                              checked={qMediaSource === 'URL'}
+                              onChange={() => setQMediaSource('URL')}
+                              className="text-[#002446]"
+                            />
+                            <span>URL {qMediaType === 'VIDEO' ? '/ YouTube' : ''}</span>
+                          </label>
+                        </div>
+
+                        {qMediaSource === 'UPLOAD' ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="file"
+                              accept={qMediaType === 'AUDIO' ? 'audio/*' : 'video/*'}
+                              onChange={handleUploadDraftMediaFile}
+                              disabled={qIsUploading || loading}
+                              className="text-xs h-8"
+                            />
+                            {qIsUploading && <span className="text-xs text-amber-600 animate-pulse">Mengunggah...</span>}
+                          </div>
+                        ) : (
+                          <Input
+                            type="url"
+                            placeholder={qMediaType === 'AUDIO' ? 'https://example.com/audio.mp3' : 'https://www.youtube.com/watch?v=... atau link video'}
+                            value={qMediaUrl}
+                            onChange={(e) => setQMediaUrl(e.target.value)}
+                            className="text-xs h-8"
+                          />
+                        )}
+
+                        {qMediaUrl && (
+                          <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1.5 rounded border border-emerald-200 truncate flex items-center justify-between">
+                            <span className="truncate">Media aktif: <strong>{qMediaUrl}</strong></span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setQMediaUrl('')}
+                              className="h-5 px-1.5 text-[10px] text-red-600 hover:bg-red-100"
+                            >
+                              Hapus
+                            </Button>
+                          </div>
+                        )}
+
+                        {qMediaType === 'AUDIO' && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <div>
+                              <Label className="text-[11px] text-gray-600">Batas Putar Siswa (Listening Quota)</Label>
+                              <select
+                                value={qMediaMaxPlay}
+                                onChange={(e) => setQMediaMaxPlay(e.target.value)}
+                                className="w-full mt-0.5 h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                              >
+                                <option value="unlimited">Bebas Putar (Tanpa Batas)</option>
+                                <option value="1">Maksimal 1 Kali Putar</option>
+                                <option value="2">Maksimal 2 Kali Putar</option>
+                                <option value="3">Maksimal 3 Kali Putar</option>
+                              </select>
+                            </div>
+                            <p className="text-[10px] text-gray-500 self-end pb-1">
+                              Audio terkunci saat kuota putar siswa habis.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {qType === QuestionType.MULTIPLE_CHOICE && (
@@ -2623,32 +2904,41 @@ export function TeacherCourseModulesClient({
           <div className="py-4 flex-1 overflow-y-auto space-y-4">
             <h4 className="font-bold text-sm">Daftar Soal</h4>
             <div className="divide-y border rounded-lg bg-white">
-              {editingQuiz?.questions?.map((q: any, idx: number) => (
-                <div key={q.id} className="p-3 text-sm flex items-center justify-between">
-                  <div>
-                    <span className="font-bold mr-2 text-[#002446]">#{idx + 1}</span>
-                    <Badge variant="outline" className="mr-2 text-[10px]">
-                      {q.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
-                    </Badge>
-                    <span className="text-gray-800">{q.text.substring(0, 50)}{q.text.length > 50 ? '...' : ''}</span>
+              {editingQuiz?.questions?.map((q: any, idx: number) => {
+                const extracted = extractMediaFromText(q.text);
+                return (
+                  <div key={q.id} className="p-3 text-sm flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold mr-1 text-[#002446]">#{idx + 1}</span>
+                      <Badge variant="outline" className="mr-1 text-[10px]">
+                        {q.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+                      </Badge>
+                      {extracted.type === 'AUDIO' && (
+                        <Badge className="mr-1 text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1">
+                          <Headphones className="w-3 h-3" />
+                          Listening
+                          {extracted.maxPlay ? ` (${extracted.maxPlay}x)` : ''}
+                        </Badge>
+                      )}
+                      {extracted.type === 'VIDEO' && (
+                        <Badge className="mr-1 text-[10px] bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1">
+                          <Video className="w-3 h-3" />
+                          Video
+                        </Badge>
+                      )}
+                      <span className="text-gray-800">{extracted.cleanText.substring(0, 50)}{extracted.cleanText.length > 50 ? '...' : ''}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenEditQuestionModal(q)}
+                      className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100"
+                    >
+                      Edit Soal
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setEditQuestionModal({
-                      id: q.id,
-                      questionId: q.id,
-                      type: q.type,
-                      text: q.text,
-                      points: q.points,
-                      options: q.options || []
-                    })}
-                    className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100"
-                  >
-                    Edit Soal
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
               {editingQuiz?.questions?.length === 0 && (
                 <div className="p-4 text-center text-gray-500 text-sm">Belum ada soal.</div>
               )}
@@ -2677,11 +2967,139 @@ export function TeacherCourseModulesClient({
               <div className="space-y-4 py-4 flex-1 overflow-y-auto pr-1">
                 <div className="space-y-2">
                   <Label>Pertanyaan</Label>
-                  <Input
+                  <Textarea
+                    rows={3}
                     value={editQuestionModal.text}
                     onChange={(e) => setEditQuestionModal({ ...editQuestionModal, text: e.target.value })}
                     required
                   />
+                </div>
+
+                {/* Media Soal (Audio Listening / Video) */}
+                <div className="p-3 rounded-lg border border-gray-200 bg-gray-50/50 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-[#002446] flex items-center gap-1.5">
+                      <Headphones className="w-3.5 h-3.5 text-[#FF8928]" />
+                      Media Soal (Audio / Video)
+                    </Label>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={editQMediaType === 'NONE' ? 'default' : 'outline'}
+                        className={`h-6 text-[11px] px-2 ${editQMediaType === 'NONE' ? 'bg-[#002446] text-white' : 'text-gray-600'}`}
+                        onClick={() => {
+                          setEditQMediaType('NONE');
+                          setEditQMediaUrl('');
+                        }}
+                      >
+                        Tanpa Media
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={editQMediaType === 'AUDIO' ? 'default' : 'outline'}
+                        className={`h-6 text-[11px] px-2 ${editQMediaType === 'AUDIO' ? 'bg-indigo-600 text-white' : 'text-gray-600'}`}
+                        onClick={() => setEditQMediaType('AUDIO')}
+                      >
+                        <Headphones className="w-3 h-3 mr-1" /> Audio
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={editQMediaType === 'VIDEO' ? 'default' : 'outline'}
+                        className={`h-6 text-[11px] px-2 ${editQMediaType === 'VIDEO' ? 'bg-rose-600 text-white' : 'text-gray-600'}`}
+                        onClick={() => setEditQMediaType('VIDEO')}
+                      >
+                        <Video className="w-3 h-3 mr-1" /> Video
+                      </Button>
+                    </div>
+                  </div>
+
+                  {editQMediaType !== 'NONE' && (
+                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="text-gray-500 font-medium">Sumber:</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="editQMediaSource"
+                            checked={editQMediaSource === 'UPLOAD'}
+                            onChange={() => setEditQMediaSource('UPLOAD')}
+                            className="text-[#002446]"
+                          />
+                          <span>Upload ({editQMediaType === 'AUDIO' ? 'MP3/WAV' : 'MP4/WebM'})</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="editQMediaSource"
+                            checked={editQMediaSource === 'URL'}
+                            onChange={() => setEditQMediaSource('URL')}
+                            className="text-[#002446]"
+                          />
+                          <span>URL {editQMediaType === 'VIDEO' ? '/ YouTube' : ''}</span>
+                        </label>
+                      </div>
+
+                      {editQMediaSource === 'UPLOAD' ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept={editQMediaType === 'AUDIO' ? 'audio/*' : 'video/*'}
+                            onChange={handleUploadEditQMediaFile}
+                            disabled={editQIsUploading || loading}
+                            className="text-xs h-8 bg-white"
+                          />
+                          {editQIsUploading && <span className="text-xs text-amber-600 animate-pulse">Mengunggah...</span>}
+                        </div>
+                      ) : (
+                        <Input
+                          type="url"
+                          placeholder={editQMediaType === 'AUDIO' ? 'https://example.com/audio.mp3' : 'https://www.youtube.com/watch?v=... atau link video'}
+                          value={editQMediaUrl}
+                          onChange={(e) => setEditQMediaUrl(e.target.value)}
+                          className="text-xs h-8 bg-white"
+                        />
+                      )}
+
+                      {editQMediaUrl && (
+                        <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1.5 rounded border border-emerald-200 truncate flex items-center justify-between">
+                          <span className="truncate">Media aktif: <strong>{editQMediaUrl}</strong></span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditQMediaUrl('')}
+                            className="h-5 px-1.5 text-[10px] text-red-600 hover:bg-red-100"
+                          >
+                            Hapus
+                          </Button>
+                        </div>
+                      )}
+
+                      {editQMediaType === 'AUDIO' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                          <div>
+                            <Label className="text-[11px] text-gray-600">Batas Putar Siswa (Listening Quota)</Label>
+                            <select
+                              value={editQMediaMaxPlay}
+                              onChange={(e) => setEditQMediaMaxPlay(e.target.value)}
+                              className="w-full mt-0.5 h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                            >
+                              <option value="unlimited">Bebas Putar (Tanpa Batas)</option>
+                              <option value="1">Maksimal 1 Kali Putar</option>
+                              <option value="2">Maksimal 2 Kali Putar</option>
+                              <option value="3">Maksimal 3 Kali Putar</option>
+                            </select>
+                          </div>
+                          <p className="text-[10px] text-gray-500 self-end pb-1">
+                            Audio terkunci saat kuota putar siswa habis.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2">

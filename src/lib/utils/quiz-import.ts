@@ -245,12 +245,35 @@ export async function parseDocxQuestions(
   return { questions, warnings };
 }
 
+export function replaceMediaTagsWithHtml(text: string): string {
+  if (!text) return '';
+
+  // Audio tag: [Audio: url] or [Audio: url, maxPlay: 2] or [Suara: url, putar: 1]
+  const audioRegex = /\[(?:Audio|Suara):\s*([^,\]]+)(?:,\s*(?:maxPlay|putar):\s*(\d+))?\]/gi;
+  let processed = text.replace(audioRegex, (_match, url, maxPlay) => {
+    const cleanUrl = url.trim();
+    const limitAttr = maxPlay ? ` data-max-play="${maxPlay.trim()}"` : '';
+    return `<div class="quiz-media-audio" data-src="${cleanUrl}"${limitAttr}></div>`;
+  });
+
+  // Video tag: [Video: url] or [YouTube: url]
+  const videoRegex = /\[(?:Video|YouTube|Tonton):\s*([^\]]+)\]/gi;
+  processed = processed.replace(videoRegex, (_match, url) => {
+    const cleanUrl = url.trim();
+    return `<div class="quiz-media-video" data-src="${cleanUrl}"></div>`;
+  });
+
+  return processed;
+}
+
 function finalizeQuestion(
   q: ParsedQuestion,
   num: number,
   warnings: string[],
   questions: ParsedQuestion[]
 ) {
+  q.text = replaceMediaTagsWithHtml(q.text);
+
   if (q.type === 'MULTIPLE_CHOICE') {
     if (q.options.length < 2) {
       warnings.push(`Soal #${num}: Membutuhkan minimal 2 opsi jawaban, soal dilewati.`);

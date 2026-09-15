@@ -27,9 +27,13 @@ export async function GET(
     else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
     else if (ext === '.png') contentType = 'image/png';
     else if (ext === '.gif') contentType = 'image/gif';
+    else if (ext === '.webp') contentType = 'image/webp';
     else if (ext === '.mp4') contentType = 'video/mp4';
     else if (ext === '.webm') contentType = 'video/webm';
     else if (ext === '.mp3') contentType = 'audio/mpeg';
+    else if (ext === '.wav') contentType = 'audio/wav';
+    else if (ext === '.ogg') contentType = 'audio/ogg';
+    else if (ext === '.m4a') contentType = 'audio/mp4';
     else if (ext === '.doc') contentType = 'application/msword';
     else if (ext === '.docx')
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -45,6 +49,7 @@ export async function GET(
       headers: {
         'Content-Type': contentType,
         'Content-Length': fileStat.size.toString(),
+        'Accept-Ranges': 'bytes',
         'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
