@@ -467,11 +467,11 @@ export function TeacherCourseModulesClient({
     if (!qText.trim()) return;
 
     let finalText = qText.trim();
+    const limitAttr = qMediaMaxPlay !== 'unlimited' && Number(qMediaMaxPlay) > 0 ? ` data-max-play="${qMediaMaxPlay}"` : '';
     if (qMediaType === 'AUDIO' && qMediaUrl.trim()) {
-      const limitAttr = qMediaMaxPlay !== 'unlimited' && Number(qMediaMaxPlay) > 0 ? ` data-max-play="${qMediaMaxPlay}"` : '';
       finalText = `${finalText}\n<div class="quiz-media-audio my-3" data-src="${qMediaUrl.trim()}"${limitAttr}></div>`;
     } else if (qMediaType === 'VIDEO' && qMediaUrl.trim()) {
-      finalText = `${finalText}\n<div class="quiz-media-video my-3" data-src="${qMediaUrl.trim()}"></div>`;
+      finalText = `${finalText}\n<div class="quiz-media-video my-3" data-src="${qMediaUrl.trim()}"${limitAttr}></div>`;
     }
 
     if (qType === QuestionType.MULTIPLE_CHOICE) {
@@ -1049,11 +1049,11 @@ export function TeacherCourseModulesClient({
       }
 
       let finalText = editQuestionModal.text.trim();
+      const limitAttr = editQMediaMaxPlay !== 'unlimited' && Number(editQMediaMaxPlay) > 0 ? ` data-max-play="${editQMediaMaxPlay}"` : '';
       if (editQMediaType === 'AUDIO' && editQMediaUrl.trim()) {
-        const limitAttr = editQMediaMaxPlay !== 'unlimited' && Number(editQMediaMaxPlay) > 0 ? ` data-max-play="${editQMediaMaxPlay}"` : '';
         finalText = `${finalText}\n<div class="quiz-media-audio my-3" data-src="${editQMediaUrl.trim()}"${limitAttr}></div>`;
       } else if (editQMediaType === 'VIDEO' && editQMediaUrl.trim()) {
-        finalText = `${finalText}\n<div class="quiz-media-video my-3" data-src="${editQMediaUrl.trim()}"></div>`;
+        finalText = `${finalText}\n<div class="quiz-media-video my-3" data-src="${editQMediaUrl.trim()}"${limitAttr}></div>`;
       }
 
       await updateQuizQuestion(questionId, {
@@ -1987,40 +1987,44 @@ export function TeacherCourseModulesClient({
                         )}
 
                         {qMediaUrl && (
-                          <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1.5 rounded border border-emerald-200 truncate flex items-center justify-between">
-                            <span className="truncate">Media aktif: <strong>{qMediaUrl}</strong></span>
+                          <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1.5 rounded-lg border border-emerald-200 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
+                            <span className="truncate min-w-0 flex-1">
+                              Media aktif: <strong className="font-mono text-[10px] break-all">{qMediaUrl}</strong>
+                            </span>
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               onClick={() => setQMediaUrl('')}
-                              className="h-5 px-1.5 text-[10px] text-red-600 hover:bg-red-100"
+                              className="h-5 px-1.5 text-[10px] text-red-600 hover:bg-red-100 shrink-0"
                             >
                               Hapus
                             </Button>
                           </div>
                         )}
 
-                        {qMediaType === 'AUDIO' && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                            <div>
-                              <Label className="text-[11px] text-gray-600">Batas Putar Siswa (Listening Quota)</Label>
-                              <select
-                                value={qMediaMaxPlay}
-                                onChange={(e) => setQMediaMaxPlay(e.target.value)}
-                                className="w-full mt-0.5 h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
-                              >
-                                <option value="unlimited">Bebas Putar (Tanpa Batas)</option>
-                                <option value="1">Maksimal 1 Kali Putar</option>
-                                <option value="2">Maksimal 2 Kali Putar</option>
-                                <option value="3">Maksimal 3 Kali Putar</option>
-                              </select>
-                            </div>
-                            <p className="text-[10px] text-gray-500 self-end pb-1">
-                              Audio terkunci saat kuota putar siswa habis.
-                            </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                          <div>
+                            <Label className="text-[11px] text-gray-600">
+                              {qMediaType === 'AUDIO' ? 'Batas Putar Siswa (Listening Quota)' : 'Batas Putar Siswa (Video Quota)'}
+                            </Label>
+                            <select
+                              value={qMediaMaxPlay}
+                              onChange={(e) => setQMediaMaxPlay(e.target.value)}
+                              className="w-full mt-0.5 h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                            >
+                              <option value="unlimited">Bebas Putar (Tanpa Batas)</option>
+                              <option value="1">Maksimal 1 Kali Putar</option>
+                              <option value="2">Maksimal 2 Kali Putar</option>
+                              <option value="3">Maksimal 3 Kali Putar</option>
+                            </select>
                           </div>
-                        )}
+                          <p className="text-[10px] text-gray-500 self-end pb-1">
+                            {qMediaType === 'AUDIO'
+                              ? 'Audio terkunci saat kuota putar siswa habis.'
+                              : 'Video terkunci saat kuota putar siswa habis.'}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -3064,24 +3068,27 @@ export function TeacherCourseModulesClient({
                       )}
 
                       {editQMediaUrl && (
-                        <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1.5 rounded border border-emerald-200 truncate flex items-center justify-between">
-                          <span className="truncate">Media aktif: <strong>{editQMediaUrl}</strong></span>
+                        <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1.5 rounded-lg border border-emerald-200 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
+                          <span className="truncate min-w-0 flex-1">
+                            Media aktif: <strong className="font-mono text-[10px] break-all">{editQMediaUrl}</strong>
+                          </span>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             onClick={() => setEditQMediaUrl('')}
-                            className="h-5 px-1.5 text-[10px] text-red-600 hover:bg-red-100"
+                            className="h-5 px-1.5 text-[10px] text-red-600 hover:bg-red-100 shrink-0"
                           >
                             Hapus
                           </Button>
                         </div>
                       )}
 
-                      {editQMediaType === 'AUDIO' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                           <div>
-                            <Label className="text-[11px] text-gray-600">Batas Putar Siswa (Listening Quota)</Label>
+                            <Label className="text-[11px] text-gray-600">
+                              {editQMediaType === 'AUDIO' ? 'Batas Putar Siswa (Listening Quota)' : 'Batas Putar Siswa (Video Quota)'}
+                            </Label>
                             <select
                               value={editQMediaMaxPlay}
                               onChange={(e) => setEditQMediaMaxPlay(e.target.value)}
@@ -3094,10 +3101,11 @@ export function TeacherCourseModulesClient({
                             </select>
                           </div>
                           <p className="text-[10px] text-gray-500 self-end pb-1">
-                            Audio terkunci saat kuota putar siswa habis.
+                            {editQMediaType === 'AUDIO'
+                              ? 'Audio terkunci saat kuota putar siswa habis.'
+                              : 'Video terkunci saat kuota putar siswa habis.'}
                           </p>
                         </div>
-                      )}
                     </div>
                   )}
                 </div>

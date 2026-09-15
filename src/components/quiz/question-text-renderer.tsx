@@ -22,14 +22,15 @@ export function preprocessQuestionMedia(text: string): string {
   let processed = text.replace(audioRegex, (_match, url, maxPlay) => {
     const cleanUrl = url.trim();
     const limitAttr = maxPlay ? ` data-max-play="${maxPlay.trim()}"` : '';
-    return `<div class="quiz-media-audio" data-src="${cleanUrl}"${limitAttr}></div>`;
+    return `<div class="quiz-media-audio my-3" data-src="${cleanUrl}"${limitAttr}></div>`;
   });
 
-  // Video tag: [Video: url] or [YouTube: url]
-  const videoRegex = /\[(?:Video|YouTube|Tonton):\s*([^\]]+)\]/gi;
-  processed = processed.replace(videoRegex, (_match, url) => {
+  // Video tag: [Video: url] or [YouTube: url] or [Video: url, maxPlay: 2]
+  const videoRegex = /\[(?:Video|YouTube|Tonton):\s*([^,\]]+)(?:,\s*(?:maxPlay|putar):\s*(\d+))?\]/gi;
+  processed = processed.replace(videoRegex, (_match, url, maxPlay) => {
     const cleanUrl = url.trim();
-    return `<div class="quiz-media-video" data-src="${cleanUrl}"></div>`;
+    const limitAttr = maxPlay ? ` data-max-play="${maxPlay.trim()}"` : '';
+    return `<div class="quiz-media-video my-3" data-src="${cleanUrl}"${limitAttr}></div>`;
   });
 
   return processed;
@@ -43,8 +44,8 @@ export function QuestionTextRenderer({
 }: QuestionTextRendererProps) {
   const processedText = preprocessQuestionMedia(text);
 
-  // Check if there are any media placeholders
-  const placeholderRegex = /<div class="quiz-media-(audio|video)"\s+data-src="([^"]+)"(?:\s+data-max-play="(\d+)")?\s*><\/div>/gi;
+  // Flexible regex to match any media div placeholder regardless of extra classes (my-3) or self-closing
+  const placeholderRegex = /<div\b[^>]*\bclass="[^"]*quiz-media-(audio|video)[^"]*"[^>]*>(?:<\/div>)?/gi;
 
   if (!placeholderRegex.test(processedText)) {
     // Fast path: No custom media placeholders, render regular HTML
@@ -67,6 +68,7 @@ export function QuestionTextRenderer({
   while ((match = placeholderRegex.exec(processedText)) !== null) {
     const matchStart = match.index;
     const matchEnd = placeholderRegex.lastIndex;
+    const fullTag = match[0];
 
     // HTML before placeholder
     if (matchStart > lastIndex) {
@@ -82,31 +84,37 @@ export function QuestionTextRenderer({
       }
     }
 
-    const mediaType = match[1];
-    const src = match[2];
-    const maxPlayStr = match[3];
-    const maxPlays = maxPlayStr ? parseInt(maxPlayStr, 10) : null;
+    const isAudio = /quiz-media-audio/i.test(fullTag);
+    const isVideo = /quiz-media-video/i.test(fullTag);
+    const srcMatch = fullTag.match(/data-src=["']([^"']+)["']/i);
+    const maxPlayMatch = fullTag.match(/data-max-play=["'](\d+)["']/i);
 
-    if (mediaType === 'audio') {
-      // Create unique hash based on src and question to track playback counts
-      const cleanSrcHash = src.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'audio';
+    const src = srcMatch ? srcMatch[1] : '';
+    const maxPlays = maxPlayMatch ? parseInt(maxPlayMatch[1], 10) : null;
+
+    if (src) {
+      const cleanSrcHash = src.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'media';
       const storageKey = `${attemptId}_${questionId}_${cleanSrcHash}`;
 
-      elements.push(
-        <QuizAudioPlayer
-          key={`audio-${partIndex++}`}
-          src={src}
-          maxPlays={maxPlays}
-          storageKey={storageKey}
-        />
-      );
-    } else if (mediaType === 'video') {
-      elements.push(
-        <QuizVideoPlayer
-          key={`video-${partIndex++}`}
-          src={src}
-        />
-      );
+      if (isAudio) {
+        elements.push(
+          <QuizAudioPlayer
+            key={`audio-${partIndex++}`}
+            src={src}
+            maxPlays={maxPlays}
+            storageKey={storageKey}
+          />
+        );
+      } else if (isVideo) {
+        elements.push(
+          <QuizVideoPlayer
+            key={`video-${partIndex++}`}
+            src={src}
+            maxPlays={maxPlays}
+            storageKey={storageKey}
+          />
+        );
+      }
     }
 
     lastIndex = matchEnd;
