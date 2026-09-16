@@ -14,7 +14,7 @@ export interface OptionStat {
 export interface QuestionAnalysisItem {
   id: string;
   order: number;
-  type: 'MULTIPLE_CHOICE' | 'ESSAY';
+  type: 'MULTIPLE_CHOICE' | 'MULTIPLE_CHOICE_COMPLEX' | 'ESSAY';
   text: string;
   points: number;
   totalAttempts: number;
@@ -103,7 +103,7 @@ export async function getItemAnalysisData(quizId: string): Promise<ItemAnalysisR
       questions: quiz.questions.map((q, idx) => ({
         id: q.id,
         order: idx + 1,
-        type: q.type as 'MULTIPLE_CHOICE' | 'ESSAY',
+        type: q.type as 'MULTIPLE_CHOICE' | 'MULTIPLE_CHOICE_COMPLEX' | 'ESSAY',
         text: q.text,
         points: q.points,
         totalAttempts: 0,
@@ -138,7 +138,7 @@ export async function getItemAnalysisData(quizId: string): Promise<ItemAnalysisR
   const questionsAnalysis: QuestionAnalysisItem[] = quiz.questions.map((question, idx) => {
     const rawOptions = (question.options as any[]) || [];
 
-    if (question.type === 'MULTIPLE_CHOICE') {
+    if (question.type === 'MULTIPLE_CHOICE' || question.type === 'MULTIPLE_CHOICE_COMPLEX') {
       // Find correct option
       const correctOption = rawOptions.find((opt) => opt.isCorrect);
       const correctOptionId = correctOption?.id;
@@ -154,10 +154,15 @@ export async function getItemAnalysisData(quizId: string): Promise<ItemAnalysisR
       attempts.forEach((att) => {
         const studentAns = att.answers.find((ans) => ans.questionId === question.id);
         if (studentAns && studentAns.answer) {
-          if (optionFrequencyMap[studentAns.answer] !== undefined) {
-            optionFrequencyMap[studentAns.answer] += 1;
-          }
-          if (studentAns.answer === correctOptionId || (studentAns.score && studentAns.score > 0)) {
+          const chosen = studentAns.answer.split(',').map((s) => s.trim());
+          chosen.forEach((c) => {
+            if (optionFrequencyMap[c] !== undefined) {
+              optionFrequencyMap[c] += 1;
+            }
+          });
+          if (studentAns.score && studentAns.score > 0) {
+            correctCount += 1;
+          } else if (question.type === 'MULTIPLE_CHOICE' && studentAns.answer === correctOptionId) {
             correctCount += 1;
           }
         }

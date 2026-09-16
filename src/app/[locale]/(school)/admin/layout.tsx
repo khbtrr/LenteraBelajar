@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
+import { db } from '@/lib/db';
 import { AppLayout } from '@/components/layout/app-layout';
 import {
   LayoutDashboard,
@@ -26,6 +27,14 @@ export default async function AdminLayout({
 
   const t = await getTranslations('sidebar');
 
+  let school = null;
+  if (session.user.schoolId) {
+    school = await db.school.findUnique({
+      where: { id: session.user.schoolId },
+      select: { name: true, logo: true },
+    });
+  }
+
   const sidebarItems = [
     { label: t('dashboard'), href: '/admin/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: t('academicYears'), href: '/admin/academic-years', icon: <Calendar className="h-5 w-5" /> },
@@ -44,6 +53,8 @@ export default async function AdminLayout({
       title="Admin Sekolah"
       userName={session.user.name}
       userRole="Administrator"
+      schoolName={school?.name}
+      schoolLogo={school?.logo}
     >
       {children}
     </AppLayout>

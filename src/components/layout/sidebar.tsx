@@ -29,9 +29,11 @@ export interface SidebarItem {
 interface SidebarProps {
   items: SidebarItem[];
   title: string;
+  schoolName?: string | null;
+  schoolLogo?: string | null;
 }
 
-export function Sidebar({ items, title }: SidebarProps) {
+export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleSidebar } = useSidebar();
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
@@ -60,13 +62,24 @@ export function Sidebar({ items, title }: SidebarProps) {
       {/* Brand Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <Link href="/" className="flex items-center gap-3 overflow-hidden">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-500 text-white shadow-sm flex-shrink-0">
-            <GraduationCap className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white text-white shadow-sm flex-shrink-0 overflow-hidden border border-gray-100 dark:border-gray-800">
+            {schoolLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={schoolLogo}
+                alt={schoolName || 'Logo Sekolah'}
+                className="w-8 h-8 object-contain"
+              />
+            ) : (
+              <div className="w-full h-full bg-[#002446] flex items-center justify-center">
+                <GraduationCap className="h-6 w-6 text-white" />
+              </div>
+            )}
           </div>
           {isSidebarVisible && (
             <div className="flex flex-col min-w-0 transition-opacity duration-200">
-              <span className="font-bold text-base text-gray-900 dark:text-white truncate">
-                LenteraBelajar
+              <span className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                {schoolName || 'LenteraBelajar'}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
                 {title}

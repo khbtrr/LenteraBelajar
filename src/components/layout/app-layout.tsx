@@ -10,6 +10,8 @@ interface AppLayoutProps {
   title: string;
   userName?: string | null;
   userRole: string;
+  schoolName?: string | null;
+  schoolLogo?: string | null;
   children: React.ReactNode;
 }
 
@@ -18,6 +20,8 @@ export function AppLayout({
   title,
   userName = 'User',
   userRole,
+  schoolName,
+  schoolLogo,
   children,
 }: AppLayoutProps) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -32,7 +36,12 @@ export function AppLayout({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col xl:flex-row">
       {/* Responsive TailAdmin Sidebar */}
-      <Sidebar items={items} title={title} />
+      <Sidebar
+        items={items}
+        title={title}
+        schoolName={schoolName}
+        schoolLogo={schoolLogo}
+      />
       
       {/* Mobile Drawer Backdrop */}
       <Backdrop />

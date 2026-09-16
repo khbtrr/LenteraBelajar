@@ -565,8 +565,19 @@ export function TeacherQuizAttemptsClient({
                             <div className="space-y-1 flex-1">
                               <p className="text-sm font-semibold text-gray-900 line-clamp-2">{q.text}</p>
                               <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <Badge variant="outline" className="text-[10px]">
-                                  {q.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] ${
+                                    q.type === 'MULTIPLE_CHOICE_COMPLEX'
+                                      ? 'border-indigo-300 text-indigo-700 bg-indigo-50 font-semibold'
+                                      : ''
+                                  }`}
+                                >
+                                  {q.type === 'MULTIPLE_CHOICE'
+                                    ? 'Pilihan Ganda'
+                                    : q.type === 'MULTIPLE_CHOICE_COMPLEX'
+                                    ? 'PG Kompleks (AKM)'
+                                    : 'Essay'}
                                 </Badge>
                                 <span>•</span>
                                 <span>{q.points} Poin</span>
@@ -612,7 +623,7 @@ export function TeacherQuizAttemptsClient({
                               <span className="font-medium text-gray-700">{q.recommendation}</span>
                             </div>
 
-                            {q.type === 'MULTIPLE_CHOICE' && q.optionsStats.length > 0 && (
+                            {(q.type === 'MULTIPLE_CHOICE' || q.type === 'MULTIPLE_CHOICE_COMPLEX') && q.optionsStats.length > 0 && (
                               <div className="space-y-2">
                                 <div className="text-xs font-bold text-gray-600 uppercase tracking-wider">
                                   Efektivitas Pengecoh / Distraktor (Sebaran Jawaban Siswa):

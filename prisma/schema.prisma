@@ -12,9 +12,22 @@ model School {
   code        String   @unique
   address     String?
   logo        String?
+  phone       String?
+  email       String?
+  website     String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Standar Akademik Default
+  defaultPassingGrade  Float?   @default(75)
+
+  // Default Keamanan & Pengaturan CBT
+  cbtLockdownEnabled   Boolean  @default(true)
+  cbtMaxTabSwitches    Int      @default(3)
+  cbtRequireToken      Boolean  @default(false)
+  cbtShuffleQuestions  Boolean  @default(false)
+  cbtShuffleOptions    Boolean  @default(false)
 
   users          User[]
   academicYears  AcademicYear[]
@@ -321,6 +334,7 @@ model QuizQuestion {
 
 enum QuestionType {
   MULTIPLE_CHOICE
+  MULTIPLE_CHOICE_COMPLEX
   ESSAY
 }
 

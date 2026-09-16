@@ -94,6 +94,43 @@ export async function POST(req: NextRequest) {
         } else {
           questionScore = 0;
         }
+      } else if (q.type === QuestionType.MULTIPLE_CHOICE_COMPLEX) {
+        let options = [];
+        if (attempt.quiz.useQuestionBank && attempt.questionSnapshot) {
+          options = q._correctData || [];
+        } else {
+          options = (q.options as any[]) || [];
+        }
+
+        let studentSelectedIds: string[] = [];
+        if (studentAns?.answer) {
+          const trimmed = studentAns.answer.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            try {
+              studentSelectedIds = (JSON.parse(trimmed) as string[]).map((s) => String(s).trim().toUpperCase());
+            } catch {
+              studentSelectedIds = trimmed.replace(/[\[\]"]/g, '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+            }
+          } else {
+            studentSelectedIds = trimmed.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+          }
+        }
+        studentSelectedIds.sort();
+
+        const correctOptions = options.filter((opt: any) => opt.isCorrect);
+        const correctOptionIds = correctOptions.map((opt: any) => String(opt.id).trim().toUpperCase()).sort();
+
+        const isAllCorrect =
+          correctOptionIds.length > 0 &&
+          studentSelectedIds.length === correctOptionIds.length &&
+          studentSelectedIds.every((val, index) => val === correctOptionIds[index]);
+
+        if (isAllCorrect) {
+          questionScore = q.points;
+          totalScore += q.points;
+        } else {
+          questionScore = 0;
+        }
       } else {
         hasEssay = true;
         questionScore = null;

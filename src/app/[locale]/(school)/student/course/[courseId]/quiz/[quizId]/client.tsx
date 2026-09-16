@@ -18,7 +18,7 @@ interface QuestionOption {
 
 interface Question {
   id: string;
-  type: 'MULTIPLE_CHOICE' | 'ESSAY';
+  type: 'MULTIPLE_CHOICE' | 'MULTIPLE_CHOICE_COMPLEX' | 'ESSAY';
   text: string;
   points: number;
   options: QuestionOption[] | null;
@@ -312,6 +312,20 @@ export function StudentQuizClient({
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
+  const handleToggleComplexAnswer = (questionId: string, optionId: string) => {
+    if (isSubmitted || isTimeUp) return;
+    const current = answers[questionId] || '';
+    const currentList = current ? current.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    let updatedList: string[];
+    if (currentList.includes(optionId)) {
+      updatedList = currentList.filter((id) => id !== optionId);
+    } else {
+      updatedList = [...currentList, optionId];
+    }
+    updatedList.sort();
+    setAnswers((prev) => ({ ...prev, [questionId]: updatedList.join(',') }));
+  };
+
   // Robust answer sender: tries REST API endpoint first to avoid Server Action deployment hash mismatch, falls back to server action
   const sendAnswersToServer = async (answersPayload: { questionId: string; answer: string }[]) => {
     try {
@@ -511,8 +525,21 @@ export function StudentQuizClient({
           <span className="flex items-center justify-center h-6 w-6 rounded bg-gray-100 text-[#002446] text-xs font-bold">
             {idx + 1}
           </span>
-          <Badge variant="outline" className="text-xs">
-            {q.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+          <Badge
+            variant="outline"
+            className={
+              q.type === 'MULTIPLE_CHOICE'
+                ? 'border-blue-200 text-blue-700 bg-blue-50 text-xs'
+                : q.type === 'MULTIPLE_CHOICE_COMPLEX'
+                ? 'border-indigo-200 text-indigo-700 bg-indigo-50 text-xs font-semibold'
+                : 'border-purple-200 text-purple-700 bg-purple-50 text-xs'
+            }
+          >
+            {q.type === 'MULTIPLE_CHOICE'
+              ? 'Pilihan Ganda'
+              : q.type === 'MULTIPLE_CHOICE_COMPLEX'
+              ? 'PG Kompleks (Bisa pilih > 1)'
+              : 'Essay'}
           </Badge>
           {answers[q.id]?.trim() && (
             <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
@@ -533,7 +560,7 @@ export function StudentQuizClient({
           className="text-base text-gray-800 font-medium leading-relaxed whitespace-pre-line [&_img]:max-w-full [&_img]:max-h-96 [&_img]:rounded-lg [&_img]:my-3 [&_img]:border [&_img]:border-gray-200 [&_img]:shadow-xs"
         />
 
-        {/* Multiple Choice Options */}
+        {/* Multiple Choice Options (Single Choice) */}
         {q.type === 'MULTIPLE_CHOICE' && q.options && (
           <div className="space-y-2 pt-2">
             {q.options.map((opt) => {
@@ -556,6 +583,46 @@ export function StudentQuizClient({
                     }`}
                   >
                     {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
+                  </div>
+                  <span className="text-sm flex-1 leading-relaxed">{opt.text}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Multiple Choice Complex Options (AKM - Multi-select Checkboxes) */}
+        {q.type === 'MULTIPLE_CHOICE_COMPLEX' && q.options && (
+          <div className="space-y-2 pt-2">
+            <div className="text-xs text-indigo-700 bg-indigo-50/80 px-3 py-2 rounded-lg border border-indigo-200 flex items-center gap-2">
+              <span className="font-bold">AKM:</span>
+              <span>Pilihlah satu atau lebih pilihan jawaban yang benar di bawah ini.</span>
+            </div>
+            {q.options.map((opt) => {
+              const selectedIds = answers[q.id] ? answers[q.id].split(',').map((s) => s.trim()) : [];
+              const isSelected = selectedIds.includes(opt.id);
+              return (
+                <div
+                  key={opt.id}
+                  onClick={() => handleToggleComplexAnswer(q.id, opt.id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-indigo-50/80 border-indigo-600 text-indigo-950 font-medium shadow-sm'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100/70 text-gray-700'
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-center h-5 w-5 rounded border transition-all shrink-0 ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-600 text-white'
+                        : 'border-gray-400 bg-white'
+                    }`}
+                  >
+                    {isSelected && (
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
                   </div>
                   <span className="text-sm flex-1 leading-relaxed">{opt.text}</span>
                 </div>

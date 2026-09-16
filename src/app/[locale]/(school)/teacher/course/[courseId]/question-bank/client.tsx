@@ -96,7 +96,7 @@ type Option = { id?: string; text: string; isCorrect: boolean };
 type Question = {
   id: string;
   text: string;
-  type: 'MULTIPLE_CHOICE' | 'ESSAY';
+  type: 'MULTIPLE_CHOICE' | 'MULTIPLE_CHOICE_COMPLEX' | 'ESSAY';
   points: number;
   categoryId: string | null;
   options?: Option[];
@@ -143,7 +143,7 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
   // Question Modal States
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-  const [questionType, setQuestionType] = useState<'MULTIPLE_CHOICE' | 'ESSAY'>('MULTIPLE_CHOICE');
+  const [questionType, setQuestionType] = useState<'MULTIPLE_CHOICE' | 'MULTIPLE_CHOICE_COMPLEX' | 'ESSAY'>('MULTIPLE_CHOICE');
   const [questionText, setQuestionText] = useState('');
   const [questionPoints, setQuestionPoints] = useState<number>(10);
   const [questionOptions, setQuestionOptions] = useState<Option[]>([
@@ -160,6 +160,10 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
 
   // Import Modal States
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importTab, setImportTab] = useState<'aiken' | 'word'>('aiken');
+  const [aikenMode, setAikenMode] = useState<'paste' | 'file'>('paste');
+  const [aikenText, setAikenText] = useState('');
+  const [aikenFile, setAikenFile] = useState<File | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
@@ -280,7 +284,7 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
     setEditingQuestion(q);
     setQuestionType(q.type);
     setQuestionPoints(q.points);
-    if (q.type === 'MULTIPLE_CHOICE' && q.options) {
+    if ((q.type === 'MULTIPLE_CHOICE' || q.type === 'MULTIPLE_CHOICE_COMPLEX') && q.options) {
       setQuestionOptions(q.options);
     } else {
       setQuestionOptions([{ text: '', isCorrect: true }, { text: '', isCorrect: false }]);
@@ -328,6 +332,29 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
 
   const handleSaveQuestion = async () => {
     if (!questionText.trim()) return;
+
+    if (questionType === 'MULTIPLE_CHOICE') {
+      const hasCorrect = questionOptions.some((o) => o.isCorrect);
+      if (!hasCorrect) {
+        setNoticeModal({
+          title: 'Kunci Jawaban Diperlukan',
+          message: 'Harap tentukan satu opsi sebagai jawaban benar.',
+          type: 'warning',
+        });
+        return;
+      }
+    } else if (questionType === 'MULTIPLE_CHOICE_COMPLEX') {
+      const correctCount = questionOptions.filter((o) => o.isCorrect).length;
+      if (correctCount === 0) {
+        setNoticeModal({
+          title: 'Kunci Jawaban Diperlukan',
+          message: 'Harap centang minimal satu opsi sebagai jawaban benar untuk soal pilihan ganda kompleks.',
+          type: 'warning',
+        });
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       let finalText = questionText.trim();
@@ -343,7 +370,7 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
         type: questionType,
         points: questionPoints,
         categoryId: selectedCategoryId === 'uncategorized' ? null : selectedCategoryId,
-        options: questionType === 'MULTIPLE_CHOICE' 
+        options: (questionType === 'MULTIPLE_CHOICE' || questionType === 'MULTIPLE_CHOICE_COMPLEX')
           ? questionOptions.map((opt, idx) => ({
               id: opt.id || getOptionLetter(idx),
               text: opt.text,
@@ -453,11 +480,115 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
   };
 
   const handleCorrectOptionChange = (index: number) => {
-    const newOptions = questionOptions.map((opt, i) => ({
-      ...opt,
-      isCorrect: i === index,
-    }));
-    setQuestionOptions(newOptions);
+    if (questionType === 'MULTIPLE_CHOICE_COMPLEX') {
+      const newOptions = [...questionOptions];
+      newOptions[index] = {
+        ...newOptions[index],
+        isCorrect: !newOptions[index].isCorrect,
+      };
+      setQuestionOptions(newOptions);
+    } else {
+      const newOptions = questionOptions.map((opt, i) => ({
+        ...opt,
+        isCorrect: i === index,
+      }));
+      setQuestionOptions(newOptions);
+    }
+  };
+
+  const handleParseAiken = async () => {
+    setLoading(true);
+    setImportWarnings([]);
+    try {
+      let res: Response;
+      if (aikenMode === 'paste') {
+        if (!aikenText.trim()) {
+          setNoticeModal({
+            title: 'Teks Kosong',
+            message: 'Silakan ketik atau tempelkan (paste) teks soal berformat Aiken terlebih dahulu.',
+            type: 'warning',
+          });
+          setLoading(false);
+          return;
+        }
+        res = await fetch('/api/quiz-import/aiken', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rawText: aikenText }),
+        });
+      } else {
+        if (!aikenFile) {
+          setNoticeModal({
+            title: 'File Belum Dipilih',
+            message: 'Silakan pilih berkas file teks (.txt atau .aiken) terlebih dahulu.',
+            type: 'warning',
+          });
+          setLoading(false);
+          return;
+        }
+        const formData = new FormData();
+        formData.append('file', aikenFile);
+        res = await fetch('/api/quiz-import/aiken', {
+          method: 'POST',
+          body: formData,
+        });
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        setNoticeModal({
+          title: 'Gagal Memproses Format Aiken',
+          message: data.error || 'Terjadi kesalahan saat memproses teks format Aiken.',
+          type: 'error',
+        });
+        return;
+      }
+
+      if (data.warnings && data.warnings.length > 0) {
+        setImportWarnings(data.warnings);
+      }
+
+      if (data.questions && data.questions.length > 0) {
+        setImportPreview(data.questions);
+      } else {
+        setNoticeModal({
+          title: 'Soal Tidak Ditemukan',
+          message: 'Tidak ada butir soal yang berhasil terbaca. Pastikan setiap butir soal memiliki opsi pilihan (A. B. C.) dan baris kunci jawaban (ANSWER: X).',
+          type: 'warning',
+        });
+      }
+    } catch (e: any) {
+      console.error(e);
+      setNoticeModal({
+        title: 'Kesalahan Sistem',
+        message: e?.message || 'Terjadi kesalahan saat memproses format Aiken.',
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoadAikenSample = () => {
+    const sample = `Apa ibukota negara Indonesia saat ini?
+A. Surabaya
+B. Bandung
+C. Jakarta
+D. Medan
+ANSWER: C
+
+Manakah yang termasuk pulau-pulau besar di Indonesia? (Pilih lebih dari satu)
+A. Pulau Jawa
+B. Pulau Madura
+C. Pulau Kalimantan
+D. Pulau Sumatera
+ANSWER: A, C, D
+POINTS: 2
+
+Sebutkan dan jelaskan fungsi organ lambung dalam sistem pencernaan manusia!
+ANSWER: ESSAY
+POINTS: 5`;
+    setAikenText(sample);
   };
 
   const handleRemoveOption = (index: number) => {
@@ -710,7 +841,7 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
             <div className="flex items-center gap-2">
               <Button variant="outline" className="border-[#002446] text-[#002446] hover:bg-[#002446]/5" onClick={() => setIsImportModalOpen(true)}>
                 <FileUp className="w-4 h-4 mr-2" />
-                Impor dari Word
+                Impor Soal (Aiken / Word)
               </Button>
               <Button className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white border-none" onClick={openAddQuestion}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -738,8 +869,21 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-400">#{idx + 1}</span>
-                          <Badge variant="outline" className={q.type === 'MULTIPLE_CHOICE' ? 'border-blue-200 text-blue-700 bg-blue-50' : 'border-purple-200 text-purple-700 bg-purple-50'}>
-                            {q.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+                          <Badge
+                            variant="outline"
+                            className={
+                              q.type === 'MULTIPLE_CHOICE'
+                                ? 'border-blue-200 text-blue-700 bg-blue-50'
+                                : q.type === 'MULTIPLE_CHOICE_COMPLEX'
+                                ? 'border-indigo-200 text-indigo-700 bg-indigo-50 font-semibold'
+                                : 'border-purple-200 text-purple-700 bg-purple-50'
+                            }
+                          >
+                            {q.type === 'MULTIPLE_CHOICE'
+                              ? 'Pilihan Ganda'
+                              : q.type === 'MULTIPLE_CHOICE_COMPLEX'
+                              ? 'PG Kompleks (AKM)'
+                              : 'Essay'}
                           </Badge>
                           <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">
                             {q.points} Poin
@@ -812,8 +956,9 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                     <SelectValue placeholder="Pilih tipe" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MULTIPLE_CHOICE">Pilihan Ganda</SelectItem>
-                    <SelectItem value="ESSAY">Essay</SelectItem>
+                    <SelectItem value="MULTIPLE_CHOICE">Pilihan Ganda (1 Jawaban Benar)</SelectItem>
+                    <SelectItem value="MULTIPLE_CHOICE_COMPLEX">Pilihan Ganda Kompleks (Banyak Jawaban Benar / AKM)</SelectItem>
+                    <SelectItem value="ESSAY">Essay / Uraian</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -968,12 +1113,20 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
               )}
             </div>
 
-            {questionType === 'MULTIPLE_CHOICE' && (
+            {(questionType === 'MULTIPLE_CHOICE' || questionType === 'MULTIPLE_CHOICE_COMPLEX') && (
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-xs font-bold text-[#002446]">Pilihan Jawaban & Kunci Jawaban:</Label>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Pilih radio button untuk menentukan kunci jawaban yang benar.</p>
+                    <Label className="text-xs font-bold text-[#002446]">
+                      {questionType === 'MULTIPLE_CHOICE_COMPLEX'
+                        ? 'Pilihan Jawaban & Kunci Jawaban Kompleks (Centang > 1):'
+                        : 'Pilihan Jawaban & Kunci Jawaban:'}
+                    </Label>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      {questionType === 'MULTIPLE_CHOICE_COMPLEX'
+                        ? 'Centang kotak checkbox untuk menentukan semua jawaban yang benar (Standar AKM).'
+                        : 'Pilih radio button untuk menentukan kunci jawaban yang benar.'}
+                    </p>
                   </div>
                   <Button type="button" variant="outline" size="sm" onClick={handleAddOption} disabled={loading} className="text-xs h-8">
                     <Plus className="w-3.5 h-3.5 mr-1 text-[#FF8928]" /> Tambah Opsi ({getOptionLetter(questionOptions.length)})
@@ -985,23 +1138,39 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                       key={idx}
                       className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all ${
                         opt.isCorrect
-                          ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                          ? questionType === 'MULTIPLE_CHOICE_COMPLEX'
+                            ? 'bg-indigo-50/70 border-indigo-300 shadow-xs'
+                            : 'bg-emerald-50/70 border-emerald-300 shadow-xs'
                           : 'bg-white border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <label className="flex items-center gap-2 cursor-pointer select-none shrink-0">
-                        <input
-                          type="radio"
-                          name="correctOption"
-                          checked={opt.isCorrect}
-                          onChange={() => handleCorrectOptionChange(idx)}
-                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                          disabled={loading}
-                        />
+                        {questionType === 'MULTIPLE_CHOICE_COMPLEX' ? (
+                          <input
+                            type="checkbox"
+                            checked={opt.isCorrect}
+                            onChange={() => handleCorrectOptionChange(idx)}
+                            className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded cursor-pointer"
+                            disabled={loading}
+                          />
+                        ) : (
+                          <input
+                            type="radio"
+                            name="correctOption"
+                            checked={opt.isCorrect}
+                            onChange={() => handleCorrectOptionChange(idx)}
+                            className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            disabled={loading}
+                          />
+                        )}
                         <span
-                          className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
+                          className={`flex items-center justify-center w-7 h-7 ${
+                            questionType === 'MULTIPLE_CHOICE_COMPLEX' ? 'rounded-md' : 'rounded-full'
+                          } text-xs font-bold transition-colors ${
                             opt.isCorrect
-                              ? 'bg-emerald-600 text-white shadow-xs'
+                              ? questionType === 'MULTIPLE_CHOICE_COMPLEX'
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'bg-emerald-600 text-white shadow-xs'
                               : 'bg-gray-100 text-gray-700'
                           }`}
                         >
@@ -1015,12 +1184,20 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
                         placeholder={`Masukkan pilihan jawaban ${getOptionLetter(idx)}...`}
                         disabled={loading}
                         className={`flex-1 bg-white text-sm ${
-                          opt.isCorrect ? 'border-emerald-300 focus-visible:ring-emerald-500' : ''
+                          opt.isCorrect
+                            ? questionType === 'MULTIPLE_CHOICE_COMPLEX'
+                              ? 'border-indigo-300 focus-visible:ring-indigo-500'
+                              : 'border-emerald-300 focus-visible:ring-emerald-500'
+                            : ''
                         }`}
                       />
 
                       {opt.isCorrect && (
-                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded hidden sm:inline whitespace-nowrap shrink-0">
+                        <span className={`text-[11px] font-semibold px-2 py-1 rounded hidden sm:inline whitespace-nowrap shrink-0 ${
+                          questionType === 'MULTIPLE_CHOICE_COMPLEX'
+                            ? 'text-indigo-700 bg-indigo-100/80'
+                            : 'text-emerald-700 bg-emerald-100/80'
+                        }`}>
                           ✓ Kunci Benar
                         </span>
                       )}
@@ -1057,57 +1234,188 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
 
       {/* Import Modal */}
       <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] p-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border">
+        <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[92vh] p-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border">
           <DialogHeader className="p-5 sm:p-6 pb-3 border-b border-gray-100 shrink-0 bg-white">
-            <DialogTitle className="text-xl font-bold text-[#002446]">Impor Soal dari Word</DialogTitle>
-          </DialogHeader>
-          <div className="p-5 sm:p-6 py-4 overflow-y-auto overflow-x-hidden flex-1 space-y-4">
-            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-4">
-              <div className="flex flex-col items-center justify-center">
-                <FileUp className="w-10 h-10 text-slate-300 mb-2" />
-                <p className="text-sm text-slate-600">Unggah file Microsoft Word (.docx) dengan format yang sesuai.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-xl font-bold text-[#002446]">Impor Bank Soal</DialogTitle>
+                <DialogDescription className="text-xs text-gray-500 mt-1">
+                  Pilih format sumber untuk mengimpor soal secara massal ke kursus ini.
+                </DialogDescription>
               </div>
-
-              {/* Template Download Banner */}
-              <div className="p-3.5 bg-blue-50/90 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
-                <div className="text-xs text-slate-700">
-                  <p className="font-bold text-[#002446]">Belum punya format Word yang sesuai?</p>
-                  <p className="text-slate-500 mt-0.5">Unduh template acuan kami dan edit langsung soal Anda di dalamnya.</p>
-                </div>
-                <a
-                  href="/api/quiz-import/template"
-                  download="template-soal-kuis.docx"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md bg-[#002446] text-white hover:bg-[#002446]/90 transition-colors shrink-0 shadow-xs"
-                >
-                  <FileDown className="w-4 h-4 text-[#FF8928]" />
-                  Unduh Template (.docx)
-                </a>
-              </div>
-
-              <div className="pt-2">
-                <Input
-                  type="file"
-                  accept=".docx"
-                  className="max-w-xs mx-auto"
-                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                  disabled={loading || importPreview.length > 0}
-                />
-              </div>
-
-              {importFile && importPreview.length === 0 && (
-                <Button className="mt-2 bg-[#FF8928] hover:bg-[#FF8928]/90 text-white" onClick={handleUploadWord} disabled={loading}>
-                  {loading ? 'Memproses...' : 'Pratinjau Impor'}
-                </Button>
-              )}
             </div>
+            {/* Tabs Header */}
+            <div className="flex gap-2 pt-3 border-t border-gray-100 mt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setImportTab('aiken');
+                  setImportPreview([]);
+                  setImportWarnings([]);
+                }}
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                  importTab === 'aiken'
+                    ? 'bg-[#002446] text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <span>Format Aiken (Moodle / Teks)</span>
+                <span className="bg-[#FF8928] text-white text-[10px] px-1.5 py-0.2 rounded font-bold">Populer</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImportTab('word');
+                  setImportPreview([]);
+                  setImportWarnings([]);
+                }}
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                  importTab === 'word'
+                    ? 'bg-[#002446] text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <span>Dokumen Word (.docx)</span>
+              </button>
+            </div>
+          </DialogHeader>
+
+          <div className="p-5 sm:p-6 py-4 overflow-y-auto overflow-x-hidden flex-1 space-y-4">
+            {importTab === 'aiken' ? (
+              <div className="space-y-4">
+                {/* Aiken Mode Toggle */}
+                <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={aikenMode === 'paste' ? 'default' : 'ghost'}
+                      className={`text-xs h-8 ${aikenMode === 'paste' ? 'bg-[#002446] text-white' : 'text-gray-600'}`}
+                      onClick={() => setAikenMode('paste')}
+                    >
+                      Ketik / Tempel Teks
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={aikenMode === 'file' ? 'default' : 'ghost'}
+                      className={`text-xs h-8 ${aikenMode === 'file' ? 'bg-[#002446] text-white' : 'text-gray-600'}`}
+                      onClick={() => setAikenMode('file')}
+                    >
+                      Unggah File (.txt)
+                    </Button>
+                  </div>
+                  {aikenMode === 'paste' && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLoadAikenSample}
+                      className="text-xs h-8 text-[#FF8928] border-[#FF8928]/30 hover:bg-[#FF8928]/10"
+                    >
+                      Muat Contoh Format
+                    </Button>
+                  )}
+                </div>
+
+                {aikenMode === 'paste' ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-gray-700">
+                      Teks Format Aiken (Dukungan Pilihan Ganda & PG Kompleks AKM):
+                    </Label>
+                    <Textarea
+                      rows={9}
+                      placeholder={`Ketik atau paste soal format Aiken di sini, contoh:\n\nApa ibukota Indonesia?\nA. Surabaya\nB. Bandung\nC. Jakarta\nD. Medan\nANSWER: C\n\nPulau besar di Indonesia? (PG Kompleks)\nA. Jawa\nB. Madura\nC. Sumatera\nANSWER: A, C\nPOINTS: 2`}
+                      value={aikenText}
+                      onChange={(e) => setAikenText(e.target.value)}
+                      className="font-mono text-xs leading-relaxed bg-white"
+                      disabled={loading}
+                    />
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        type="button"
+                        className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-semibold h-9"
+                        onClick={handleParseAiken}
+                        disabled={loading || !aikenText.trim()}
+                      >
+                        {loading ? 'Memproses...' : 'Pratinjau Format Aiken'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-3">
+                    <FileUp className="w-9 h-9 text-slate-300 mx-auto" />
+                    <p className="text-xs text-slate-600">
+                      Pilih berkas file teks <strong>.txt</strong> atau <strong>.aiken</strong> berisi soal dari Moodle atau editor teks.
+                    </p>
+                    <Input
+                      type="file"
+                      accept=".txt,.aiken"
+                      className="max-w-xs mx-auto text-xs"
+                      onChange={(e) => setAikenFile(e.target.files?.[0] || null)}
+                      disabled={loading}
+                    />
+                    {aikenFile && (
+                      <Button
+                        type="button"
+                        className="mt-2 bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-semibold h-9"
+                        onClick={handleParseAiken}
+                        disabled={loading}
+                      >
+                        {loading ? 'Memproses...' : 'Pratinjau File Aiken'}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Word .docx Tab */
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-4">
+                <div className="flex flex-col items-center justify-center">
+                  <FileUp className="w-10 h-10 text-slate-300 mb-2" />
+                  <p className="text-sm text-slate-600">Unggah file Microsoft Word (.docx) dengan format yang sesuai.</p>
+                </div>
+
+                <div className="p-3.5 bg-blue-50/90 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+                  <div className="text-xs text-slate-700">
+                    <p className="font-bold text-[#002446]">Belum punya format Word yang sesuai?</p>
+                    <p className="text-slate-500 mt-0.5">Unduh template acuan kami dan edit langsung soal Anda di dalamnya.</p>
+                  </div>
+                  <a
+                    href="/api/quiz-import/template"
+                    download="template-soal-kuis.docx"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md bg-[#002446] text-white hover:bg-[#002446]/90 transition-colors shrink-0 shadow-xs"
+                  >
+                    <FileDown className="w-4 h-4 text-[#FF8928]" />
+                    Unduh Template (.docx)
+                  </a>
+                </div>
+
+                <div className="pt-2">
+                  <Input
+                    type="file"
+                    accept=".docx"
+                    className="max-w-xs mx-auto text-xs"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                    disabled={loading || importPreview.length > 0}
+                  />
+                </div>
+
+                {importFile && importPreview.length === 0 && (
+                  <Button className="mt-2 bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-semibold h-9" onClick={handleUploadWord} disabled={loading}>
+                    {loading ? 'Memproses...' : 'Pratinjau Impor Word'}
+                  </Button>
+                )}
+              </div>
+            )}
 
             {importWarnings.length > 0 && (
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
                 <p className="font-semibold flex items-center gap-1">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  Catatan Format Impor:
+                  Catatan Format Impor ({importWarnings.length}):
                 </p>
-                <ul className="list-disc pl-5 space-y-0.5">
+                <ul className="list-disc pl-5 space-y-0.5 max-h-28 overflow-y-auto">
                   {importWarnings.map((w, idx) => (
                     <li key={idx}>{w}</li>
                   ))}
@@ -1116,38 +1424,93 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
             )}
 
             {importPreview.length > 0 && (
-              <div className="space-y-3 mt-6">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Database className="w-5 h-5 text-[#002446]" />
-                  Pratinjau Hasil Impor ({importPreview.length} Soal)
-                </h3>
+              <div className="space-y-3 mt-4 pt-3 border-t">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-base flex items-center gap-2 text-[#002446]">
+                    <Database className="w-5 h-5 text-[#FF8928]" />
+                    Pratinjau Hasil Impor ({importPreview.length} Soal)
+                  </h3>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-red-600 hover:bg-red-50 h-7"
+                    onClick={() => {
+                      setImportPreview([]);
+                      setImportWarnings([]);
+                    }}
+                  >
+                    Hapus Pratinjau
+                  </Button>
+                </div>
+
                 <div className="border rounded-md max-h-[300px] overflow-y-auto bg-slate-50 p-2 space-y-2">
-                  {importPreview.map((q, i) => (
-                    <div key={i} className="p-3 bg-white border rounded shadow-sm text-sm">
-                      <div className="flex gap-2 mb-1">
-                        <Badge variant="outline">{q.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}</Badge>
-                        <Badge variant="outline">{q.points} Poin</Badge>
+                  {importPreview.map((q, i) => {
+                    const correctOptions = (q.options || []).filter((o: any) => o.isCorrect);
+                    const correctLabels = correctOptions.map((o: any) => o.id || o.text).join(', ');
+                    return (
+                      <div key={i} className="p-3 bg-white border rounded shadow-xs text-sm space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-slate-400">#{i + 1}</span>
+                          <Badge
+                            variant="outline"
+                            className={
+                              q.type === 'MULTIPLE_CHOICE'
+                                ? 'border-blue-200 text-blue-700 bg-blue-50 text-[11px]'
+                                : q.type === 'MULTIPLE_CHOICE_COMPLEX'
+                                ? 'border-indigo-200 text-indigo-700 bg-indigo-50 text-[11px] font-semibold'
+                                : 'border-purple-200 text-purple-700 bg-purple-50 text-[11px]'
+                            }
+                          >
+                            {q.type === 'MULTIPLE_CHOICE'
+                              ? 'PG (Single)'
+                              : q.type === 'MULTIPLE_CHOICE_COMPLEX'
+                              ? 'PG Kompleks (AKM)'
+                              : 'Essay'}
+                          </Badge>
+                          <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50 text-[11px]">
+                            {q.points} Poin
+                          </Badge>
+                        </div>
+                        <div
+                          className="font-medium text-xs text-slate-800 line-clamp-3 whitespace-pre-line"
+                          dangerouslySetInnerHTML={{ __html: q.text }}
+                        />
+                        {q.options && q.options.length > 0 && (
+                          <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-100 flex items-center justify-between">
+                            <span>{q.options.length} Opsi</span>
+                            <span className="font-medium text-emerald-700">
+                              Kunci: <strong>{correctLabels || 'Tidak ada'}</strong>
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <div
-                        className="font-medium line-clamp-3 [&_img]:max-h-24 [&_img]:rounded [&_img]:my-1"
-                        dangerouslySetInnerHTML={{ __html: q.text }}
-                      />
-                      {q.type === 'MULTIPLE_CHOICE' && q.options && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          {q.options.length} Opsi • Jawaban benar: {q.options.findIndex((o: any) => o.isCorrect) > -1 ? getOptionLetter(q.options.findIndex((o: any) => o.isCorrect)) : '?'}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
+
           <DialogFooter className="p-4 sm:px-6 border-t border-gray-100 bg-gray-50/90 shrink-0 flex items-center justify-end gap-2.5">
-            <Button variant="outline" onClick={() => { setIsImportModalOpen(false); setImportPreview([]); setImportWarnings([]); setImportFile(null); }} disabled={loading}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsImportModalOpen(false);
+                setImportPreview([]);
+                setImportWarnings([]);
+                setImportFile(null);
+                setAikenFile(null);
+              }}
+              disabled={loading}
+            >
               Batal
             </Button>
-            <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium" onClick={handleConfirmImport} disabled={loading || importPreview.length === 0}>
+            <Button
+              className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium"
+              onClick={handleConfirmImport}
+              disabled={loading || importPreview.length === 0}
+            >
               {loading ? 'Mengimpor...' : `Konfirmasi Impor (${importPreview.length} Soal)`}
             </Button>
           </DialogFooter>

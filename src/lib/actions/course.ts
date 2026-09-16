@@ -245,5 +245,6 @@ export async function reviewCourseRequest(
 
   revalidatePath('/[locale]/admin/course-requests', 'page');
   revalidatePath('/[locale]/admin/courses', 'page');
+  revalidatePath('/[locale]/admin/dashboard', 'page');
   revalidatePath('/[locale]/teacher/my-courses', 'page');
 }

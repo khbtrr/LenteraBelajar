@@ -474,7 +474,7 @@ export function TeacherCourseModulesClient({
       finalText = `${finalText}\n<div class="quiz-media-video my-3" data-src="${qMediaUrl.trim()}"${limitAttr}></div>`;
     }
 
-    if (qType === QuestionType.MULTIPLE_CHOICE) {
+    if (qType === QuestionType.MULTIPLE_CHOICE || qType === QuestionType.MULTIPLE_CHOICE_COMPLEX) {
       const validOptions = mcOptions.filter((o) => o.text.trim());
       if (validOptions.length < 2) {
         setNoticeModal({
@@ -488,7 +488,7 @@ export function TeacherCourseModulesClient({
       if (!hasCorrect) {
         setNoticeModal({
           title: 'Kunci Jawaban Belum Dipilih',
-          message: 'Pilih setidaknya 1 jawaban yang benar dengan menandai bulatan opsi.',
+          message: 'Pilih setidaknya 1 jawaban yang benar dengan menandai opsi.',
           type: 'warning',
         });
         return;
@@ -496,7 +496,7 @@ export function TeacherCourseModulesClient({
       
       setQuestions((prev) => [
         ...prev,
-        { type: QuestionType.MULTIPLE_CHOICE, text: finalText, points: Number(qPoints), options: validOptions },
+        { type: qType, text: finalText, points: Number(qPoints), options: validOptions },
       ]);
     } else {
       setQuestions((prev) => [
@@ -601,7 +601,7 @@ export function TeacherCourseModulesClient({
     } else {
       // Add to draft
       const options =
-        bankQ.type === QuestionType.MULTIPLE_CHOICE && Array.isArray(bankQ.options)
+        (bankQ.type === QuestionType.MULTIPLE_CHOICE || bankQ.type === QuestionType.MULTIPLE_CHOICE_COMPLEX) && Array.isArray(bankQ.options)
           ? bankQ.options.map((opt: any, idx: number) => ({
               id: opt.id || String.fromCharCode(65 + idx),
               text: opt.text || '',
@@ -628,7 +628,7 @@ export function TeacherCourseModulesClient({
       for (const bq of catQuestions) {
         if (!questions.some((q) => q.text === bq.text && q.type === bq.type)) {
           const options =
-            bq.type === QuestionType.MULTIPLE_CHOICE && Array.isArray(bq.options)
+            (bq.type === QuestionType.MULTIPLE_CHOICE || bq.type === QuestionType.MULTIPLE_CHOICE_COMPLEX) && Array.isArray(bq.options)
               ? bq.options.map((opt: any, idx: number) => ({
                   id: opt.id || String.fromCharCode(65 + idx),
                   text: opt.text || '',
@@ -1851,7 +1851,7 @@ export function TeacherCourseModulesClient({
                     <h4 className="font-bold text-sm text-[#002446]">
                       Tambah Soal Manual ke Kuis (Total Draft: {questions.length} Soal)
                     </h4>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button
                         type="button"
                         size="sm"
@@ -1861,7 +1861,18 @@ export function TeacherCourseModulesClient({
                           qType === QuestionType.MULTIPLE_CHOICE ? 'bg-[#002446] text-white' : ''
                         }
                       >
-                        Pilihan Ganda (Auto-Grade)
+                        Pilihan Ganda
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={qType === QuestionType.MULTIPLE_CHOICE_COMPLEX ? 'default' : 'outline'}
+                        onClick={() => setQType(QuestionType.MULTIPLE_CHOICE_COMPLEX)}
+                        className={
+                          qType === QuestionType.MULTIPLE_CHOICE_COMPLEX ? 'bg-indigo-700 text-white' : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50'
+                        }
+                      >
+                        PG Kompleks (AKM)
                       </Button>
                       <Button
                         type="button"
@@ -2029,14 +2040,18 @@ export function TeacherCourseModulesClient({
                     )}
                   </div>
 
-                  {qType === QuestionType.MULTIPLE_CHOICE && (
+                  {(qType === QuestionType.MULTIPLE_CHOICE || qType === QuestionType.MULTIPLE_CHOICE_COMPLEX) && (
                     <div className="space-y-3 pt-2 border-t border-gray-200">
                       <div>
                         <Label className="text-xs font-bold text-[#002446]">
-                          Pilihan Jawaban & Tentukan Kunci Jawaban:
+                          {qType === QuestionType.MULTIPLE_CHOICE_COMPLEX
+                            ? 'Pilihan Jawaban & Kunci Jawaban Kompleks (Centang > 1):'
+                            : 'Pilihan Jawaban & Tentukan Kunci Jawaban:'}
                         </Label>
                         <p className="text-[11px] text-gray-500 mt-0.5">
-                          Klik radio button di samping huruf untuk memilih jawaban benar. Anda dapat menambah atau mengurangi pilihan (minimal 2).
+                          {qType === QuestionType.MULTIPLE_CHOICE_COMPLEX
+                            ? 'Centang kotak checkbox untuk memilih satu atau lebih jawaban benar (Standar AKM).'
+                            : 'Klik radio button di samping huruf untuk memilih jawaban benar. Anda dapat menambah atau mengurangi pilihan (minimal 2).'}
                         </p>
                       </div>
 
@@ -2046,26 +2061,45 @@ export function TeacherCourseModulesClient({
                             key={opt.id}
                             className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
                               opt.isCorrect
-                                ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                                ? qType === QuestionType.MULTIPLE_CHOICE_COMPLEX
+                                  ? 'bg-indigo-50/70 border-indigo-300 shadow-xs'
+                                  : 'bg-emerald-50/70 border-emerald-300 shadow-xs'
                                 : 'bg-white border-gray-200 hover:border-gray-300'
                             }`}
                           >
                             <label className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="radio"
-                                name="correctKey"
-                                checked={opt.isCorrect}
-                                onChange={() => {
-                                  setMcOptions((prev) =>
-                                    prev.map((o) => ({ ...o, isCorrect: o.id === opt.id }))
-                                  );
-                                }}
-                                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                              />
+                              {qType === QuestionType.MULTIPLE_CHOICE_COMPLEX ? (
+                                <input
+                                  type="checkbox"
+                                  checked={opt.isCorrect}
+                                  onChange={() => {
+                                    setMcOptions((prev) =>
+                                      prev.map((o) => (o.id === opt.id ? { ...o, isCorrect: !o.isCorrect } : o))
+                                    );
+                                  }}
+                                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded cursor-pointer"
+                                />
+                              ) : (
+                                <input
+                                  type="radio"
+                                  name="correctKey"
+                                  checked={opt.isCorrect}
+                                  onChange={() => {
+                                    setMcOptions((prev) =>
+                                      prev.map((o) => ({ ...o, isCorrect: o.id === opt.id }))
+                                    );
+                                  }}
+                                  className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                              )}
                               <span
-                                className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
+                                className={`flex items-center justify-center w-7 h-7 ${
+                                  qType === QuestionType.MULTIPLE_CHOICE_COMPLEX ? 'rounded-md' : 'rounded-full'
+                                } text-xs font-bold transition-colors ${
                                   opt.isCorrect
-                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    ? qType === QuestionType.MULTIPLE_CHOICE_COMPLEX
+                                      ? 'bg-indigo-600 text-white shadow-xs'
+                                      : 'bg-emerald-600 text-white shadow-xs'
                                     : 'bg-gray-100 text-gray-700'
                                 }`}
                               >

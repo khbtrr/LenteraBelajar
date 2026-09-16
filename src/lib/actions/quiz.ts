@@ -60,7 +60,36 @@ export async function createQuiz(data: {
 }) {
   await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
 
+  // Retrieve school defaults if any field is not explicitly provided
+  const moduleItem = await db.module.findUnique({
+    where: { id: data.moduleId },
+    select: {
+      course: {
+        select: {
+          school: {
+            select: {
+              defaultPassingGrade: true,
+              cbtLockdownEnabled: true,
+              cbtMaxTabSwitches: true,
+              cbtRequireToken: true,
+              cbtShuffleQuestions: true,
+              cbtShuffleOptions: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  const schoolDefaults = moduleItem?.course?.school;
+
   const count = await db.quiz.count({ where: { moduleId: data.moduleId } });
+
+  const resolvedPassingGrade = data.passingGrade !== undefined ? data.passingGrade : (schoolDefaults?.defaultPassingGrade ?? null);
+  const resolvedEnableLockdown = data.enableLockdown !== undefined ? Boolean(data.enableLockdown) : (schoolDefaults?.cbtLockdownEnabled ?? true);
+  const resolvedMaxTabSwitches = data.maxTabSwitches !== undefined ? Number(data.maxTabSwitches) : (schoolDefaults?.cbtMaxTabSwitches ?? 3);
+  const resolvedRequireToken = data.requireToken !== undefined ? Boolean(data.requireToken) : (schoolDefaults?.cbtRequireToken ?? false);
+  const resolvedShuffleQuestions = data.shuffleQuestions !== undefined ? Boolean(data.shuffleQuestions) : (schoolDefaults?.cbtShuffleQuestions ?? false);
+  const resolvedShuffleOptions = data.shuffleOptions !== undefined ? Boolean(data.shuffleOptions) : (schoolDefaults?.cbtShuffleOptions ?? false);
 
   const quiz = await db.quiz.create({
     data: {
@@ -69,18 +98,18 @@ export async function createQuiz(data: {
       description: data.description || null,
       duration: data.duration ? Number(data.duration) : null,
       deadline: data.deadline ? new Date(data.deadline) : null,
-      shuffleQuestions: Boolean(data.shuffleQuestions),
-      shuffleOptions: Boolean(data.shuffleOptions),
+      shuffleQuestions: resolvedShuffleQuestions,
+      shuffleOptions: resolvedShuffleOptions,
       questionsPerPage: Number(data.questionsPerPage) || 0,
       isPublished: true,
       order: count,
       maxAttempts: data.maxAttempts ?? null,
-      passingGrade: data.passingGrade ?? null,
+      passingGrade: resolvedPassingGrade,
       useQuestionBank: Boolean(data.useQuestionBank),
-      requireToken: Boolean(data.requireToken),
-      token: data.requireToken ? (data.token ? data.token.trim().toUpperCase() : null) : null,
-      enableLockdown: Boolean(data.enableLockdown),
-      maxTabSwitches: data.maxTabSwitches !== undefined ? Number(data.maxTabSwitches) : 3,
+      requireToken: resolvedRequireToken,
+      token: resolvedRequireToken ? (data.token ? data.token.trim().toUpperCase() : null) : null,
+      enableLockdown: resolvedEnableLockdown,
+      maxTabSwitches: resolvedMaxTabSwitches,
       questionBankSelections: (data.useQuestionBank && data.bankSelections?.length) ? {
         create: data.bankSelections.map(s => ({
           categoryId: s.categoryId,
@@ -529,7 +558,10 @@ export async function startOrGetQuizAttempt(quizId: string, token?: string) {
   // Shuffle options if quiz.shuffleOptions is true
   if (quiz.shuffleOptions) {
     questions = questions.map((q) => {
-      if (q.type === QuestionType.MULTIPLE_CHOICE && Array.isArray(q.options)) {
+      if (
+        (q.type === QuestionType.MULTIPLE_CHOICE || q.type === QuestionType.MULTIPLE_CHOICE_COMPLEX) &&
+        Array.isArray(q.options)
+      ) {
         return {
           ...q,
           options: [...q.options].sort(() => Math.random() - 0.5),
@@ -622,6 +654,43 @@ export async function submitQuizAttempt(
       const correctOption = options.find((opt: any) => opt.isCorrect);
       // Check if student's chosen option ID matches the correct option ID
       if (correctOption && studentAns && studentAns.answer === correctOption.id) {
+        questionScore = q.points;
+        totalScore += q.points;
+      } else {
+        questionScore = 0;
+      }
+    } else if (q.type === QuestionType.MULTIPLE_CHOICE_COMPLEX) {
+      let options = [];
+      if (attempt.quiz.useQuestionBank && attempt.questionSnapshot) {
+        options = q._correctData || [];
+      } else {
+        options = (q.options as any[]) || [];
+      }
+
+      let studentSelectedIds: string[] = [];
+      if (studentAns?.answer) {
+        const trimmed = studentAns.answer.trim();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          try {
+            studentSelectedIds = (JSON.parse(trimmed) as string[]).map((s) => String(s).trim().toUpperCase());
+          } catch {
+            studentSelectedIds = trimmed.replace(/[\[\]"]/g, '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+          }
+        } else {
+          studentSelectedIds = trimmed.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+        }
+      }
+      studentSelectedIds.sort();
+
+      const correctOptions = options.filter((opt: any) => opt.isCorrect);
+      const correctOptionIds = correctOptions.map((opt: any) => String(opt.id).trim().toUpperCase()).sort();
+
+      const isAllCorrect =
+        correctOptionIds.length > 0 &&
+        studentSelectedIds.length === correctOptionIds.length &&
+        studentSelectedIds.every((val, index) => val === correctOptionIds[index]);
+
+      if (isAllCorrect) {
         questionScore = q.points;
         totalScore += q.points;
       } else {

@@ -155,10 +155,10 @@ export async function bulkAddQuestionsToBank(
   courseId: string,
   categoryId: string | null,
   questions: {
-    type: 'MULTIPLE_CHOICE' | 'ESSAY';
+    type: QuestionType;
     text: string;
-    options: { id: string; text: string; isCorrect: boolean }[];
-    points: number;
+    options?: { id: string; text: string; isCorrect: boolean }[];
+    points?: number;
   }[]
 ) {
   await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
