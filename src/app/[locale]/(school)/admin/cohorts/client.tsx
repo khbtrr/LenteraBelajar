@@ -38,6 +38,15 @@ import {
   AlertCircle,
   ArrowRight,
   Filter,
+  Shuffle,
+  FileSpreadsheet,
+  FileUp,
+  RefreshCw,
+  UserCheck,
+  UserX,
+  Layers,
+  HelpCircle,
+  Sparkles,
 } from 'lucide-react';
 import {
   createCohort,
@@ -47,6 +56,8 @@ import {
   bulkRemoveStudentsFromCohort,
   promoteCohortStudents,
   graduateCohortStudents,
+  batchPromoteShuffle,
+  batchPromoteExcel,
 } from '@/lib/actions/cohort';
 import { useDialog } from '@/context/DialogContext';
 import * as XLSX from 'xlsx';
@@ -98,12 +109,40 @@ export function CohortsClient({
 
   // 3. Promotion (Kenaikan Kelas) Modal
   const [isPromoteOpen, setIsPromoteOpen] = useState(false);
+  const [promoteTab, setPromoteTab] = useState<'shuffle' | 'excel' | 'linear'>('shuffle');
+  const [removeFromSource, setRemoveFromSource] = useState(true);
+
+  // Tab 1: Shuffle Massal (Auto-Shuffle)
+  const [shuffleSourceCohortIds, setShuffleSourceCohortIds] = useState<Set<string>>(new Set());
+  const [targetPrefix, setTargetPrefix] = useState('XI-MIPA-');
+  const [targetCount, setTargetCount] = useState<number>(1);
+  const [targetCohortNamesText, setTargetCohortNamesText] = useState('');
+  const [retainedStudentIds, setRetainedStudentIds] = useState<Set<string>>(new Set());
+  const [transferOutStudentIds, setTransferOutStudentIds] = useState<Set<string>>(new Set());
+  const [shuffleStudentSearch, setShuffleStudentSearch] = useState('');
+  const [shufflePreview, setShufflePreview] = useState<{ cohortName: string; students: Student[] }[] | null>(null);
+
+  // Tab 2: Excel Mapping
+  interface ParsedExcelRow {
+    nis: string;
+    name: string;
+    email: string;
+    currentCohort: string;
+    newCohortName: string;
+    status: 'promote' | 'transfer_in' | 'transfer_out' | 'retained';
+  }
+  const [excelDownloadCohortIds, setExcelDownloadCohortIds] = useState<Set<string>>(new Set());
+  const [parsedExcelRows, setParsedExcelRows] = useState<ParsedExcelRow[]>([]);
+  const [excelFilterStatus, setExcelFilterStatus] = useState<'all' | 'promote' | 'transfer_in' | 'transfer_out' | 'retained'>('all');
+  const [excelSearch, setExcelSearch] = useState('');
+  const [excelFileName, setExcelFileName] = useState('');
+
+  // Tab 3: Kenaikan Linier (1 ke 1)
   const [sourceCohortId, setSourceCohortId] = useState('');
   const [targetCohortMode, setTargetCohortMode] = useState<'new' | 'existing'>('new');
   const [newTargetCohortName, setNewTargetCohortName] = useState('');
   const [existingTargetCohortId, setExistingTargetCohortId] = useState('');
   const [promotedStudentIds, setPromotedStudentIds] = useState<Set<string>>(new Set());
-  const [removeFromSource, setRemoveFromSource] = useState(true);
 
   // 4. Graduation Modal
   const [isGraduationOpen, setIsGraduationOpen] = useState(false);
@@ -295,35 +334,416 @@ export function CohortsClient({
   // Open Promotion Modal
   const handleOpenPromote = () => {
     setIsPromoteOpen(true);
+    setPromoteTab('shuffle');
+    setRemoveFromSource(true);
+
+    // Reset Tab 1: Shuffle
+    setShuffleSourceCohortIds(new Set());
+    setTargetPrefix('XI-MIPA-');
+    setTargetCount(1);
+    setTargetCohortNamesText('');
+    setRetainedStudentIds(new Set());
+    setTransferOutStudentIds(new Set());
+    setShuffleStudentSearch('');
+    setShufflePreview(null);
+
+    // Reset Tab 2: Excel
+    setExcelDownloadCohortIds(new Set());
+    setParsedExcelRows([]);
+    setExcelFilterStatus('all');
+    setExcelSearch('');
+    setExcelFileName('');
+
+    // Reset Tab 3: Linier
     setSourceCohortId('');
     setTargetCohortMode('new');
     setNewTargetCohortName('');
     setExistingTargetCohortId('');
     setPromotedStudentIds(new Set());
-    setRemoveFromSource(true);
   };
 
-  // When source cohort changes in Promotion
+  // --- TAB 1: SHUFFLE HANDLERS ---
+  const toggleShuffleSourceCohort = (cohortId: string) => {
+    const updated = new Set(shuffleSourceCohortIds);
+    if (updated.has(cohortId)) {
+      updated.delete(cohortId);
+    } else {
+      updated.add(cohortId);
+    }
+    setShuffleSourceCohortIds(updated);
+    setShufflePreview(null);
+
+    const count = updated.size || 1;
+    setTargetCount(count);
+
+    const selected = cohorts.filter((c) => updated.has(c.id));
+    if (selected.length > 0) {
+      const firstName = selected[0].name;
+      let prefix = 'XI-';
+      if (/Kelas\s*X\b/i.test(firstName)) prefix = 'Kelas XI-';
+      else if (/Kelas\s*XI\b/i.test(firstName)) prefix = 'Kelas XII-';
+      else if (/^X-/i.test(firstName)) prefix = 'XI-';
+      else if (/^XI-/i.test(firstName)) prefix = 'XII-';
+      else if (/X/i.test(firstName)) prefix = firstName.replace(/X/i, 'XI-');
+      setTargetPrefix(prefix);
+
+      const generated = Array.from({ length: count }, (_, i) => `${prefix}${i + 1}`).join('\n');
+      setTargetCohortNamesText(generated);
+    }
+  };
+
+  const selectAllCohortsByPrefix = (prefixMatch: RegExp) => {
+    const matching = cohorts.filter((c) => prefixMatch.test(c.name)).map((c) => c.id);
+    const updated = new Set(matching);
+    setShuffleSourceCohortIds(updated);
+    setShufflePreview(null);
+
+    const count = updated.size || 1;
+    setTargetCount(count);
+
+    if (matching.length > 0) {
+      const first = cohorts.find((c) => c.id === matching[0]);
+      let prefix = 'XI-';
+      if (first && /X/i.test(first.name)) {
+        prefix = first.name.replace(/Kelas\s*X\b/i, 'Kelas XI-').replace(/^X-/i, 'XI-');
+      }
+      setTargetPrefix(prefix);
+      const generated = Array.from({ length: count }, (_, i) => `${prefix}${i + 1}`).join('\n');
+      setTargetCohortNamesText(generated);
+    }
+  };
+
+  const handleGenerateTargetNames = () => {
+    if (targetCount < 1) return;
+    const list = Array.from({ length: targetCount }, (_, i) => `${targetPrefix}${i + 1}`);
+    setTargetCohortNamesText(list.join('\n'));
+    setShufflePreview(null);
+  };
+
+  // Get all unique students from selected source cohorts
+  const shuffleSourceStudents: Student[] = (() => {
+    const studentMap = new Map<string, Student>();
+    cohorts
+      .filter((c) => shuffleSourceCohortIds.has(c.id))
+      .forEach((c) => {
+        c.members.forEach((m) => {
+          if (!studentMap.has(m.user.id)) {
+            studentMap.set(m.user.id, m.user);
+          }
+        });
+      });
+    return Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  })();
+
+  const handleRunShuffle = () => {
+    if (shuffleSourceCohortIds.size === 0) {
+      showAlert('Pilih minimal satu kelas / rombel asal terlebih dahulu', { type: 'error' });
+      return;
+    }
+
+    const targetNames = targetCohortNamesText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (targetNames.length === 0) {
+      showAlert('Tentukan daftar nama kelas tujuan terlebih dahulu', { type: 'error' });
+      return;
+    }
+
+    const eligibleStudents = shuffleSourceStudents.filter(
+      (s) => !retainedStudentIds.has(s.id) && !transferOutStudentIds.has(s.id)
+    );
+
+    if (eligibleStudents.length === 0) {
+      showAlert('Semua siswa ditandai tinggal kelas atau mutasi keluar. Tidak ada siswa yang ikut diacak.', {
+        type: 'error',
+      });
+      return;
+    }
+
+    // Fisher-Yates shuffle
+    const shuffled = [...eligibleStudents];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    // Round-robin distribution
+    const groups: { cohortName: string; students: Student[] }[] = targetNames.map((name) => ({
+      cohortName: name,
+      students: [],
+    }));
+
+    shuffled.forEach((student, idx) => {
+      groups[idx % groups.length].students.push(student);
+    });
+
+    setShufflePreview(groups);
+  };
+
+  const handleExecuteShufflePromotion = async () => {
+    if (!shufflePreview || shufflePreview.length === 0) {
+      showAlert('Silakan lakukan pengacakan siswa terlebih dahulu sebelum menerapkan kenaikan kelas.', {
+        type: 'error',
+      });
+      return;
+    }
+
+    const targetNames = shufflePreview.map((g) => g.cohortName);
+    const totalPromoted = shufflePreview.reduce((acc, g) => acc + g.students.length, 0);
+
+    const confirmed = await showConfirm(
+      `Terapkan kenaikan kelas massal untuk ${totalPromoted} siswa ke ${targetNames.length} kelas baru?\n\n` +
+      `• Naik Kelas (Diacak): ${totalPromoted} siswa\n` +
+      `• Tinggal Kelas: ${retainedStudentIds.size} siswa (tetap di kelas lama)\n` +
+      `• Mutasi Keluar: ${transferOutStudentIds.size} siswa (dikeluarkan & dinonaktifkan)`,
+      {
+        title: 'Konfirmasi Kenaikan Kelas Massal',
+        confirmText: 'Ya, Terapkan Sekarang',
+        cancelText: 'Batal',
+      }
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const res = await batchPromoteShuffle({
+        sourceCohortIds: Array.from(shuffleSourceCohortIds),
+        targetCohortNames: targetNames,
+        retainedStudentIds: Array.from(retainedStudentIds),
+        transferOutStudentIds: Array.from(transferOutStudentIds),
+        removeFromSourceCohort: removeFromSource,
+        shuffledDistribution: shufflePreview.map((g) => ({
+          cohortName: g.cohortName,
+          studentIds: g.students.map((s) => s.id),
+        })),
+      });
+
+      await showAlert(
+        `Kenaikan kelas massal sukses diterapkan!\n\n` +
+        `• ${res.promotedCount} siswa berhasil naik ke kelas baru\n` +
+        `• ${res.retainedCount} siswa tetap tinggal di kelas asal\n` +
+        `• ${res.transferOutCount} siswa mutasi keluar telah dinonaktifkan`,
+        { type: 'success' }
+      );
+      setIsPromoteOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || 'Gagal menerapkan kenaikan kelas', { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- TAB 2: EXCEL HANDLERS ---
+  const handleDownloadExcelTemplate = () => {
+    const selectedCohorts = cohorts.filter((c) =>
+      excelDownloadCohortIds.size > 0 ? excelDownloadCohortIds.has(c.id) : true
+    );
+
+    const studentMap = new Map<string, { user: Student; cohortName: string }>();
+    selectedCohorts.forEach((c) => {
+      c.members.forEach((m) => {
+        if (!studentMap.has(m.user.id)) {
+          studentMap.set(m.user.id, { user: m.user, cohortName: c.name });
+        }
+      });
+    });
+
+    const exportList = Array.from(studentMap.values());
+    if (exportList.length === 0) {
+      showAlert('Tidak ada data siswa untuk diekspor ke template', { type: 'error' });
+      return;
+    }
+
+    const rows = exportList.map((item, idx) => ({
+      'No': idx + 1,
+      'NIS': item.user.nis || '',
+      'Nama Lengkap': item.user.name,
+      'Email Siswa': item.user.email,
+      'Kelas Asal': item.cohortName,
+      'Kelas Baru (Wajib Diisi)': '',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pemetaan Siswa');
+
+    XLSX.writeFile(workbook, 'Template_Kenaikan_Kelas_Lentera.xlsx');
+  };
+
+  const handleUploadExcelFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setExcelFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const json = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+
+        if (!json || json.length === 0) {
+          showAlert('File Excel kosong atau tidak memiliki baris data', { type: 'error' });
+          return;
+        }
+
+        const studentByNis = new Map<string, Student>();
+        students.forEach((s) => {
+          if (s.nis) studentByNis.set(s.nis.trim().toLowerCase(), s);
+        });
+
+        const transferOutRegex = /^(mutasi|pindah|keluar|keluar\s+sekolah|mutasi\s+keluar|dropout|drop\s+out)$/i;
+        const retainedRegex = /^(tinggal|tetap|tidak\s+naik|tinggal\s+kelas)$/i;
+
+        const parsed: ParsedExcelRow[] = [];
+
+        for (const row of json) {
+          const nisKey = Object.keys(row).find((k) => /nis|nomor\s*induk/i.test(k));
+          const nameKey = Object.keys(row).find((k) => /nama|student/i.test(k));
+          const emailKey = Object.keys(row).find((k) => /email/i.test(k));
+          const currentKey = Object.keys(row).find((k) => /kelas\s*asal|rombel\s*lama/i.test(k));
+          const targetKey = Object.keys(row).find((k) =>
+            /kelas\s*baru|kelas\s*tujuan|rombel\s*baru|target/i.test(k)
+          );
+
+          const nis = String(row[nisKey || 'NIS'] || '').trim();
+          const name = String(row[nameKey || 'Nama Lengkap'] || '').trim();
+          const email = String(row[emailKey || 'Email Siswa'] || '').trim();
+          const currentCohort = String(row[currentKey || 'Kelas Asal'] || '').trim();
+          const newCohortName = String(row[targetKey || 'Kelas Baru (Wajib Diisi)'] || '').trim();
+
+          if (!nis && !name) continue;
+
+          let status: ParsedExcelRow['status'] = 'promote';
+          const existingStudent = nis ? studentByNis.get(nis.toLowerCase()) : undefined;
+
+          if (transferOutRegex.test(newCohortName)) {
+            status = 'transfer_out';
+          } else if (
+            retainedRegex.test(newCohortName) ||
+            (currentCohort &&
+              newCohortName &&
+              currentCohort.toLowerCase() === newCohortName.toLowerCase())
+          ) {
+            status = 'retained';
+          } else if (!existingStudent) {
+            status = 'transfer_in';
+          } else {
+            status = 'promote';
+          }
+
+          parsed.push({
+            nis,
+            name: name || existingStudent?.name || `Siswa ${nis}`,
+            email: email || existingStudent?.email || '',
+            currentCohort:
+              currentCohort || existingStudent?.cohortMemberships?.[0]?.cohort.name || '-',
+            newCohortName,
+            status,
+          });
+        }
+
+        setParsedExcelRows(parsed);
+      } catch (err) {
+        console.error(err);
+        showAlert('Gagal membaca file Excel. Pastikan format file .xlsx atau .xls valid.', {
+          type: 'error',
+        });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleExecuteExcelPromotion = async () => {
+    if (parsedExcelRows.length === 0) {
+      showAlert('Unggah file Excel pemetaan terlebih dahulu', { type: 'error' });
+      return;
+    }
+
+    const validRows = parsedExcelRows.filter((r) => r.nis && r.newCohortName);
+    if (validRows.length === 0) {
+      showAlert('Tidak ada baris data valid (kolom NIS dan Kelas Baru harus terisi)', {
+        type: 'error',
+      });
+      return;
+    }
+
+    const promoteCount = parsedExcelRows.filter((r) => r.status === 'promote').length;
+    const transferInCount = parsedExcelRows.filter((r) => r.status === 'transfer_in').length;
+    const transferOutCount = parsedExcelRows.filter((r) => r.status === 'transfer_out').length;
+    const retainedCount = parsedExcelRows.filter((r) => r.status === 'retained').length;
+
+    const confirmed = await showConfirm(
+      `Terapkan pemetaan kenaikan kelas dari file Excel?\n\n` +
+      `• Naik Kelas: ${promoteCount} siswa\n` +
+      `• Mutasi Masuk (Siswa Baru): ${transferInCount} siswa (akun otomatis dibuat)\n` +
+      `• Mutasi Keluar: ${transferOutCount} siswa (akun dinonaktifkan)\n` +
+      `• Tinggal Kelas: ${retainedCount} siswa (dipertahankan di kelas asal)`,
+      {
+        title: 'Terapkan Pemetaan Excel',
+        confirmText: 'Ya, Terapkan Sekarang',
+        cancelText: 'Batal',
+      }
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const res = await batchPromoteExcel({
+        rows: validRows.map((r) => ({
+          nis: r.nis,
+          name: r.name,
+          email: r.email,
+          newCohortName: r.newCohortName,
+        })),
+        sourceCohortIds: Array.from(excelDownloadCohortIds),
+        removeFromSourceCohort: removeFromSource,
+      });
+
+      await showAlert(
+        `Pemetaan kenaikan kelas berhasil diterapkan!\n\n` +
+        `• ${res.promotedCount} siswa berhasil naik kelas\n` +
+        `• ${res.transferInCount} siswa mutasi masuk baru didaftarkan\n` +
+        `• ${res.transferOutCount} siswa mutasi keluar telah dinonaktifkan\n` +
+        `• ${res.retainedCount} siswa tetap berada di rombel lama`,
+        { type: 'success' }
+      );
+      setIsPromoteOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || 'Gagal menerapkan pemetaan Excel', { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- TAB 3: LINEAR (1 ke 1) HANDLERS ---
   const handleSelectSourceCohort = (cId: string) => {
     setSourceCohortId(cId);
     const sourceCohort = cohorts.find((c) => c.id === cId);
     if (sourceCohort) {
-      // Pre-select all students by default
       setPromotedStudentIds(new Set(sourceCohort.members.map((m) => m.user.id)));
-      // Suggest automatic new cohort name (e.g. X to XI)
       const suggestedName = sourceCohort.name
         .replace(/Kelas\s*X\b/i, 'Kelas XI')
         .replace(/Kelas\s*XI\b/i, 'Kelas XII')
         .replace(/X-/i, 'XI-')
         .replace(/XI-/i, 'XII-');
-      setNewTargetCohortName(suggestedName !== sourceCohort.name ? suggestedName : `${sourceCohort.name} - Naik Kelas`);
+      setNewTargetCohortName(
+        suggestedName !== sourceCohort.name ? suggestedName : `${sourceCohort.name} - Naik Kelas`
+      );
     } else {
       setPromotedStudentIds(new Set());
       setNewTargetCohortName('');
     }
   };
 
-  // Execute Promotion
   const handleExecutePromotion = async () => {
     if (!sourceCohortId) {
       await showAlert('Pilih kelas/kohort asal terlebih dahulu', { type: 'error' });
@@ -917,206 +1337,964 @@ export function CohortsClient({
         </DialogContent>
       </Dialog>
 
-      {/* 3. Modal Wizard Kenaikan Kelas (Promosi Kohort) */}
+      {/* 3. Modal Wizard Kenaikan Kelas (Promosi Kohort Multi-Metode) */}
       <Dialog open={isPromoteOpen} onOpenChange={setIsPromoteOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
-              Siklus Kenaikan Kelas (Promosi Kohort)
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Pindahkan atau promosikan seluruh rombongan belajar dari kelas lama ke kelas tingkat berikutnya secara massal.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2 text-xs">
-            {/* Step 1: Pilih Kohort Asal */}
-            <div className="space-y-1.5">
-              <Label className="font-semibold">
-                1. Pilih Kelas / Kohort Asal <span className="text-red-500">*</span>
-              </Label>
-              <select
-                value={sourceCohortId}
-                onChange={(e) => handleSelectSourceCohort(e.target.value)}
-                className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
-              >
-                <option value="">-- Pilih Kohort Asal (misal: Kelas X-MIPA-1) --</option>
-                {cohorts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.members.length} Siswa)
-                  </option>
-                ))}
-              </select>
+        <DialogContent className="sm:max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="p-5 pb-3 border-b bg-gray-50/70 dark:bg-gray-900/70 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-[#002446] dark:text-white">
+                  Siklus Kenaikan Kelas &amp; Pemetaan Angkatan
+                </DialogTitle>
+                <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
+                  Didesain untuk skala besar (12+ rombel / 400+ siswa). Mendukung pengacakan rombel massal, pemetaan via Excel, serta penanganan siswa tinggal kelas dan mutasi.
+                </DialogDescription>
+              </div>
             </div>
 
-            {/* Step 2: Tentukan Kohort Tujuan */}
-            {sourceCohortId && (
-              <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
-                <Label className="font-semibold">
-                  2. Tentukan Kelas / Kohort Tujuan <span className="text-red-500">*</span>
-                </Label>
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="targetMode"
-                      checked={targetCohortMode === 'new'}
-                      onChange={() => setTargetCohortMode('new')}
-                      className="accent-emerald-600"
-                    />
-                    <span>Buat Kohort Baru</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="targetMode"
-                      checked={targetCohortMode === 'existing'}
-                      onChange={() => setTargetCohortMode('existing')}
-                      className="accent-emerald-600"
-                    />
-                    <span>Gunakan Kohort yang Sudah Ada</span>
-                  </label>
-                </div>
+            {/* TAB SELECTOR */}
+            <div className="flex items-center gap-2 mt-4 p-1 bg-gray-200/80 dark:bg-gray-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setPromoteTab('shuffle')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  promoteTab === 'shuffle'
+                    ? 'bg-white dark:bg-gray-900 text-[#002446] dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-[#002446]'
+                }`}
+              >
+                <Shuffle className="w-3.5 h-3.5 text-emerald-600" />
+                <span>1. Acak Angkatan Massal (Auto-Shuffle)</span>
+                <Badge variant="secondary" className="text-[10px] py-0 px-1.5 hidden sm:inline-flex">
+                  Rekomendasi
+                </Badge>
+              </button>
 
-                {targetCohortMode === 'new' ? (
-                  <div className="space-y-1">
-                    <Input
-                      value={newTargetCohortName}
-                      onChange={(e) => setNewTargetCohortName(e.target.value)}
-                      placeholder="Nama kelas tujuan baru (misal: Kohort-XI-MIPA-1-2027)"
-                      className="text-xs"
-                    />
-                    <p className="text-[11px] text-gray-500">
-                      Kohort baru ini akan otomatis dibuat dan diisi oleh siswa yang dipromosikan.
-                    </p>
-                  </div>
-                ) : (
-                  <select
-                    value={existingTargetCohortId}
-                    onChange={(e) => setExistingTargetCohortId(e.target.value)}
-                    className="w-full h-9 px-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
-                  >
-                    <option value="">-- Pilih Kohort Tujuan --</option>
-                    {cohorts
-                      .filter((c) => c.id !== sourceCohortId)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c.members.length} Siswa)
-                        </option>
-                      ))}
-                  </select>
-                )}
-              </div>
-            )}
+              <button
+                type="button"
+                onClick={() => setPromoteTab('excel')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  promoteTab === 'excel'
+                    ? 'bg-white dark:bg-gray-900 text-[#002446] dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-[#002446]'
+                }`}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+                <span>2. Unggah Pemetaan Excel</span>
+              </button>
 
-            {/* Step 3: Seleksi Siswa yang Naik Kelas */}
-            {sourceCohortId && (
+              <button
+                type="button"
+                onClick={() => setPromoteTab('linear')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  promoteTab === 'linear'
+                    ? 'bg-white dark:bg-gray-900 text-[#002446] dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-[#002446]'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-purple-600" />
+                <span>3. Kenaikan Linier (1 ke 1)</span>
+              </button>
+            </div>
+          </DialogHeader>
+
+          {/* TAB 1: ACAR ANGKATAN MASSAL (AUTO-SHUFFLE) */}
+          {promoteTab === 'shuffle' && (
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+              {/* Step 1: Pilih Rombel Asal */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="font-semibold">
-                    3. Siswa yang Naik Kelas ({promotedStudentIds.size} Terpilih)
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
+                      1
+                    </span>
+                    Pilih Rombongan Belajar Asal (Angkatan yang Naik Kelas)
                   </Label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => selectAllCohortsByPrefix(/X\b|X-/i)}
+                      className="text-emerald-600 hover:underline font-medium"
+                    >
+                      Pilih Semua Tingkat X
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() => selectAllCohortsByPrefix(/XI\b|XI-/i)}
+                      className="text-emerald-600 hover:underline font-medium"
+                    >
+                      Pilih Semua Tingkat XI
+                    </button>
+                    <span>•</span>
                     <button
                       type="button"
                       onClick={() => {
-                        const source = cohorts.find((c) => c.id === sourceCohortId);
-                        if (source) setPromotedStudentIds(new Set(source.members.map((m) => m.user.id)));
+                        setShuffleSourceCohortIds(new Set(cohorts.map((c) => c.id)));
+                        setShufflePreview(null);
+                        setTargetCount(cohorts.length || 1);
                       }}
-                      className="text-[11px] text-emerald-600 hover:underline font-semibold"
+                      className="text-blue-600 hover:underline font-medium"
                     >
                       Pilih Semua
                     </button>
                     <span>•</span>
                     <button
                       type="button"
-                      onClick={() => setPromotedStudentIds(new Set())}
-                      className="text-[11px] text-gray-500 hover:underline"
+                      onClick={() => {
+                        setShuffleSourceCohortIds(new Set());
+                        setShufflePreview(null);
+                        setTargetCount(1);
+                        setTargetCohortNamesText('');
+                      }}
+                      className="text-gray-500 hover:underline"
                     >
-                      Batalkan Semua
+                      Reset
                     </button>
                   </div>
                 </div>
-                <p className="text-[11px] text-gray-500">
-                  Hapus centang bagi siswa yang <strong>tinggal kelas</strong> agar tetap berada di kelas lama.
-                </p>
 
-                <div className="border rounded-lg max-h-48 overflow-y-auto divide-y bg-white dark:bg-gray-900">
-                  {cohorts
-                    .find((c) => c.id === sourceCohortId)
-                    ?.members.map((m) => {
-                      const isSelected = promotedStudentIds.has(m.user.id);
-                      return (
-                        <label
-                          key={m.user.id}
-                          className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                const updated = new Set(promotedStudentIds);
-                                if (e.target.checked) updated.add(m.user.id);
-                                else updated.delete(m.user.id);
-                                setPromotedStudentIds(updated);
-                              }}
-                              className="w-4 h-4 rounded accent-emerald-600"
-                            />
-                            <div>
-                              <span className="font-medium text-[#002446] dark:text-white">
-                                {m.user.name}
-                              </span>
-                              <span className="text-gray-400 ml-2 font-mono">
-                                {m.user.nis ? `(NIS: ${m.user.nis})` : ''}
-                              </span>
-                            </div>
-                          </div>
-                          <Badge variant={isSelected ? 'default' : 'secondary'} className="text-[10px]">
-                            {isSelected ? 'Naik Kelas' : 'Tinggal Kelas'}
-                          </Badge>
-                        </label>
-                      );
-                    })}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-36 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900/60 rounded-xl border">
+                  {cohorts.map((c) => {
+                    const isChecked = shuffleSourceCohortIds.has(c.id);
+                    return (
+                      <label
+                        key={c.id}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                          isChecked
+                            ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800'
+                            : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleShuffleSourceCohort(c.id)}
+                            className="w-3.5 h-3.5 rounded accent-emerald-600 cursor-pointer"
+                          />
+                          <span className="font-semibold truncate text-[#002446] dark:text-white">
+                            {c.name}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] shrink-0 ml-1">
+                          {c.members.length} Siswa
+                        </Badge>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-gray-500 px-1">
+                  <span>
+                    Terpilih: <strong>{shuffleSourceCohortIds.size} rombel</strong> (Total{' '}
+                    <strong>{shuffleSourceStudents.length} siswa unik</strong>)
+                  </span>
+                  {shuffleSourceCohortIds.size === 0 && (
+                    <span className="text-amber-600 font-medium">
+                      Pilih minimal satu rombel asal di atas untuk melanjutkan
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* Step 4: Toggle Opsi Keluarkan dari Kohort Asal */}
-            {sourceCohortId && (
-              <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="removeSource"
-                  checked={removeFromSource}
-                  onChange={(e) => setRemoveFromSource(e.target.checked)}
-                  className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
-                />
-                <Label htmlFor="removeSource" className="text-xs font-semibold text-emerald-950 dark:text-emerald-200 cursor-pointer">
-                  Keluarkan siswa yang naik kelas dari kohort asal (disarankan)
-                </Label>
+              {/* Step 2: Kelola Pengecualian (Tinggal Kelas & Mutasi Keluar) */}
+              {shuffleSourceStudents.length > 0 && (
+                <div className="space-y-2 p-3 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <Label className="font-bold text-sm text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px]">
+                          2
+                        </span>
+                        Pengecualian Siswa (Tinggal Kelas &amp; Mutasi Keluar)
+                      </Label>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        Siswa berstatus Tinggal Kelas akan tetap berada di rombel lamanya. Siswa Mutasi Keluar akan dikeluarkan dari rombel dan dinonaktifkan akunnya.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={shuffleStudentSearch}
+                        onChange={(e) => setShuffleStudentSearch(e.target.value)}
+                        placeholder="Cari nama atau NIS siswa..."
+                        className="h-8 w-48 text-xs bg-white dark:bg-gray-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-[11px] font-semibold pt-1">
+                    <span className="text-emerald-700 dark:text-emerald-300">
+                      🟢 Naik &amp; Ikut Diacak:{' '}
+                      {
+                        shuffleSourceStudents.filter(
+                          (s) => !retainedStudentIds.has(s.id) && !transferOutStudentIds.has(s.id)
+                        ).length
+                      }
+                    </span>
+                    <span>•</span>
+                    <span className="text-amber-700 dark:text-amber-300">
+                      🟡 Tinggal Kelas: {retainedStudentIds.size}
+                    </span>
+                    <span>•</span>
+                    <span className="text-red-700 dark:text-red-300">
+                      🔴 Mutasi Keluar: {transferOutStudentIds.size}
+                    </span>
+                  </div>
+
+                  {/* Student List */}
+                  <div className="border rounded-lg max-h-44 overflow-y-auto divide-y bg-white dark:bg-gray-900">
+                    {shuffleSourceStudents
+                      .filter(
+                        (s) =>
+                          s.name.toLowerCase().includes(shuffleStudentSearch.toLowerCase()) ||
+                          (s.nis && s.nis.toLowerCase().includes(shuffleStudentSearch.toLowerCase()))
+                      )
+                      .map((s) => {
+                        const isRetained = retainedStudentIds.has(s.id);
+                        const isTransferOut = transferOutStudentIds.has(s.id);
+                        const isPromote = !isRetained && !isTransferOut;
+
+                        return (
+                          <div
+                            key={s.id}
+                            className="p-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 text-xs"
+                          >
+                            <div>
+                              <span className="font-semibold text-[#002446] dark:text-white">
+                                {s.name}
+                              </span>
+                              <span className="text-gray-400 font-mono ml-2">
+                                {s.nis ? `(NIS: ${s.nis})` : ''}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const r = new Set(retainedStudentIds);
+                                  const t = new Set(transferOutStudentIds);
+                                  r.delete(s.id);
+                                  t.delete(s.id);
+                                  setRetainedStudentIds(r);
+                                  setTransferOutStudentIds(t);
+                                  setShufflePreview(null);
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                  isPromote
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                Naik (Acak)
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const r = new Set(retainedStudentIds);
+                                  const t = new Set(transferOutStudentIds);
+                                  r.add(s.id);
+                                  t.delete(s.id);
+                                  setRetainedStudentIds(r);
+                                  setTransferOutStudentIds(t);
+                                  setShufflePreview(null);
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                  isRetained
+                                    ? 'bg-amber-600 text-white'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                Tinggal Kelas
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const r = new Set(retainedStudentIds);
+                                  const t = new Set(transferOutStudentIds);
+                                  t.add(s.id);
+                                  r.delete(s.id);
+                                  setRetainedStudentIds(r);
+                                  setTransferOutStudentIds(t);
+                                  setShufflePreview(null);
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                  isTransferOut
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                Mutasi Keluar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Tentukan Rombel Tujuan */}
+              {shuffleSourceStudents.length > 0 && (
+                <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
+                  <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
+                      3
+                    </span>
+                    Tentukan Rombel Tujuan Baru
+                  </Label>
+
+                  {/* Generator Baris */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end p-2.5 bg-white dark:bg-gray-900 rounded-lg border">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-gray-600">Awalan / Prefix Kelas Baru</Label>
+                      <Input
+                        value={targetPrefix}
+                        onChange={(e) => setTargetPrefix(e.target.value)}
+                        placeholder="Contoh: XI-MIPA-"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-gray-600">Jumlah Kelas Tujuan</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={targetCount}
+                        onChange={(e) => setTargetCount(Number(e.target.value) || 1)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleGenerateTargetNames}
+                        className="h-8 w-full text-xs font-semibold flex items-center justify-center gap-1"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        Generate Nama Kelas
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-semibold text-gray-600">
+                        Daftar Nama Rombel Tujuan (Satu nama per baris):
+                      </Label>
+                      <span className="text-[11px] text-gray-400">
+                        {
+                          targetCohortNamesText
+                            .split('\n')
+                            .map((s) => s.trim())
+                            .filter(Boolean).length
+                        }{' '}
+                        kelas tujuan disiapkan
+                      </span>
+                    </div>
+                    <textarea
+                      value={targetCohortNamesText}
+                      onChange={(e) => {
+                        setTargetCohortNamesText(e.target.value);
+                        setShufflePreview(null);
+                      }}
+                      rows={3}
+                      placeholder="XI-MIPA-1&#10;XI-MIPA-2&#10;XI-MIPA-3..."
+                      className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-mono text-xs focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Acak & Live Preview */}
+              {shuffleSourceStudents.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
+                        4
+                      </span>
+                      Pengacakan Siswa &amp; Pratinjau Pembagian Rombel
+                    </Label>
+
+                    <Button
+                      type="button"
+                      onClick={handleRunShuffle}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-9 flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Shuffle className="w-4 h-4" />
+                      {shufflePreview ? 'Kocok Ulang Acakan' : 'Acak Siswa Sekarang'}
+                    </Button>
+                  </div>
+
+                  {shufflePreview && (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-xl flex items-center justify-between">
+                        <div>
+                          <p className="font-bold text-emerald-900 dark:text-emerald-200">
+                            Distribusi Acak Siap Diterapkan!
+                          </p>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                            Siswa telah diacak secara merata ke dalam {shufflePreview.length} rombel baru.
+                            Periksa hasil di bawah sebelum mengeksekusi ke database.
+                          </p>
+                        </div>
+                        <Badge className="bg-emerald-600 text-white text-xs">
+                          {shufflePreview.reduce((acc, g) => acc + g.students.length, 0)} Siswa Terbagi
+                        </Badge>
+                      </div>
+
+                      {/* Grid Rombel Preview */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
+                        {shufflePreview.map((group) => (
+                          <div
+                            key={group.cohortName}
+                            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3 shadow-xs space-y-2"
+                          >
+                            <div className="flex items-center justify-between border-b pb-1.5">
+                              <span className="font-bold text-xs text-[#002446] dark:text-white">
+                                {group.cohortName}
+                              </span>
+                              <Badge variant="secondary" className="text-[10px]">
+                                {group.students.length} Siswa
+                              </Badge>
+                            </div>
+                            <div className="max-h-32 overflow-y-auto divide-y text-[11px]">
+                              {group.students.map((st, idx) => (
+                                <div key={st.id} className="py-1 flex items-center justify-between">
+                                  <span className="truncate pr-1">
+                                    {idx + 1}. {st.name}
+                                  </span>
+                                  <span className="text-gray-400 font-mono text-[10px] shrink-0">
+                                    {st.nis || ''}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Opsi Eksekusi */}
+              {shufflePreview && (
+                <div className="p-3 bg-gray-50 dark:bg-gray-900 border rounded-xl flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="removeSourceShuffle"
+                    checked={removeFromSource}
+                    onChange={(e) => setRemoveFromSource(e.target.checked)}
+                    className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+                  />
+                  <Label
+                    htmlFor="removeSourceShuffle"
+                    className="text-xs font-semibold text-[#002446] dark:text-white cursor-pointer"
+                  >
+                    Keluarkan siswa yang naik kelas dari rombel asal (siswa tinggal kelas tetap dipertahankan di rombel asal)
+                  </Label>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: UNGGAH PEMETAAN EXCEL */}
+          {promoteTab === 'excel' && (
+            <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+              {/* Step 1: Download Template */}
+              <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="font-bold text-sm text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
+                    <Download className="w-4 h-4 text-blue-600" />
+                    Langkah 1: Unduh Template Pemetaan Angkatan (.xlsx)
+                  </Label>
+                  <Button
+                    type="button"
+                    onClick={handleDownloadExcelTemplate}
+                    variant="outline"
+                    className="h-8 text-xs font-semibold border-blue-300 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Unduh Template Excel
+                  </Button>
+                </div>
+                <p className="text-[11px] text-gray-600 dark:text-gray-300">
+                  Template Excel akan otomatis berisi daftar nama &amp; NIS seluruh siswa dari kelas asal yang dipilih.
+                </p>
+
+                {/* Filter rombel yang diekspor */}
+                <div className="space-y-1 pt-1">
+                  <Label className="text-[11px] text-gray-500 font-semibold">
+                    Pilih Rombel yang dimasukkan ke template (Kosongkan jika ingin mengekspor semua siswa):
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                    {cohorts.map((c) => {
+                      const isChecked = excelDownloadCohortIds.has(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            const updated = new Set(excelDownloadCohortIds);
+                            if (isChecked) updated.delete(c.id);
+                            else updated.add(c.id);
+                            setExcelDownloadCohortIds(updated);
+                          }}
+                          className={`px-2 py-0.5 rounded-md text-[10px] border transition-colors ${
+                            isChecked
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white dark:bg-gray-900 text-gray-600 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {c.name} ({c.members.length})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-white dark:bg-gray-900 rounded-lg border text-[11px] text-gray-600 dark:text-gray-400 space-y-1">
+                  <p className="font-semibold text-gray-800 dark:text-gray-200">
+                    Petunjuk Pengisian Kolom &quot;Kelas Baru&quot;:
+                  </p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    <li>
+                      <strong>Naik Kelas:</strong> Tulis nama rombel tujuan baru (misal:{' '}
+                      <span className="font-mono text-emerald-600">XI-MIPA-1</span>).
+                    </li>
+                    <li>
+                      <strong>Tinggal Kelas:</strong> Ketik{' '}
+                      <span className="font-mono text-amber-600">TINGGAL</span> atau biarkan sama dengan kelas asal.
+                    </li>
+                    <li>
+                      <strong>Mutasi Keluar:</strong> Ketik{' '}
+                      <span className="font-mono text-red-600">MUTASI</span> atau{' '}
+                      <span className="font-mono text-red-600">KELUAR</span> (siswa dikeluarkan dan akun dinonaktifkan).
+                    </li>
+                    <li>
+                      <strong>Mutasi Masuk (Siswa Baru):</strong> Tambahkan baris baru di bawah dengan NIS, Nama, dan Kelas Baru tujuan (akun otomatis dibuat).
+                    </li>
+                  </ul>
+                </div>
               </div>
-            )}
-          </div>
 
-          <DialogFooter className="pt-2 border-t">
+              {/* Step 2: Upload File */}
+              <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
+                <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
+                  <FileUp className="w-4 h-4 text-blue-600" />
+                  Langkah 2: Unggah File Excel yang Telah Diisi
+                </Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleUploadExcelFile}
+                    className="text-xs bg-white dark:bg-gray-900"
+                  />
+                  {excelFileName && (
+                    <Badge variant="outline" className="text-xs py-1">
+                      {excelFileName}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Step 3: Live Preview Hasil Parsing Excel */}
+              {parsedExcelRows.length > 0 && (
+                <div className="space-y-3">
+                  {/* Summary Badges */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="p-2.5 rounded-xl border bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold block">
+                        Naik Kelas
+                      </span>
+                      <span className="text-lg font-bold text-emerald-800 dark:text-emerald-200">
+                        {parsedExcelRows.filter((r) => r.status === 'promote').length} Siswa
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl border bg-blue-50 dark:bg-blue-950/30 border-blue-200">
+                      <span className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold block">
+                        Mutasi Masuk (Baru)
+                      </span>
+                      <span className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                        {parsedExcelRows.filter((r) => r.status === 'transfer_in').length} Siswa
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl border bg-amber-50 dark:bg-amber-950/30 border-amber-200">
+                      <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold block">
+                        Tinggal Kelas
+                      </span>
+                      <span className="text-lg font-bold text-amber-800 dark:text-amber-200">
+                        {parsedExcelRows.filter((r) => r.status === 'retained').length} Siswa
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl border bg-red-50 dark:bg-red-950/30 border-red-200">
+                      <span className="text-[10px] text-red-700 dark:text-red-300 font-semibold block">
+                        Mutasi Keluar
+                      </span>
+                      <span className="text-lg font-bold text-red-800 dark:text-red-200">
+                        {parsedExcelRows.filter((r) => r.status === 'transfer_out').length} Siswa
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Filter & Search */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1">
+                      {(['all', 'promote', 'transfer_in', 'retained', 'transfer_out'] as const).map(
+                        (st) => (
+                          <button
+                            key={st}
+                            type="button"
+                            onClick={() => setExcelFilterStatus(st)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                              excelFilterStatus === st
+                                ? 'bg-[#002446] text-white dark:bg-blue-600'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 hover:bg-gray-200'
+                            }`}
+                          >
+                            {st === 'all' && `Semua (${parsedExcelRows.length})`}
+                            {st === 'promote' && 'Naik Kelas'}
+                            {st === 'transfer_in' && 'Mutasi Masuk'}
+                            {st === 'retained' && 'Tinggal Kelas'}
+                            {st === 'transfer_out' && 'Mutasi Keluar'}
+                          </button>
+                        )
+                      )}
+                    </div>
+
+                    <Input
+                      value={excelSearch}
+                      onChange={(e) => setExcelSearch(e.target.value)}
+                      placeholder="Cari NIS atau nama..."
+                      className="h-8 w-44 text-xs"
+                    />
+                  </div>
+
+                  {/* Preview Table */}
+                  <div className="border rounded-xl max-h-56 overflow-y-auto bg-white dark:bg-gray-900">
+                    <Table>
+                      <TableHeader className="bg-gray-50 dark:bg-gray-800/60 sticky top-0">
+                        <TableRow>
+                          <TableHead className="w-10 text-[11px]">No</TableHead>
+                          <TableHead className="text-[11px]">NIS</TableHead>
+                          <TableHead className="text-[11px]">Nama Siswa</TableHead>
+                          <TableHead className="text-[11px]">Kelas Asal</TableHead>
+                          <TableHead className="text-[11px]">Status &amp; Aksi</TableHead>
+                          <TableHead className="text-[11px]">Kelas Tujuan Baru</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {parsedExcelRows
+                          .filter((r) => (excelFilterStatus === 'all' ? true : r.status === excelFilterStatus))
+                          .filter(
+                            (r) =>
+                              r.name.toLowerCase().includes(excelSearch.toLowerCase()) ||
+                              r.nis.toLowerCase().includes(excelSearch.toLowerCase())
+                          )
+                          .map((r, idx) => (
+                            <TableRow key={`${r.nis}-${idx}`} className="hover:bg-gray-50/50">
+                              <TableCell className="font-mono text-gray-400">{idx + 1}</TableCell>
+                              <TableCell className="font-mono font-semibold">{r.nis}</TableCell>
+                              <TableCell className="font-medium text-[#002446] dark:text-white">
+                                {r.name}
+                              </TableCell>
+                              <TableCell className="text-gray-500">{r.currentCohort}</TableCell>
+                              <TableCell>
+                                {r.status === 'promote' && (
+                                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px]">
+                                    Naik Kelas
+                                  </Badge>
+                                )}
+                                {r.status === 'transfer_in' && (
+                                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 text-[10px]">
+                                    Mutasi Masuk (Akun Baru)
+                                  </Badge>
+                                )}
+                                {r.status === 'retained' && (
+                                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px]">
+                                    Tinggal Kelas
+                                  </Badge>
+                                )}
+                                {r.status === 'transfer_out' && (
+                                  <Badge className="bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 text-[10px]">
+                                    Mutasi Keluar (Nonaktif)
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-semibold text-emerald-700 dark:text-emerald-300">
+                                {r.newCohortName}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Option */}
+                  <div className="p-3 bg-gray-50 dark:bg-gray-900 border rounded-xl flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="removeSourceExcel"
+                      checked={removeFromSource}
+                      onChange={(e) => setRemoveFromSource(e.target.checked)}
+                      className="w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                    />
+                    <Label
+                      htmlFor="removeSourceExcel"
+                      className="text-xs font-semibold text-[#002446] dark:text-white cursor-pointer"
+                    >
+                      Keluarkan siswa yang naik kelas dari rombel asal (siswa tinggal kelas tetap di kelas lamanya)
+                    </Label>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: KENAIKAN LINIER (1 KE 1) */}
+          {promoteTab === 'linear' && (
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+              {/* Step 1: Pilih Kohort Asal */}
+              <div className="space-y-1.5">
+                <Label className="font-semibold">
+                  1. Pilih Kelas / Kohort Asal <span className="text-red-500">*</span>
+                </Label>
+                <select
+                  value={sourceCohortId}
+                  onChange={(e) => handleSelectSourceCohort(e.target.value)}
+                  className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
+                >
+                  <option value="">-- Pilih Kohort Asal (misal: Kelas X-MIPA-1) --</option>
+                  {cohorts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.members.length} Siswa)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Step 2: Tentukan Kohort Tujuan */}
+              {sourceCohortId && (
+                <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
+                  <Label className="font-semibold">
+                    2. Tentukan Kelas / Kohort Tujuan <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="targetMode"
+                        checked={targetCohortMode === 'new'}
+                        onChange={() => setTargetCohortMode('new')}
+                        className="accent-emerald-600"
+                      />
+                      <span>Buat Kohort Baru</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="targetMode"
+                        checked={targetCohortMode === 'existing'}
+                        onChange={() => setTargetCohortMode('existing')}
+                        className="accent-emerald-600"
+                      />
+                      <span>Gunakan Kohort yang Sudah Ada</span>
+                    </label>
+                  </div>
+
+                  {targetCohortMode === 'new' ? (
+                    <div className="space-y-1">
+                      <Input
+                        value={newTargetCohortName}
+                        onChange={(e) => setNewTargetCohortName(e.target.value)}
+                        placeholder="Nama kelas tujuan baru (misal: Kohort-XI-MIPA-1-2027)"
+                        className="text-xs"
+                      />
+                      <p className="text-[11px] text-gray-500">
+                        Kohort baru ini akan otomatis dibuat dan diisi oleh siswa yang dipromosikan.
+                      </p>
+                    </div>
+                  ) : (
+                    <select
+                      value={existingTargetCohortId}
+                      onChange={(e) => setExistingTargetCohortId(e.target.value)}
+                      className="w-full h-9 px-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
+                    >
+                      <option value="">-- Pilih Kohort Tujuan --</option>
+                      {cohorts
+                        .filter((c) => c.id !== sourceCohortId)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.members.length} Siswa)
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3: Seleksi Siswa yang Naik Kelas */}
+              {sourceCohortId && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold">
+                      3. Siswa yang Naik Kelas ({promotedStudentIds.size} Terpilih)
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const source = cohorts.find((c) => c.id === sourceCohortId);
+                          if (source) setPromotedStudentIds(new Set(source.members.map((m) => m.user.id)));
+                        }}
+                        className="text-[11px] text-emerald-600 hover:underline font-semibold"
+                      >
+                        Pilih Semua
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => setPromotedStudentIds(new Set())}
+                        className="text-[11px] text-gray-500 hover:underline"
+                      >
+                        Batalkan Semua
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-500">
+                    Hapus centang bagi siswa yang <strong>tinggal kelas</strong> agar tetap berada di kelas lama.
+                  </p>
+
+                  <div className="border rounded-lg max-h-48 overflow-y-auto divide-y bg-white dark:bg-gray-900">
+                    {cohorts
+                      .find((c) => c.id === sourceCohortId)
+                      ?.members.map((m) => {
+                        const isSelected = promotedStudentIds.has(m.user.id);
+                        return (
+                          <label
+                            key={m.user.id}
+                            className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  const updated = new Set(promotedStudentIds);
+                                  if (e.target.checked) updated.add(m.user.id);
+                                  else updated.delete(m.user.id);
+                                  setPromotedStudentIds(updated);
+                                }}
+                                className="w-4 h-4 rounded accent-emerald-600"
+                              />
+                              <div>
+                                <span className="font-medium text-[#002446] dark:text-white">
+                                  {m.user.name}
+                                </span>
+                                <span className="text-gray-400 ml-2 font-mono">
+                                  {m.user.nis ? `(NIS: ${m.user.nis})` : ''}
+                                </span>
+                              </div>
+                            </div>
+                            <Badge variant={isSelected ? 'default' : 'secondary'} className="text-[10px]">
+                              {isSelected ? 'Naik Kelas' : 'Tinggal Kelas'}
+                            </Badge>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Toggle Opsi Keluarkan dari Kohort Asal */}
+              {sourceCohortId && (
+                <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="removeSourceLinear"
+                    checked={removeFromSource}
+                    onChange={(e) => setRemoveFromSource(e.target.checked)}
+                    className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+                  />
+                  <Label
+                    htmlFor="removeSourceLinear"
+                    className="text-xs font-semibold text-emerald-950 dark:text-emerald-200 cursor-pointer"
+                  >
+                    Keluarkan siswa yang naik kelas dari kohort asal (disarankan)
+                  </Label>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DIALOG FOOTER */}
+          <DialogFooter className="p-4 border-t bg-gray-50/80 dark:bg-gray-900/80 shrink-0 flex items-center justify-between sm:justify-between">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsPromoteOpen(false)}
               disabled={loading}
+              className="text-xs"
             >
               Batal
             </Button>
-            <Button
-              onClick={handleExecutePromotion}
-              disabled={!sourceCohortId || promotedStudentIds.size === 0 || loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1.5"
-            >
-              <TrendingUp className="w-4 h-4" />
-              {loading ? 'Memproses...' : `Eksekusi Kenaikan Kelas (${promotedStudentIds.size} Siswa)`}
-            </Button>
+
+            <div className="flex items-center gap-2">
+              {promoteTab === 'shuffle' && (
+                <Button
+                  onClick={handleExecuteShufflePromotion}
+                  disabled={!shufflePreview || loading}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  {loading
+                    ? 'Memproses Kenaikan Massal...'
+                    : `Terapkan Kenaikan Massal (${
+                        shufflePreview ? shufflePreview.reduce((acc, g) => acc + g.students.length, 0) : 0
+                      } Siswa)`}
+                </Button>
+              )}
+
+              {promoteTab === 'excel' && (
+                <Button
+                  onClick={handleExecuteExcelPromotion}
+                  disabled={parsedExcelRows.length === 0 || loading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  {loading
+                    ? 'Menerapkan Pemetaan...'
+                    : `Terapkan Pemetaan Excel (${parsedExcelRows.length} Baris)`}
+                </Button>
+              )}
+
+              {promoteTab === 'linear' && (
+                <Button
+                  onClick={handleExecutePromotion}
+                  disabled={!sourceCohortId || promotedStudentIds.size === 0 || loading}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  {loading
+                    ? 'Memproses...'
+                    : `Eksekusi Kenaikan Linier (${promotedStudentIds.size} Siswa)`}
+                </Button>
+              )}
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

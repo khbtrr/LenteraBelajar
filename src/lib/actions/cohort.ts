@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { requireSchool, requireRole } from '@/lib/auth-utils';
+import { requireSchool, requireRole, hashPassword } from '@/lib/auth-utils';
 import { EnrollmentMethod, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
@@ -356,4 +356,365 @@ export async function removeEnrollment(courseId: string, userId: string) {
 
   revalidatePath('/[locale]/teacher/course/[courseId]/enrollments', 'page');
   return deleted;
+}
+
+export async function batchPromoteShuffle(data: {
+  sourceCohortIds: string[];
+  targetCohortNames: string[];
+  retainedStudentIds: string[];
+  transferOutStudentIds: string[];
+  removeFromSourceCohort: boolean;
+  shuffledDistribution?: { cohortName: string; studentIds: string[] }[];
+}) {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('Sekolah tidak ditemukan');
+
+  if (!data.sourceCohortIds || data.sourceCohortIds.length === 0) {
+    throw new Error('Pilih minimal satu kelas asal');
+  }
+
+  if (!data.targetCohortNames || data.targetCohortNames.length === 0) {
+    throw new Error('Tentukan minimal satu nama kelas tujuan');
+  }
+
+  const retainedSet = new Set(data.retainedStudentIds || []);
+  const transferOutSet = new Set(data.transferOutStudentIds || []);
+
+  // Ambil semua anggota dari kohort asal
+  const sourceMemberships = await db.cohortMember.findMany({
+    where: { cohortId: { in: data.sourceCohortIds } },
+    select: { userId: true },
+  });
+
+  const allSourceUserIds = Array.from(new Set(sourceMemberships.map((m) => m.userId)));
+
+  // Siswa yang berhak naik kelas (bukan tinggal kelas & bukan mutasi keluar)
+  const eligibleStudentIds = allSourceUserIds.filter(
+    (id) => !retainedSet.has(id) && !transferOutSet.has(id)
+  );
+
+  let finalDistribution = data.shuffledDistribution;
+
+  if (!finalDistribution || finalDistribution.length === 0) {
+    // Lakukan Fisher-Yates shuffle
+    const shuffled = [...eligibleStudentIds];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    const distMap = new Map<string, string[]>();
+    data.targetCohortNames.forEach((name) => distMap.set(name, []));
+
+    shuffled.forEach((userId, idx) => {
+      const targetName = data.targetCohortNames[idx % data.targetCohortNames.length];
+      distMap.get(targetName)!.push(userId);
+    });
+
+    finalDistribution = Array.from(distMap.entries()).map(([cohortName, studentIds]) => ({
+      cohortName,
+      studentIds,
+    }));
+  }
+
+  let totalPromoted = 0;
+
+  await db.$transaction(async (tx) => {
+    // 1. Tangani Siswa Mutasi Keluar
+    if (data.transferOutStudentIds && data.transferOutStudentIds.length > 0) {
+      // Hapus dari keanggotaan rombel
+      await tx.cohortMember.deleteMany({
+        where: {
+          userId: { in: data.transferOutStudentIds },
+        },
+      });
+
+      // Nonaktifkan akun (nilai dan tugas historis tetap ada)
+      await tx.user.updateMany({
+        where: {
+          id: { in: data.transferOutStudentIds },
+          schoolId,
+        },
+        data: {
+          isActive: false,
+        },
+      });
+    }
+
+    // 2. Siapkan kohort tujuan (cari atau buat baru)
+    const cohortNameToId = new Map<string, string>();
+    for (const group of finalDistribution!) {
+      const trimmedName = group.cohortName.trim();
+      let cohort = await tx.cohort.findFirst({
+        where: {
+          schoolId,
+          name: trimmedName,
+        },
+      });
+
+      if (!cohort) {
+        cohort = await tx.cohort.create({
+          data: {
+            name: trimmedName,
+            schoolId,
+          },
+        });
+      }
+      cohortNameToId.set(trimmedName, cohort.id);
+    }
+
+    // 3. Masukkan siswa yang naik kelas ke rombel tujuan masing-masing
+    const promotedUserIds: string[] = [];
+    for (const group of finalDistribution!) {
+      const targetCohortId = cohortNameToId.get(group.cohortName.trim())!;
+      for (const userId of group.studentIds) {
+        if (transferOutSet.has(userId) || retainedSet.has(userId)) continue;
+
+        await tx.cohortMember.upsert({
+          where: {
+            cohortId_userId: {
+              cohortId: targetCohortId,
+              userId,
+            },
+          },
+          create: {
+            cohortId: targetCohortId,
+            userId,
+          },
+          update: {},
+        });
+        promotedUserIds.push(userId);
+      }
+    }
+
+    totalPromoted = promotedUserIds.length;
+
+    // 4. Hapus dari kohort asal jika removeFromSourceCohort true
+    // Catatan: Siswa tinggal kelas (retainedStudentIds) TIDAK dihapus dari kohort asal
+    if (data.removeFromSourceCohort && promotedUserIds.length > 0) {
+      await tx.cohortMember.deleteMany({
+        where: {
+          cohortId: { in: data.sourceCohortIds },
+          userId: { in: promotedUserIds },
+        },
+      });
+    }
+  });
+
+  revalidatePath('/[locale]/admin/cohorts', 'page');
+  revalidatePath('/[locale]/admin/users', 'page');
+  revalidatePath('/[locale]/admin/dashboard', 'page');
+
+  return {
+    success: true,
+    promotedCount: totalPromoted,
+    transferOutCount: data.transferOutStudentIds?.length || 0,
+    retainedCount: data.retainedStudentIds?.length || 0,
+  };
+}
+
+export interface ExcelPromotionRow {
+  nis: string;
+  name?: string;
+  email?: string;
+  newCohortName: string;
+}
+
+export async function batchPromoteExcel(data: {
+  rows: ExcelPromotionRow[];
+  sourceCohortIds?: string[];
+  removeFromSourceCohort: boolean;
+}) {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('Sekolah tidak ditemukan');
+  const targetSchoolId = schoolId as string;
+
+  const validRows = data.rows.filter(
+    (r) => r.nis && r.nis.trim() && r.newCohortName && r.newCohortName.trim()
+  );
+  if (validRows.length === 0) {
+    throw new Error('Data Excel kosong atau tidak memiliki kolom NIS dan Kelas Baru');
+  }
+
+  const nisList = Array.from(new Set(validRows.map((r) => r.nis.trim())));
+
+  // Ambil data user yang ada di database sekolah
+  const existingUsers = await db.user.findMany({
+    where: {
+      schoolId,
+      nis: { in: nisList },
+    },
+    select: {
+      id: true,
+      nis: true,
+      email: true,
+      name: true,
+    },
+  });
+
+  const userByNis = new Map<string, (typeof existingUsers)[0]>();
+  existingUsers.forEach((u) => {
+    if (u.nis) userByNis.set(u.nis, u);
+  });
+
+  const transferOutRegex = /^(mutasi|pindah|keluar|keluar\s+sekolah|mutasi\s+keluar|dropout|drop\s+out)$/i;
+  const retainedRegex = /^(tinggal|tetap|tidak\s+naik|tinggal\s+kelas)$/i;
+
+  const transferOutUserIds: string[] = [];
+  const retainedUserIds: string[] = [];
+  const normalPromotions: { userId: string; newCohortName: string }[] = [];
+  const transferInRows: ExcelPromotionRow[] = [];
+
+  for (const row of validRows) {
+    const nis = row.nis.trim();
+    const target = row.newCohortName.trim();
+    const existing = userByNis.get(nis);
+
+    if (transferOutRegex.test(target)) {
+      if (existing) {
+        transferOutUserIds.push(existing.id);
+      }
+    } else if (retainedRegex.test(target)) {
+      if (existing) {
+        retainedUserIds.push(existing.id);
+      }
+    } else {
+      if (existing) {
+        normalPromotions.push({ userId: existing.id, newCohortName: target });
+      } else {
+        transferInRows.push(row);
+      }
+    }
+  }
+
+  let promotedCount = 0;
+  let transferInCount = 0;
+
+  await db.$transaction(async (tx) => {
+    // 1. Siswa Mutasi Keluar
+    if (transferOutUserIds.length > 0) {
+      await tx.cohortMember.deleteMany({
+        where: { userId: { in: transferOutUserIds } },
+      });
+      await tx.user.updateMany({
+        where: { id: { in: transferOutUserIds }, schoolId },
+        data: { isActive: false },
+      });
+    }
+
+    const cohortNameToId = new Map<string, string>();
+    async function getOrCreateCohortId(name: string): Promise<string> {
+      const trimmed = name.trim();
+      if (cohortNameToId.has(trimmed)) {
+        return cohortNameToId.get(trimmed)!;
+      }
+      let c = await tx.cohort.findFirst({
+        where: { schoolId: targetSchoolId, name: trimmed },
+      });
+      if (!c) {
+        c = await tx.cohort.create({
+          data: { name: trimmed, schoolId: targetSchoolId },
+        });
+      }
+      cohortNameToId.set(trimmed, c.id);
+      return c.id;
+    }
+
+    // 2. Siswa Mutasi Masuk (Siswa baru belum ada di DB)
+    const defaultPasswordHash = hashPassword('123456');
+    for (const inRow of transferInRows) {
+      const nis = inRow.nis.trim();
+      const targetCohortId = await getOrCreateCohortId(inRow.newCohortName);
+
+      let studentEmail = inRow.email?.trim();
+      if (!studentEmail) {
+        studentEmail = `${nis}@student.${targetSchoolId.slice(0, 8).toLowerCase()}.local`;
+      }
+
+      const emailExists = await tx.user.findUnique({ where: { email: studentEmail } });
+      if (emailExists) {
+        studentEmail = `${nis}_${Date.now()}@student.local`;
+      }
+
+      const newUser = await tx.user.create({
+        data: {
+          name: inRow.name?.trim() || `Siswa Baru ${nis}`,
+          email: studentEmail,
+          nis,
+          passwordHash: defaultPasswordHash,
+          role: Role.STUDENT,
+          isActive: true,
+          mustChangePassword: true,
+          schoolId: targetSchoolId,
+        },
+      });
+
+      await tx.cohortMember.upsert({
+        where: {
+          cohortId_userId: {
+            cohortId: targetCohortId,
+            userId: newUser.id,
+          },
+        },
+        create: {
+          cohortId: targetCohortId,
+          userId: newUser.id,
+        },
+        update: {},
+      });
+
+      transferInCount++;
+    }
+
+    // 3. Siswa Naik Kelas Normal
+    const promotedUserIds: string[] = [];
+    for (const item of normalPromotions) {
+      const targetCohortId = await getOrCreateCohortId(item.newCohortName);
+      await tx.cohortMember.upsert({
+        where: {
+          cohortId_userId: {
+            cohortId: targetCohortId,
+            userId: item.userId,
+          },
+        },
+        create: {
+          cohortId: targetCohortId,
+          userId: item.userId,
+        },
+        update: {},
+      });
+      promotedUserIds.push(item.userId);
+    }
+
+    promotedCount = promotedUserIds.length;
+
+    // 4. Hapus dari rombel asal jika diminta
+    if (
+      data.removeFromSourceCohort &&
+      promotedUserIds.length > 0 &&
+      data.sourceCohortIds &&
+      data.sourceCohortIds.length > 0
+    ) {
+      await tx.cohortMember.deleteMany({
+        where: {
+          cohortId: { in: data.sourceCohortIds },
+          userId: { in: promotedUserIds },
+        },
+      });
+    }
+  });
+
+  revalidatePath('/[locale]/admin/cohorts', 'page');
+  revalidatePath('/[locale]/admin/users', 'page');
+  revalidatePath('/[locale]/admin/dashboard', 'page');
+
+  return {
+    success: true,
+    promotedCount,
+    transferOutCount: transferOutUserIds.length,
+    transferInCount,
+    retainedCount: retainedUserIds.length,
+  };
 }
