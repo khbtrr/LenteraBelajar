@@ -78,6 +78,8 @@ model User {
   lessonProgresses      LessonProgress[]
   calendarEvents        CalendarEvent[]
   schoolAnnouncements   SchoolAnnouncement[]
+  conversationParticipants ConversationParticipant[]
+  sentDirectMessages      DirectMessage[]           @relation("DirectMessageSender")
 
   @@index([schoolId])
   @@index([email])
@@ -743,5 +745,44 @@ model SchoolAnnouncement {
   @@index([createdAt])
 }
 
+model Conversation {
+  id            String   @id @default(cuid())
+  isGroup       Boolean  @default(false)
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
+  participants ConversationParticipant[]
+  messages     DirectMessage[]
 
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id             String    @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model DirectMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String   @db.Text
+  isDeleted      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("DirectMessageSender", fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
