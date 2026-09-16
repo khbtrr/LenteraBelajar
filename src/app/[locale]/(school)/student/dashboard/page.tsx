@@ -22,6 +22,8 @@ import { getUserGamificationProfile } from '@/lib/actions/gamification';
 import { BADGE_CATALOG } from '@/lib/gamification-constants';
 import { Flame, Medal, Award } from 'lucide-react';
 import { MiniCalendarWidget } from '@/components/calendar/mini-calendar-widget';
+import { getActiveSchoolAnnouncementsForUser } from '@/lib/actions/school-announcement';
+import { SchoolAnnouncementsWidget } from '@/components/announcements/school-announcements-widget';
 
 export default async function StudentDashboard() {
   const session = await auth();
@@ -29,7 +31,7 @@ export default async function StudentDashboard() {
 
   if (!session?.user) return null;
 
-  const [enrollments, upcomingDeadlines, gamificationProfile] = await Promise.all([
+  const [enrollments, upcomingDeadlines, gamificationProfile, announcements] = await Promise.all([
     db.enrollment.findMany({
       where: { userId: session.user.id },
       include: {
@@ -47,6 +49,7 @@ export default async function StudentDashboard() {
     }),
     getStudentUpcomingDeadlines(),
     getUserGamificationProfile(session.user.id),
+    getActiveSchoolAnnouncementsForUser(),
   ]);
 
   const enrollmentCount = enrollments.length;
@@ -54,6 +57,9 @@ export default async function StudentDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* School Announcements Banner & Widget */}
+      <SchoolAnnouncementsWidget announcements={announcements} />
+
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r from-[#002446] to-[#013567] text-white p-6 rounded-2xl shadow-sm">
         <div className="space-y-1">
