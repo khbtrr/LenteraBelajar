@@ -38,7 +38,6 @@ import {
   AlertCircle,
   ArrowRight,
   Filter,
-  Shuffle,
   FileSpreadsheet,
   FileUp,
   RefreshCw,
@@ -56,7 +55,6 @@ import {
   bulkRemoveStudentsFromCohort,
   promoteCohortStudents,
   graduateCohortStudents,
-  batchPromoteShuffle,
   batchPromoteExcel,
 } from '@/lib/actions/cohort';
 import { useDialog } from '@/context/DialogContext';
@@ -109,20 +107,10 @@ export function CohortsClient({
 
   // 3. Promotion (Kenaikan Kelas) Modal
   const [isPromoteOpen, setIsPromoteOpen] = useState(false);
-  const [promoteTab, setPromoteTab] = useState<'shuffle' | 'excel' | 'linear'>('shuffle');
+  const [promoteTab, setPromoteTab] = useState<'excel' | 'linear'>('excel');
   const [removeFromSource, setRemoveFromSource] = useState(true);
 
-  // Tab 1: Shuffle Massal (Auto-Shuffle)
-  const [shuffleSourceCohortIds, setShuffleSourceCohortIds] = useState<Set<string>>(new Set());
-  const [targetPrefix, setTargetPrefix] = useState('XI-MIPA-');
-  const [targetCount, setTargetCount] = useState<number>(1);
-  const [targetCohortNamesText, setTargetCohortNamesText] = useState('');
-  const [retainedStudentIds, setRetainedStudentIds] = useState<Set<string>>(new Set());
-  const [transferOutStudentIds, setTransferOutStudentIds] = useState<Set<string>>(new Set());
-  const [shuffleStudentSearch, setShuffleStudentSearch] = useState('');
-  const [shufflePreview, setShufflePreview] = useState<{ cohortName: string; students: Student[] }[] | null>(null);
-
-  // Tab 2: Excel Mapping
+  // Tab 1: Impor Pemetaan Berkas TU (Excel/CSV)
   interface ParsedExcelRow {
     nis: string;
     name: string;
@@ -137,7 +125,7 @@ export function CohortsClient({
   const [excelSearch, setExcelSearch] = useState('');
   const [excelFileName, setExcelFileName] = useState('');
 
-  // Tab 3: Kenaikan Linier (1 ke 1)
+  // Tab 2: Kenaikan Linier (1 ke 1)
   const [sourceCohortId, setSourceCohortId] = useState('');
   const [targetCohortMode, setTargetCohortMode] = useState<'new' | 'existing'>('new');
   const [newTargetCohortName, setNewTargetCohortName] = useState('');
@@ -334,207 +322,22 @@ export function CohortsClient({
   // Open Promotion Modal
   const handleOpenPromote = () => {
     setIsPromoteOpen(true);
-    setPromoteTab('shuffle');
+    setPromoteTab('excel');
     setRemoveFromSource(true);
 
-    // Reset Tab 1: Shuffle
-    setShuffleSourceCohortIds(new Set());
-    setTargetPrefix('XI-MIPA-');
-    setTargetCount(1);
-    setTargetCohortNamesText('');
-    setRetainedStudentIds(new Set());
-    setTransferOutStudentIds(new Set());
-    setShuffleStudentSearch('');
-    setShufflePreview(null);
-
-    // Reset Tab 2: Excel
+    // Reset Tab 1: Excel
     setExcelDownloadCohortIds(new Set());
     setParsedExcelRows([]);
     setExcelFilterStatus('all');
     setExcelSearch('');
     setExcelFileName('');
 
-    // Reset Tab 3: Linier
+    // Reset Tab 2: Linier
     setSourceCohortId('');
     setTargetCohortMode('new');
     setNewTargetCohortName('');
     setExistingTargetCohortId('');
     setPromotedStudentIds(new Set());
-  };
-
-  // --- TAB 1: SHUFFLE HANDLERS ---
-  const toggleShuffleSourceCohort = (cohortId: string) => {
-    const updated = new Set(shuffleSourceCohortIds);
-    if (updated.has(cohortId)) {
-      updated.delete(cohortId);
-    } else {
-      updated.add(cohortId);
-    }
-    setShuffleSourceCohortIds(updated);
-    setShufflePreview(null);
-
-    const count = updated.size || 1;
-    setTargetCount(count);
-
-    const selected = cohorts.filter((c) => updated.has(c.id));
-    if (selected.length > 0) {
-      const firstName = selected[0].name;
-      let prefix = 'XI-';
-      if (/Kelas\s*X\b/i.test(firstName)) prefix = 'Kelas XI-';
-      else if (/Kelas\s*XI\b/i.test(firstName)) prefix = 'Kelas XII-';
-      else if (/^X-/i.test(firstName)) prefix = 'XI-';
-      else if (/^XI-/i.test(firstName)) prefix = 'XII-';
-      else if (/X/i.test(firstName)) prefix = firstName.replace(/X/i, 'XI-');
-      setTargetPrefix(prefix);
-
-      const generated = Array.from({ length: count }, (_, i) => `${prefix}${i + 1}`).join('\n');
-      setTargetCohortNamesText(generated);
-    }
-  };
-
-  const selectAllCohortsByPrefix = (prefixMatch: RegExp) => {
-    const matching = cohorts.filter((c) => prefixMatch.test(c.name)).map((c) => c.id);
-    const updated = new Set(matching);
-    setShuffleSourceCohortIds(updated);
-    setShufflePreview(null);
-
-    const count = updated.size || 1;
-    setTargetCount(count);
-
-    if (matching.length > 0) {
-      const first = cohorts.find((c) => c.id === matching[0]);
-      let prefix = 'XI-';
-      if (first && /X/i.test(first.name)) {
-        prefix = first.name.replace(/Kelas\s*X\b/i, 'Kelas XI-').replace(/^X-/i, 'XI-');
-      }
-      setTargetPrefix(prefix);
-      const generated = Array.from({ length: count }, (_, i) => `${prefix}${i + 1}`).join('\n');
-      setTargetCohortNamesText(generated);
-    }
-  };
-
-  const handleGenerateTargetNames = () => {
-    if (targetCount < 1) return;
-    const list = Array.from({ length: targetCount }, (_, i) => `${targetPrefix}${i + 1}`);
-    setTargetCohortNamesText(list.join('\n'));
-    setShufflePreview(null);
-  };
-
-  // Get all unique students from selected source cohorts
-  const shuffleSourceStudents: Student[] = (() => {
-    const studentMap = new Map<string, Student>();
-    cohorts
-      .filter((c) => shuffleSourceCohortIds.has(c.id))
-      .forEach((c) => {
-        c.members.forEach((m) => {
-          if (!studentMap.has(m.user.id)) {
-            studentMap.set(m.user.id, m.user);
-          }
-        });
-      });
-    return Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-  })();
-
-  const handleRunShuffle = () => {
-    if (shuffleSourceCohortIds.size === 0) {
-      showAlert('Pilih minimal satu kelas / rombel asal terlebih dahulu', { type: 'error' });
-      return;
-    }
-
-    const targetNames = targetCohortNamesText
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (targetNames.length === 0) {
-      showAlert('Tentukan daftar nama kelas tujuan terlebih dahulu', { type: 'error' });
-      return;
-    }
-
-    const eligibleStudents = shuffleSourceStudents.filter(
-      (s) => !retainedStudentIds.has(s.id) && !transferOutStudentIds.has(s.id)
-    );
-
-    if (eligibleStudents.length === 0) {
-      showAlert('Semua siswa ditandai tinggal kelas atau mutasi keluar. Tidak ada siswa yang ikut diacak.', {
-        type: 'error',
-      });
-      return;
-    }
-
-    // Fisher-Yates shuffle
-    const shuffled = [...eligibleStudents];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    // Round-robin distribution
-    const groups: { cohortName: string; students: Student[] }[] = targetNames.map((name) => ({
-      cohortName: name,
-      students: [],
-    }));
-
-    shuffled.forEach((student, idx) => {
-      groups[idx % groups.length].students.push(student);
-    });
-
-    setShufflePreview(groups);
-  };
-
-  const handleExecuteShufflePromotion = async () => {
-    if (!shufflePreview || shufflePreview.length === 0) {
-      showAlert('Silakan lakukan pengacakan siswa terlebih dahulu sebelum menerapkan kenaikan kelas.', {
-        type: 'error',
-      });
-      return;
-    }
-
-    const targetNames = shufflePreview.map((g) => g.cohortName);
-    const totalPromoted = shufflePreview.reduce((acc, g) => acc + g.students.length, 0);
-
-    const confirmed = await showConfirm(
-      `Terapkan kenaikan kelas massal untuk ${totalPromoted} siswa ke ${targetNames.length} kelas baru?\n\n` +
-      `• Naik Kelas (Diacak): ${totalPromoted} siswa\n` +
-      `• Tinggal Kelas: ${retainedStudentIds.size} siswa (tetap di kelas lama)\n` +
-      `• Mutasi Keluar: ${transferOutStudentIds.size} siswa (dikeluarkan & dinonaktifkan)`,
-      {
-        title: 'Konfirmasi Kenaikan Kelas Massal',
-        confirmText: 'Ya, Terapkan Sekarang',
-        cancelText: 'Batal',
-      }
-    );
-    if (!confirmed) return;
-
-    setLoading(true);
-    try {
-      const res = await batchPromoteShuffle({
-        sourceCohortIds: Array.from(shuffleSourceCohortIds),
-        targetCohortNames: targetNames,
-        retainedStudentIds: Array.from(retainedStudentIds),
-        transferOutStudentIds: Array.from(transferOutStudentIds),
-        removeFromSourceCohort: removeFromSource,
-        shuffledDistribution: shufflePreview.map((g) => ({
-          cohortName: g.cohortName,
-          studentIds: g.students.map((s) => s.id),
-        })),
-      });
-
-      await showAlert(
-        `Kenaikan kelas massal sukses diterapkan!\n\n` +
-        `• ${res.promotedCount} siswa berhasil naik ke kelas baru\n` +
-        `• ${res.retainedCount} siswa tetap tinggal di kelas asal\n` +
-        `• ${res.transferOutCount} siswa mutasi keluar telah dinonaktifkan`,
-        { type: 'success' }
-      );
-      setIsPromoteOpen(false);
-      window.location.reload();
-    } catch (err: any) {
-      console.error(err);
-      await showAlert(err?.message || 'Gagal menerapkan kenaikan kelas', { type: 'error' });
-    } finally {
-      setLoading(false);
-    }
   };
 
   // --- TAB 2: EXCEL HANDLERS ---
@@ -604,19 +407,46 @@ export function CohortsClient({
         const parsed: ParsedExcelRow[] = [];
 
         for (const row of json) {
-          const nisKey = Object.keys(row).find((k) => /nis|nomor\s*induk/i.test(k));
-          const nameKey = Object.keys(row).find((k) => /nama|student/i.test(k));
-          const emailKey = Object.keys(row).find((k) => /email/i.test(k));
-          const currentKey = Object.keys(row).find((k) => /kelas\s*asal|rombel\s*lama/i.test(k));
-          const targetKey = Object.keys(row).find((k) =>
-            /kelas\s*baru|kelas\s*tujuan|rombel\s*baru|target/i.test(k)
+          // Cari kolom NIS / Username / Nomor Induk
+          const nisKey = Object.keys(row).find((k) =>
+            /^(nis|username|user\s*name|nomor\s*induk|id\s*siswa|student\s*id)$/i.test(k.trim()) ||
+            /nis|username|no\s*induk/i.test(k)
           );
 
-          const nis = String(row[nisKey || 'NIS'] || '').trim();
-          const name = String(row[nameKey || 'Nama Lengkap'] || '').trim();
-          const email = String(row[emailKey || 'Email Siswa'] || '').trim();
-          const currentCohort = String(row[currentKey || 'Kelas Asal'] || '').trim();
-          const newCohortName = String(row[targetKey || 'Kelas Baru (Wajib Diisi)'] || '').trim();
+          // Cari kolom Nama (termasuk Moodle firstname + lastname)
+          const nameKey = Object.keys(row).find((k) =>
+            /^(nama|nama\s*lengkap|name|fullname|full\s*name|nama\s*siswa)$/i.test(k.trim()) ||
+            /nama|fullname/i.test(k)
+          );
+          const firstNameKey = Object.keys(row).find((k) => /^firstname$/i.test(k.trim()));
+          const lastNameKey = Object.keys(row).find((k) => /^lastname$/i.test(k.trim()));
+
+          // Cari kolom Email
+          const emailKey = Object.keys(row).find((k) => /^(email|e-mail|surel)$/i.test(k.trim()) || /email/i.test(k));
+
+          // Cari kolom Kelas Asal
+          const currentKey = Object.keys(row).find((k) =>
+            /^(kelas\s*asal|rombel\s*asal|rombel\s*lama|kohor\s*asal|current\s*cohort|old\s*cohort)$/i.test(k.trim()) ||
+            /kelas\s*asal|rombel\s*lama/i.test(k)
+          );
+
+          // Cari kolom Kelas Baru / Rombel Baru / Moodle cohort1
+          const targetKey = Object.keys(row).find((k) =>
+            /^(kelas\s*baru|rombel\s*baru|kohor\s*baru|cohort1|cohort\s*1|kelas\s*tujuan|target|new\s*cohort)$/i.test(k.trim()) ||
+            /kelas\s*baru|rombel\s*baru|cohort1|kelas\s*tujuan/i.test(k)
+          );
+
+          const nis = String(row[nisKey || ''] || '').trim();
+          let name = String(row[nameKey || ''] || '').trim();
+          if (!name && (firstNameKey || lastNameKey)) {
+            const first = String(row[firstNameKey || ''] || '').trim();
+            const last = String(row[lastNameKey || ''] || '').trim();
+            name = `${first} ${last}`.trim();
+          }
+
+          const email = String(row[emailKey || ''] || '').trim();
+          const currentCohort = String(row[currentKey || ''] || '').trim();
+          const newCohortName = String(row[targetKey || ''] || '').trim();
 
           if (!nis && !name) continue;
 
@@ -652,13 +482,30 @@ export function CohortsClient({
         setParsedExcelRows(parsed);
       } catch (err) {
         console.error(err);
-        showAlert('Gagal membaca file Excel. Pastikan format file .xlsx atau .xls valid.', {
+        showAlert('Gagal membaca file Excel. Pastikan format file .xlsx, .xls, atau .csv valid.', {
           type: 'error',
         });
       }
     };
     reader.readAsBinaryString(file);
   };
+
+  // Deteksi siswa dari rombel asal terpilih yang belum terdata di berkas Excel dari TU
+  const unlistedStudents = (() => {
+    if (excelDownloadCohortIds.size === 0 || parsedExcelRows.length === 0) return [];
+    const parsedNisSet = new Set(parsedExcelRows.map((r) => r.nis.toLowerCase().trim()));
+    const unlisted: { user: Student; cohortName: string }[] = [];
+    cohorts
+      .filter((c) => excelDownloadCohortIds.has(c.id))
+      .forEach((c) => {
+        c.members.forEach((m) => {
+          if (m.user.nis && !parsedNisSet.has(m.user.nis.toLowerCase().trim())) {
+            unlisted.push({ user: m.user, cohortName: c.name });
+          }
+        });
+      });
+    return unlisted;
+  })();
 
   const handleExecuteExcelPromotion = async () => {
     if (parsedExcelRows.length === 0) {
@@ -1337,476 +1184,56 @@ export function CohortsClient({
         </DialogContent>
       </Dialog>
 
-      {/* 3. Modal Wizard Kenaikan Kelas (Promosi Kohort Multi-Metode) */}
+      {/* 3. Modal Wizard Kenaikan Kelas (Pemetaan Berkas TU & Kenaikan Linier) */}
       <Dialog open={isPromoteOpen} onOpenChange={setIsPromoteOpen}>
         <DialogContent className="sm:max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="p-5 pb-3 border-b bg-gray-50/70 dark:bg-gray-900/70 shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-                <TrendingUp className="w-5 h-5" />
+              <div className="p-2 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                <FileSpreadsheet className="w-5 h-5" />
               </div>
               <div>
                 <DialogTitle className="text-lg font-bold text-[#002446] dark:text-white">
                   Siklus Kenaikan Kelas &amp; Pemetaan Angkatan
                 </DialogTitle>
                 <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
-                  Didesain untuk skala besar (12+ rombel / 400+ siswa). Mendukung pengacakan rombel massal, pemetaan via Excel, serta penanganan siswa tinggal kelas dan mutasi.
+                  Impor berkas pembagian kelas resmi dari TU (Excel/CSV) atau lakukan pemindahan rombel linier secara terpusat.
                 </DialogDescription>
               </div>
             </div>
 
-            {/* TAB SELECTOR */}
+            {/* TAB SELECTOR (2 TABS) */}
             <div className="flex items-center gap-2 mt-4 p-1 bg-gray-200/80 dark:bg-gray-800 rounded-xl">
               <button
                 type="button"
-                onClick={() => setPromoteTab('shuffle')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                  promoteTab === 'shuffle'
-                    ? 'bg-white dark:bg-gray-900 text-[#002446] dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-[#002446]'
-                }`}
-              >
-                <Shuffle className="w-3.5 h-3.5 text-emerald-600" />
-                <span>1. Acak Angkatan Massal (Auto-Shuffle)</span>
-                <Badge variant="secondary" className="text-[10px] py-0 px-1.5 hidden sm:inline-flex">
-                  Rekomendasi
-                </Badge>
-              </button>
-
-              <button
-                type="button"
                 onClick={() => setPromoteTab('excel')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
                   promoteTab === 'excel'
                     ? 'bg-white dark:bg-gray-900 text-[#002446] dark:text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-[#002446]'
                 }`}
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
-                <span>2. Unggah Pemetaan Excel</span>
+                <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+                <span>1. Impor Pemetaan Berkas TU (Excel / CSV)</span>
+                <Badge className="bg-blue-600 text-white text-[10px] py-0 px-1.5 hidden sm:inline-flex">
+                  Metode Utama
+                </Badge>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPromoteTab('linear')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
                   promoteTab === 'linear'
                     ? 'bg-white dark:bg-gray-900 text-[#002446] dark:text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-[#002446]'
                 }`}
               >
-                <Layers className="w-3.5 h-3.5 text-purple-600" />
-                <span>3. Kenaikan Linier (1 ke 1)</span>
+                <Layers className="w-4 h-4 text-purple-600" />
+                <span>2. Kenaikan Linier (1 Rombel Tunggal)</span>
               </button>
             </div>
           </DialogHeader>
-
-          {/* TAB 1: ACAR ANGKATAN MASSAL (AUTO-SHUFFLE) */}
-          {promoteTab === 'shuffle' && (
-            <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
-              {/* Step 1: Pilih Rombel Asal */}
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
-                      1
-                    </span>
-                    Pilih Rombongan Belajar Asal (Angkatan yang Naik Kelas)
-                  </Label>
-                  <div className="flex items-center gap-2 text-[11px]">
-                    <button
-                      type="button"
-                      onClick={() => selectAllCohortsByPrefix(/X\b|X-/i)}
-                      className="text-emerald-600 hover:underline font-medium"
-                    >
-                      Pilih Semua Tingkat X
-                    </button>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={() => selectAllCohortsByPrefix(/XI\b|XI-/i)}
-                      className="text-emerald-600 hover:underline font-medium"
-                    >
-                      Pilih Semua Tingkat XI
-                    </button>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShuffleSourceCohortIds(new Set(cohorts.map((c) => c.id)));
-                        setShufflePreview(null);
-                        setTargetCount(cohorts.length || 1);
-                      }}
-                      className="text-blue-600 hover:underline font-medium"
-                    >
-                      Pilih Semua
-                    </button>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShuffleSourceCohortIds(new Set());
-                        setShufflePreview(null);
-                        setTargetCount(1);
-                        setTargetCohortNamesText('');
-                      }}
-                      className="text-gray-500 hover:underline"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-36 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900/60 rounded-xl border">
-                  {cohorts.map((c) => {
-                    const isChecked = shuffleSourceCohortIds.has(c.id);
-                    return (
-                      <label
-                        key={c.id}
-                        className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                          isChecked
-                            ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800'
-                            : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleShuffleSourceCohort(c.id)}
-                            className="w-3.5 h-3.5 rounded accent-emerald-600 cursor-pointer"
-                          />
-                          <span className="font-semibold truncate text-[#002446] dark:text-white">
-                            {c.name}
-                          </span>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] shrink-0 ml-1">
-                          {c.members.length} Siswa
-                        </Badge>
-                      </label>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] text-gray-500 px-1">
-                  <span>
-                    Terpilih: <strong>{shuffleSourceCohortIds.size} rombel</strong> (Total{' '}
-                    <strong>{shuffleSourceStudents.length} siswa unik</strong>)
-                  </span>
-                  {shuffleSourceCohortIds.size === 0 && (
-                    <span className="text-amber-600 font-medium">
-                      Pilih minimal satu rombel asal di atas untuk melanjutkan
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Step 2: Kelola Pengecualian (Tinggal Kelas & Mutasi Keluar) */}
-              {shuffleSourceStudents.length > 0 && (
-                <div className="space-y-2 p-3 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <Label className="font-bold text-sm text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px]">
-                          2
-                        </span>
-                        Pengecualian Siswa (Tinggal Kelas &amp; Mutasi Keluar)
-                      </Label>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                        Siswa berstatus Tinggal Kelas akan tetap berada di rombel lamanya. Siswa Mutasi Keluar akan dikeluarkan dari rombel dan dinonaktifkan akunnya.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={shuffleStudentSearch}
-                        onChange={(e) => setShuffleStudentSearch(e.target.value)}
-                        placeholder="Cari nama atau NIS siswa..."
-                        className="h-8 w-48 text-xs bg-white dark:bg-gray-900"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-[11px] font-semibold pt-1">
-                    <span className="text-emerald-700 dark:text-emerald-300">
-                      🟢 Naik &amp; Ikut Diacak:{' '}
-                      {
-                        shuffleSourceStudents.filter(
-                          (s) => !retainedStudentIds.has(s.id) && !transferOutStudentIds.has(s.id)
-                        ).length
-                      }
-                    </span>
-                    <span>•</span>
-                    <span className="text-amber-700 dark:text-amber-300">
-                      🟡 Tinggal Kelas: {retainedStudentIds.size}
-                    </span>
-                    <span>•</span>
-                    <span className="text-red-700 dark:text-red-300">
-                      🔴 Mutasi Keluar: {transferOutStudentIds.size}
-                    </span>
-                  </div>
-
-                  {/* Student List */}
-                  <div className="border rounded-lg max-h-44 overflow-y-auto divide-y bg-white dark:bg-gray-900">
-                    {shuffleSourceStudents
-                      .filter(
-                        (s) =>
-                          s.name.toLowerCase().includes(shuffleStudentSearch.toLowerCase()) ||
-                          (s.nis && s.nis.toLowerCase().includes(shuffleStudentSearch.toLowerCase()))
-                      )
-                      .map((s) => {
-                        const isRetained = retainedStudentIds.has(s.id);
-                        const isTransferOut = transferOutStudentIds.has(s.id);
-                        const isPromote = !isRetained && !isTransferOut;
-
-                        return (
-                          <div
-                            key={s.id}
-                            className="p-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 text-xs"
-                          >
-                            <div>
-                              <span className="font-semibold text-[#002446] dark:text-white">
-                                {s.name}
-                              </span>
-                              <span className="text-gray-400 font-mono ml-2">
-                                {s.nis ? `(NIS: ${s.nis})` : ''}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const r = new Set(retainedStudentIds);
-                                  const t = new Set(transferOutStudentIds);
-                                  r.delete(s.id);
-                                  t.delete(s.id);
-                                  setRetainedStudentIds(r);
-                                  setTransferOutStudentIds(t);
-                                  setShufflePreview(null);
-                                }}
-                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                                  isPromote
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 hover:bg-gray-200'
-                                }`}
-                              >
-                                Naik (Acak)
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const r = new Set(retainedStudentIds);
-                                  const t = new Set(transferOutStudentIds);
-                                  r.add(s.id);
-                                  t.delete(s.id);
-                                  setRetainedStudentIds(r);
-                                  setTransferOutStudentIds(t);
-                                  setShufflePreview(null);
-                                }}
-                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                                  isRetained
-                                    ? 'bg-amber-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 hover:bg-gray-200'
-                                }`}
-                              >
-                                Tinggal Kelas
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const r = new Set(retainedStudentIds);
-                                  const t = new Set(transferOutStudentIds);
-                                  t.add(s.id);
-                                  r.delete(s.id);
-                                  setRetainedStudentIds(r);
-                                  setTransferOutStudentIds(t);
-                                  setShufflePreview(null);
-                                }}
-                                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                                  isTransferOut
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 hover:bg-gray-200'
-                                }`}
-                              >
-                                Mutasi Keluar
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3: Tentukan Rombel Tujuan */}
-              {shuffleSourceStudents.length > 0 && (
-                <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
-                  <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
-                      3
-                    </span>
-                    Tentukan Rombel Tujuan Baru
-                  </Label>
-
-                  {/* Generator Baris */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end p-2.5 bg-white dark:bg-gray-900 rounded-lg border">
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-gray-600">Awalan / Prefix Kelas Baru</Label>
-                      <Input
-                        value={targetPrefix}
-                        onChange={(e) => setTargetPrefix(e.target.value)}
-                        placeholder="Contoh: XI-MIPA-"
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-gray-600">Jumlah Kelas Tujuan</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={30}
-                        value={targetCount}
-                        onChange={(e) => setTargetCount(Number(e.target.value) || 1)}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={handleGenerateTargetNames}
-                        className="h-8 w-full text-xs font-semibold flex items-center justify-center gap-1"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                        Generate Nama Kelas
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-[11px] font-semibold text-gray-600">
-                        Daftar Nama Rombel Tujuan (Satu nama per baris):
-                      </Label>
-                      <span className="text-[11px] text-gray-400">
-                        {
-                          targetCohortNamesText
-                            .split('\n')
-                            .map((s) => s.trim())
-                            .filter(Boolean).length
-                        }{' '}
-                        kelas tujuan disiapkan
-                      </span>
-                    </div>
-                    <textarea
-                      value={targetCohortNamesText}
-                      onChange={(e) => {
-                        setTargetCohortNamesText(e.target.value);
-                        setShufflePreview(null);
-                      }}
-                      rows={3}
-                      placeholder="XI-MIPA-1&#10;XI-MIPA-2&#10;XI-MIPA-3..."
-                      className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-mono text-xs focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Step 4: Acak & Live Preview */}
-              {shuffleSourceStudents.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
-                        4
-                      </span>
-                      Pengacakan Siswa &amp; Pratinjau Pembagian Rombel
-                    </Label>
-
-                    <Button
-                      type="button"
-                      onClick={handleRunShuffle}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-9 flex items-center gap-1.5 shadow-sm"
-                    >
-                      <Shuffle className="w-4 h-4" />
-                      {shufflePreview ? 'Kocok Ulang Acakan' : 'Acak Siswa Sekarang'}
-                    </Button>
-                  </div>
-
-                  {shufflePreview && (
-                    <div className="space-y-3">
-                      <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="font-bold text-emerald-900 dark:text-emerald-200">
-                            Distribusi Acak Siap Diterapkan!
-                          </p>
-                          <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                            Siswa telah diacak secara merata ke dalam {shufflePreview.length} rombel baru.
-                            Periksa hasil di bawah sebelum mengeksekusi ke database.
-                          </p>
-                        </div>
-                        <Badge className="bg-emerald-600 text-white text-xs">
-                          {shufflePreview.reduce((acc, g) => acc + g.students.length, 0)} Siswa Terbagi
-                        </Badge>
-                      </div>
-
-                      {/* Grid Rombel Preview */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
-                        {shufflePreview.map((group) => (
-                          <div
-                            key={group.cohortName}
-                            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3 shadow-xs space-y-2"
-                          >
-                            <div className="flex items-center justify-between border-b pb-1.5">
-                              <span className="font-bold text-xs text-[#002446] dark:text-white">
-                                {group.cohortName}
-                              </span>
-                              <Badge variant="secondary" className="text-[10px]">
-                                {group.students.length} Siswa
-                              </Badge>
-                            </div>
-                            <div className="max-h-32 overflow-y-auto divide-y text-[11px]">
-                              {group.students.map((st, idx) => (
-                                <div key={st.id} className="py-1 flex items-center justify-between">
-                                  <span className="truncate pr-1">
-                                    {idx + 1}. {st.name}
-                                  </span>
-                                  <span className="text-gray-400 font-mono text-[10px] shrink-0">
-                                    {st.nis || ''}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Opsi Eksekusi */}
-              {shufflePreview && (
-                <div className="p-3 bg-gray-50 dark:bg-gray-900 border rounded-xl flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="removeSourceShuffle"
-                    checked={removeFromSource}
-                    onChange={(e) => setRemoveFromSource(e.target.checked)}
-                    className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
-                  />
-                  <Label
-                    htmlFor="removeSourceShuffle"
-                    className="text-xs font-semibold text-[#002446] dark:text-white cursor-pointer"
-                  >
-                    Keluarkan siswa yang naik kelas dari rombel asal (siswa tinggal kelas tetap dipertahankan di rombel asal)
-                  </Label>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* TAB 2: UNGGAH PEMETAAN EXCEL */}
           {promoteTab === 'excel' && (
@@ -1950,6 +1377,28 @@ export function CohortsClient({
                       </span>
                     </div>
                   </div>
+
+                  {/* Warning banner jika ada siswa rombel asal yang tidak tercantum di file Excel dari TU */}
+                  {unlistedStudents.length > 0 && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-xs space-y-1">
+                        <p className="font-semibold text-amber-900 dark:text-amber-200">
+                          Perhatian: {unlistedStudents.length} Siswa dari Rombel Asal Tidak Tercantum di Berkas TU
+                        </p>
+                        <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                          Siswa-siswa di bawah ini tidak ditemukan di berkas Excel sehingga akan <strong>tetap dipertahankan di rombel asalnya</strong>:
+                        </p>
+                        <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto pt-1">
+                          {unlistedStudents.map((u) => (
+                            <Badge key={u.user.id} variant="outline" className="text-[10px] bg-white dark:bg-gray-900 text-amber-900 dark:text-amber-200 border-amber-200">
+                              {u.user.name} ({u.cohortName})
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Filter & Search */}
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2254,21 +1703,6 @@ export function CohortsClient({
             </Button>
 
             <div className="flex items-center gap-2">
-              {promoteTab === 'shuffle' && (
-                <Button
-                  onClick={handleExecuteShufflePromotion}
-                  disabled={!shufflePreview || loading}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5"
-                >
-                  <TrendingUp className="w-4 h-4" />
-                  {loading
-                    ? 'Memproses Kenaikan Massal...'
-                    : `Terapkan Kenaikan Massal (${
-                        shufflePreview ? shufflePreview.reduce((acc, g) => acc + g.students.length, 0) : 0
-                      } Siswa)`}
-                </Button>
-              )}
-
               {promoteTab === 'excel' && (
                 <Button
                   onClick={handleExecuteExcelPromotion}
@@ -2278,7 +1712,7 @@ export function CohortsClient({
                   <FileSpreadsheet className="w-4 h-4" />
                   {loading
                     ? 'Menerapkan Pemetaan...'
-                    : `Terapkan Pemetaan Excel (${parsedExcelRows.length} Baris)`}
+                    : `Terapkan Pemetaan Berkas TU (${parsedExcelRows.length} Baris)`}
                 </Button>
               )}
 
