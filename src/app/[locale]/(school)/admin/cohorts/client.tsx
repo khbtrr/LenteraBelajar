@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -825,6 +826,17 @@ export function CohortsClient({
                   >
                     <Download className="h-3.5 w-3.5" />
                   </Button>
+
+                  <Link href={`/admin/grades/leger?cohortId=${cohort.id}`}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 border-blue-200 dark:border-blue-900 text-xs px-2.5"
+                      title="Lihat Leger Nilai & Rekapitulasi Rombel"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

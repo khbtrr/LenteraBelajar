@@ -14,6 +14,7 @@ import {
   FileCheck,
   Megaphone,
   Settings,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export default async function AdminLayout({
@@ -43,6 +44,7 @@ export default async function AdminLayout({
     { label: t('categories'), href: '/admin/categories', icon: <FolderTree className="h-5 w-5" /> },
     { label: t('courses'), href: '/admin/courses', icon: <BookOpen className="h-5 w-5" /> },
     { label: t('cohorts'), href: '/admin/cohorts', icon: <UsersRound className="h-5 w-5" /> },
+    { label: 'Leger & Rapor Rombel', href: '/admin/grades/leger', icon: <FileSpreadsheet className="h-5 w-5" /> },
     { label: t('users'), href: '/admin/users', icon: <Users className="h-5 w-5" /> },
     { label: t('courseRequests'), href: '/admin/course-requests', icon: <FileCheck className="h-5 w-5" /> },
     { label: 'Kalender Akademik', href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },

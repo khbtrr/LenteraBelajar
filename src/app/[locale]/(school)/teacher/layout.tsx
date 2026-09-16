@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
 import { AppLayout } from '@/components/layout/app-layout';
-import { LayoutDashboard, BookOpen, PlusCircle, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, BookOpen, PlusCircle, CalendarDays, FileSpreadsheet } from 'lucide-react';
 
 export default async function TeacherLayout({
   children,
@@ -28,6 +28,7 @@ export default async function TeacherLayout({
   const sidebarItems = [
     { label: t('dashboard'), href: '/teacher/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: t('myCourses'), href: '/teacher/my-courses', icon: <BookOpen className="h-5 w-5" /> },
+    { label: 'Leger Nilai Rombel', href: '/teacher/leger', icon: <FileSpreadsheet className="h-5 w-5" /> },
     { label: t('requestCourse'), href: '/teacher/request-course', icon: <PlusCircle className="h-5 w-5" /> },
     { label: 'Kalender & Jadwal', href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
   ];
