@@ -134,26 +134,26 @@ export function CategoriesClient({
         <div
           className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
             depth === 0
-              ? 'bg-white border-[#002446]/20 font-semibold text-[#002446]'
+              ? 'bg-white dark:bg-gray-800/90 border-[#002446]/20 dark:border-gray-700 font-semibold text-[#002446] dark:text-white shadow-sm'
               : depth === 1
-              ? 'bg-gray-50 border-gray-200 text-gray-800'
-              : 'bg-amber-50/40 border-amber-200/60 text-gray-700'
+              ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/80 text-gray-800 dark:text-gray-200'
+              : 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-900/40 text-gray-700 dark:text-gray-300'
           }`}
           style={{ marginLeft: `${depth * 28}px` }}
         >
           <div className="flex items-center gap-3">
-            {depth > 0 && <ChevronRight className="h-4 w-4 text-gray-400" />}
+            {depth > 0 && <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />}
             <Folder
-              className={`h-5 w-5 ${
+              className={`h-5 w-5 shrink-0 ${
                 depth === 0
-                  ? 'text-[#002446]'
+                  ? 'text-[#002446] dark:text-blue-400'
                   : depth === 1
-                  ? 'text-[#FF8928]'
-                  : 'text-amber-500'
+                  ? 'text-[#FF8928] dark:text-orange-400'
+                  : 'text-amber-500 dark:text-amber-400'
               }`}
             />
-            <span className="text-base">{node.name}</span>
-            <Badge variant="secondary" className="text-xs">
+            <span className="text-base text-gray-900 dark:text-gray-100">{node.name || '(Tanpa Nama)'}</span>
+            <Badge variant="secondary" className="text-xs dark:bg-gray-700 dark:text-gray-300">
               {node._count?.courses || 0} Course
             </Badge>
           </div>
@@ -162,7 +162,7 @@ export function CategoriesClient({
             <Button
               size="sm"
               variant="ghost"
-              className="text-gray-500 hover:text-[#002446]"
+              className="text-gray-500 hover:text-[#002446] hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/60"
               onClick={() => {
                 setParentId(node.id);
                 setIsCreateOpen(true);
@@ -173,7 +173,7 @@ export function CategoriesClient({
             <Button
               size="sm"
               variant="ghost"
-              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
               onClick={() => handleDelete(node.id, node.name)}
             >
               <Trash2 className="h-4 w-4" />
@@ -192,12 +192,12 @@ export function CategoriesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-[#002446] flex items-center gap-2">
-          <FolderTree className="h-5 w-5 text-[#FF8928]" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg text-sm text-[#002446] dark:text-blue-200 flex items-center gap-2">
+          <FolderTree className="h-5 w-5 text-[#FF8928] dark:text-orange-400 shrink-0" />
           <span>
-            Hierarki: <strong>Tahun Ajaran</strong> (Level 1) →{' '}
-            <strong>Mata Pelajaran</strong> (Level 2) → <strong>Course Guru Mapel</strong>{' '}
+            Hierarki: <strong className="text-[#002446] dark:text-white">Tahun Ajaran</strong> (Level 1) →{' '}
+            <strong className="text-[#002446] dark:text-white">Mata Pelajaran</strong> (Level 2) → <strong className="text-[#002446] dark:text-white">Course Guru Mapel</strong>{' '}
             (Level 3)
           </span>
         </div>
@@ -207,7 +207,7 @@ export function CategoriesClient({
             setParentId('');
             setIsCreateOpen(true);
           }}
-          className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2"
+          className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white flex items-center gap-2 shrink-0"
         >
           <Plus className="h-4 w-4" /> Tambah Tahun Ajaran (Kategori Utama)
         </Button>
@@ -216,8 +216,8 @@ export function CategoriesClient({
       <Card>
         <CardContent className="p-6">
           {tree.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 space-y-3">
-              <FolderTree className="h-12 w-12 mx-auto text-gray-300" />
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400 space-y-3">
+              <FolderTree className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600" />
               <p>Belum ada kategori yang dibuat.</p>
               <Button
                 variant="outline"
@@ -242,7 +242,7 @@ export function CategoriesClient({
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleCreate}>
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-[#002446]">
+              <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
                 Tambah Kategori Course
               </DialogTitle>
             </DialogHeader>
@@ -264,7 +264,7 @@ export function CategoriesClient({
                   id="parentCat"
                   value={parentId}
                   onChange={(e) => setParentId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                  className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                 >
                   <option value="">-- Kategori Utama (Tahun Ajaran) --</option>
                   {categories.map((c) => (
@@ -273,7 +273,7 @@ export function CategoriesClient({
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Pilih induk jika ini adalah sub-kategori (misal: Mata Pelajaran di dalam Tahun Ajaran).
                 </p>
               </div>
@@ -289,7 +289,7 @@ export function CategoriesClient({
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-[#002446] hover:bg-[#002446]/90 text-white"
+                className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
               >
                 {loading ? 'Menyimpan...' : 'Simpan'}
               </Button>

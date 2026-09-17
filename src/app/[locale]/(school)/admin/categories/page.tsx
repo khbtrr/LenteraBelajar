@@ -10,9 +10,9 @@ export default async function CategoriesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#002446]">Manajemen Kategori Course</h1>
-        <p className="text-sm text-gray-500">
-          Struktur kategori berjenjang: <strong>Tahun Ajaran (Kategori Utama)</strong> → <strong>Mata Pelajaran</strong> → <strong>Course Guru Mapel</strong>.
+        <h1 className="text-2xl font-bold text-[#002446] dark:text-white">Manajemen Kategori Course</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Struktur kategori berjenjang: <strong className="text-gray-700 dark:text-gray-300">Tahun Ajaran (Kategori Utama)</strong> → <strong className="text-gray-700 dark:text-gray-300">Mata Pelajaran</strong> → <strong className="text-gray-700 dark:text-gray-300">Course Guru Mapel</strong>.
         </p>
       </div>
 
