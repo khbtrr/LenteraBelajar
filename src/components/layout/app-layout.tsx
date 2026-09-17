@@ -10,6 +10,7 @@ interface AppLayoutProps {
   title: string;
   userName?: string | null;
   userRole: string;
+  userAvatar?: string | null;
   schoolName?: string | null;
   schoolLogo?: string | null;
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export function AppLayout({
   title,
   userName = 'User',
   userRole,
+  userAvatar,
   schoolName,
   schoolLogo,
   children,
@@ -50,7 +52,7 @@ export function AppLayout({
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${mainContentMargin}`}
       >
-        <Header userName={userName ?? 'User'} userRole={userRole} />
+        <Header userName={userName ?? 'User'} userRole={userRole} userAvatar={userAvatar} />
         <main className="flex-1 p-4 md:p-6 lg:p-8 w-full max-w-(--breakpoint-2xl) mx-auto">
           {children}
         </main>

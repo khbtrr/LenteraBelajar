@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { LogOut, Menu, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,9 +23,10 @@ import { Link } from '@/i18n/navigation';
 interface HeaderProps {
   userName: string;
   userRole: string;
+  userAvatar?: string | null;
 }
 
-export function Header({ userName, userRole }: HeaderProps) {
+export function Header({ userName, userRole, userAvatar }: HeaderProps) {
   const t = useTranslations();
   const { isMobileOpen, toggleMobileSidebar, toggleSidebar } = useSidebar();
 
@@ -94,6 +95,7 @@ export function Header({ userName, userRole }: HeaderProps) {
               className="flex items-center gap-3 px-2 py-1.5 h-auto rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <Avatar className="h-9 w-9 border border-gray-200 dark:border-gray-700 shadow-xs">
+                {userAvatar && <AvatarImage src={userAvatar} alt={userName} />}
                 <AvatarFallback className="bg-brand-500 text-white font-semibold text-xs">
                   {initials}
                 </AvatarFallback>
@@ -120,6 +122,16 @@ export function Header({ userName, userRole }: HeaderProps) {
                 {userRole}
               </p>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-gray-800" />
+            <DropdownMenuItem asChild>
+              <Link
+                href="/profile"
+                className="cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <User className="h-4 w-4 text-brand-500" />
+                <span>Profil Saya</span>
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-gray-800" />
             <DropdownMenuItem
               onClick={handleLogout}

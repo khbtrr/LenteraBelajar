@@ -67,7 +67,7 @@ export default async function middleware(request: NextRequest) {
   }
 
   // Shared authenticated routes accessible to any logged-in role
-  const sharedRoutes = ['/calendar', '/notifications', '/messages', '/change-password'];
+  const sharedRoutes = ['/calendar', '/notifications', '/messages', '/profile', '/change-password'];
   const isSharedRoute = sharedRoutes.some(
     (route) => strippedPath === route || strippedPath.startsWith(route + '/')
   );
