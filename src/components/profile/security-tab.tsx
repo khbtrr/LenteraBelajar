@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { changeUserPassword } from '@/lib/actions/profile';
+import { validatePassword } from '@/lib/password-policy';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -43,10 +44,11 @@ export function SecurityTab() {
       return;
     }
 
-    if (newPassword.length < 8) {
+    const validation = validatePassword(newPassword);
+    if (!validation.isValid) {
       setStatus({
         type: 'error',
-        message: 'Kata sandi baru harus memiliki panjang minimal 8 karakter.',
+        message: validation.error || 'Kata sandi baru tidak memenuhi kebijakan keamanan.',
       });
       return;
     }
@@ -163,6 +165,9 @@ export function SecurityTab() {
               {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Minimal 8 karakter, harus mengandung huruf besar (A-Z), huruf kecil (a-z), dan angka (0-9).
+          </p>
         </div>
 
         {/* Confirm New Password */}

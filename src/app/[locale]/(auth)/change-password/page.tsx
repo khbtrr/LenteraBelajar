@@ -88,6 +88,9 @@ export default function ChangePasswordPage() {
                 required
                 minLength={8}
               />
+              <p className="text-[11px] text-gray-500">
+                Minimal 8 karakter, harus mengandung huruf besar (A-Z), huruf kecil (a-z), dan angka (0-9).
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">{t('confirmPassword')}</Label>

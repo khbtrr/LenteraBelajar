@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-utils';
 import { compare, hash } from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
+import { validatePassword } from '@/lib/password-policy';
+import { recordAuditLog } from '@/lib/audit-log';
 
 export interface UserProfileData {
   id: string;
@@ -230,13 +232,15 @@ export async function changeUserPassword(data: {
     throw new Error('Kata sandi saat ini dan kata sandi baru harus diisi');
   }
 
-  if (newPassword.length < 8) {
-    throw new Error('Kata sandi baru minimal harus 8 karakter');
+  // Centralized password policy validation
+  const validation = validatePassword(newPassword);
+  if (!validation.isValid) {
+    throw new Error(validation.error || 'Kata sandi tidak memenuhi kebijakan keamanan');
   }
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { passwordHash: true },
+    select: { id: true, email: true, passwordHash: true },
   });
 
   if (!user) {
@@ -256,6 +260,13 @@ export async function changeUserPassword(data: {
       passwordHash: hashedNewPassword,
       mustChangePassword: false,
     },
+  });
+
+  await recordAuditLog({
+    action: 'PASSWORD_CHANGED',
+    userId: user.id,
+    userEmail: user.email,
+    details: 'Password changed via profile page',
   });
 
   return { success: true };

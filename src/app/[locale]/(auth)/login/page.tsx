@@ -10,17 +10,22 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 
+import { getAccountLockoutStatus } from '@/lib/actions/auth-lockout';
+import { AlertCircle, Lock } from 'lucide-react';
+
 export default function LoginPage() {
   const t = useTranslations('auth');
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLocked(false);
     setLoading(true);
 
     try {
@@ -31,13 +36,31 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError(t('loginError'));
+        // Query lockout and failed attempt details
+        const status = await getAccountLockoutStatus(email);
+        if (status.isLocked) {
+          setIsLocked(true);
+          setError(
+            `Akun Anda sementara dikunci selama ${status.remainingMinutes} menit karena terlalu banyak percobaan login yang gagal. Silakan tunggu atau hubungi admin sekolah.`
+          );
+        } else if (status.failedAttempts > 0) {
+          const remaining = Math.max(0, status.maxAttempts - status.failedAttempts);
+          setError(
+            `Email atau kata sandi salah. Sisa kesempatan: ${remaining} kali lagi sebelum akun dikunci.`
+          );
+        } else {
+          setError(t('loginError'));
+        }
       } else {
         router.push('/');
         router.refresh();
       }
-    } catch {
-      setError(t('loginError'));
+    } catch (err: any) {
+      if (err?.message?.includes('RATE_LIMIT')) {
+        setError('Terlalu banyak percobaan dari jaringan Anda. Harap tunggu 1 menit sebelum mencoba lagi.');
+      } else {
+        setError(t('loginError'));
+      }
     } finally {
       setLoading(false);
     }
@@ -63,8 +86,19 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg">
-                {error}
+              <div
+                className={`p-3 text-sm rounded-lg flex items-start gap-2.5 ${
+                  isLocked
+                    ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}
+              >
+                {isLocked ? (
+                  <Lock className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                )}
+                <span className="leading-snug">{error}</span>
               </div>
             )}
             <div className="space-y-2">

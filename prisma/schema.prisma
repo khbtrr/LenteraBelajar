@@ -51,6 +51,11 @@ model User {
   mustChangePassword Boolean @default(false)
   locale           String   @default("id")
   schoolId         String?
+  failedLoginAttempts Int    @default(0)
+  lockoutCount        Int    @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -80,6 +85,7 @@ model User {
   schoolAnnouncements   SchoolAnnouncement[]
   conversationParticipants ConversationParticipant[]
   sentDirectMessages      DirectMessage[]           @relation("DirectMessageSender")
+  auditLogs               AuditLog[]
 
   @@index([schoolId])
   @@index([email])
@@ -786,3 +792,21 @@ model DirectMessage {
   @@index([conversationId, createdAt])
   @@index([senderId])
 }
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userEmail String?
+  action    String   // 'LOGIN_SUCCESS' | 'LOGIN_FAILED' | 'ACCOUNT_LOCKED' | 'ACCOUNT_UNLOCKED' | 'PASSWORD_CHANGED'
+  ipAddress String?
+  userAgent String?
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+

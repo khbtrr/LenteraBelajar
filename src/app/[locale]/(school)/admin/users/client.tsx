@@ -30,6 +30,7 @@ import {
   Pencil,
   Trash2,
   Download,
+  Unlock,
 } from 'lucide-react';
 import {
   createUser,
@@ -39,6 +40,7 @@ import {
   toggleUserActive,
   resetUserPassword,
 } from '@/lib/actions/user';
+import { unlockUserAccount } from '@/lib/actions/auth-lockout';
 import { Role } from '@prisma/client';
 import * as XLSX from 'xlsx';
 import { useDialog } from '@/context/DialogContext';
@@ -52,6 +54,8 @@ interface UserItem {
   nip: string | null;
   isActive: boolean;
   mustChangePassword: boolean;
+  failedLoginAttempts?: number;
+  lockedUntil?: Date | string | null;
   createdAt: Date;
 }
 
@@ -257,6 +261,29 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
     }
   };
 
+  const handleUnlockAccount = async (user: UserItem) => {
+    const confirmed = await showConfirm(
+      `Buka kunci akun untuk ${user.name} (${user.email}) sekarang? Jumlah percobaan login gagal akan di-reset ke 0.`,
+      { title: 'Buka Kunci Akun', confirmText: 'Ya, Buka Kunci' }
+    );
+    if (!confirmed) return;
+
+    try {
+      await unlockUserAccount(user.id);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, lockedUntil: null, failedLoginAttempts: 0 }
+            : u
+        )
+      );
+      await showAlert(`Akun ${user.name} berhasil dibuka kuncinya.`, { type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || 'Gagal membuka kunci akun', { type: 'error' });
+    }
+  };
+
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
     const matchSearch =
@@ -378,20 +405,41 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                       {user.nis ? `NIS: ${user.nis}` : user.nip ? `NIP: ${user.nip}` : '-'}
                     </TableCell>
                     <TableCell>
-                      <span
-                        onClick={() => handleToggleActive(user)}
-                        title="Klik untuk ubah status"
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                          user.isActive
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border dark:border-green-800'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border dark:border-red-800'
-                        }`}
-                      >
-                        {user.isActive ? 'Aktif' : 'Nonaktif'}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span
+                          onClick={() => handleToggleActive(user)}
+                          title="Klik untuk ubah status"
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                            user.isActive
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border dark:border-green-800'
+                              : 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border dark:border-red-800'
+                          }`}
+                        >
+                          {user.isActive ? 'Aktif' : 'Nonaktif'}
+                        </span>
+                        {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
+                            title={`Terkunci hingga ${new Date(user.lockedUntil).toLocaleTimeString()}`}
+                          >
+                            🔒 Terkunci
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleUnlockAccount(user)}
+                            title="Buka Kunci Akun Pengguna"
+                            className="h-8 w-8 p-0 text-amber-600 hover:text-amber-800 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                          >
+                            <Unlock className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"

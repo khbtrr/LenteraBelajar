@@ -2,6 +2,7 @@
 
 import { db } from '@/lib/db';
 import { requireSchool, requireRole, hashPassword } from '@/lib/auth-utils';
+import { generateDefaultPassword } from '@/lib/password-policy';
 import { Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
@@ -27,8 +28,8 @@ export async function createUser(data: {
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
 
-  // For students, default password is their NIS. Otherwise default to "Lentera123!"
-  const initialPassword = data.role === Role.STUDENT && data.nis ? data.nis : 'Lentera123!';
+  // Generate compliant default password
+  const initialPassword = generateDefaultPassword(data.nis || data.nip);
   const passwordHash = hashPassword(initialPassword);
 
   const user = await db.user.create({
@@ -66,7 +67,7 @@ export async function bulkImportUsers(
   for (const item of usersList) {
     if (!item.email || !item.name) continue;
 
-    const initialPassword = item.role === Role.STUDENT && item.nis ? item.nis : 'Lentera123!';
+    const initialPassword = generateDefaultPassword(item.nis || item.nip);
     const passwordHash = hashPassword(initialPassword);
 
     await db.user.upsert({
@@ -120,7 +121,7 @@ export async function resetUserPassword(userId: string) {
   const user = await db.user.findUnique({ where: { id: userId, schoolId } });
   if (!user) throw new Error('User not found');
 
-  const defaultPwd = user.role === Role.STUDENT && user.nis ? user.nis : 'Lentera123!';
+  const defaultPwd = generateDefaultPassword(user.nis || user.nip);
   const passwordHash = hashPassword(defaultPwd);
 
   const updated = await db.user.update({

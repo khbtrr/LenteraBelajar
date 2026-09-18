@@ -2,6 +2,7 @@
 
 import { db } from '@/lib/db';
 import { requireSchool, requireRole, hashPassword } from '@/lib/auth-utils';
+import { generateDefaultPassword } from '@/lib/password-policy';
 import { EnrollmentMethod, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
@@ -467,7 +468,7 @@ export async function batchPromoteExcel(data: {
     }
 
     // 2. Siswa Mutasi Masuk (Siswa baru belum ada di DB)
-    const defaultPasswordHash = hashPassword('123456');
+    const defaultPasswordHash = hashPassword(generateDefaultPassword());
     for (const inRow of transferInRows) {
       const nis = inRow.nis.trim();
       const targetCohortId = await getOrCreateCohortId(inRow.newCohortName);
