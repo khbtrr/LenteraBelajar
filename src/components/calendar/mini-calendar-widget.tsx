@@ -16,10 +16,13 @@ import {
   Bookmark,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { CalendarItem, getCalendarEvents } from '@/lib/actions/calendar';
 import { EventDetailDialog } from './event-detail-dialog';
 
 export function MiniCalendarWidget() {
+  const t = useTranslations('calendarWidget');
+  const locale = useLocale();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [events, setEvents] = useState<CalendarItem[]>([]);
@@ -104,36 +107,38 @@ export function MiniCalendarWidget() {
     );
   });
 
-  const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
+    const dayNames = locale === 'en'
+      ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      : ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
-  const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    const formattedMonthYear = new Date(year, month, 1).toLocaleDateString(
+      locale === 'en' ? 'en-US' : 'id-ID',
+      { month: 'long', year: 'numeric' }
+    );
 
-  return (
-    <Card className="border shadow-xs bg-white dark:bg-gray-900 overflow-hidden">
-      <CardHeader className="p-4 pb-3 border-b flex flex-row items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-4 w-4 text-[#FF8928]" />
-          <CardTitle className="text-xs font-bold text-[#002446] dark:text-gray-100 uppercase tracking-wider">
-            Kalender Akademik
-          </CardTitle>
-        </div>
-        <Link
-          href="/calendar"
-          className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
-        >
-          Lihat Semua <ArrowRight className="h-3 w-3" />
-        </Link>
-      </CardHeader>
+    return (
+      <Card className="border shadow-xs bg-white dark:bg-gray-900 overflow-hidden">
+        <CardHeader className="p-4 pb-3 border-b flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4 text-[#FF8928]" />
+            <CardTitle className="text-xs font-bold text-[#002446] dark:text-gray-100 uppercase tracking-wider">
+              {t('title')}
+            </CardTitle>
+          </div>
+          <Link
+            href="/calendar"
+            className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          >
+            {t('viewAll')} <ArrowRight className="h-3 w-3" />
+          </Link>
+        </CardHeader>
 
-      <CardContent className="p-4 space-y-4">
-        {/* Month Navigation */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
-            {monthNames[month]} {year}
-          </span>
+        <CardContent className="p-4 space-y-4">
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-gray-900 dark:text-gray-100 capitalize">
+              {formattedMonthYear}
+            </span>
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -203,18 +208,18 @@ export function MiniCalendarWidget() {
         <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
           <div className="flex items-center justify-between text-[11px] text-gray-500">
             <span className="font-semibold">
-              Agenda{' '}
-              {selectedDate.toLocaleDateString('id-ID', {
+              {locale === 'en' ? 'Agenda ' : 'Agenda '}
+              {selectedDate.toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                 day: 'numeric',
                 month: 'short',
               })}
             </span>
-            <span>{selectedDayEvents.length} Kegiatan</span>
+            <span>{selectedDayEvents.length} {locale === 'en' ? 'Events' : 'Kegiatan'}</span>
           </div>
 
           {selectedDayEvents.length === 0 ? (
             <p className="text-[11px] text-gray-400 italic py-1 text-center">
-              Tidak ada agenda pada tanggal ini.
+              {t('noEvents')}
             </p>
           ) : (
             <div className="space-y-1.5 max-h-40 overflow-y-auto">
@@ -246,8 +251,8 @@ export function MiniCalendarWidget() {
 
                   <span className="text-[10px] text-gray-500 shrink-0">
                     {ev.isAllDay
-                      ? 'Seharian'
-                      : new Date(ev.startDate).toLocaleTimeString('id-ID', {
+                      ? (locale === 'en' ? 'All Day' : 'Seharian')
+                      : new Date(ev.startDate).toLocaleTimeString(locale === 'en' ? 'en-US' : 'id-ID', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })}

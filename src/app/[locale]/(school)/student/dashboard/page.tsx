@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getStudentUpcomingDeadlines } from '@/lib/actions/notification';
@@ -27,7 +27,9 @@ import { SchoolAnnouncementsWidget } from '@/components/announcements/school-ann
 
 export default async function StudentDashboard() {
   const session = await auth();
+  const locale = await getLocale();
   const t = await getTranslations('dashboard');
+  const tStudent = await getTranslations('studentDashboard');
 
   if (!session?.user) return null;
 
@@ -70,13 +72,13 @@ export default async function StudentDashboard() {
             </h1>
           </div>
           <p className="text-xs text-white/80">
-            Selamat datang di Portal Belajar Anda. Periksa materi terbaru, kuis, dan tugas yang harus dikumpulkan.
+            {tStudent('welcomeBanner')}
           </p>
         </div>
 
         <Link href="/student/my-courses">
           <Button className="bg-[#FF8928] hover:bg-[#ff7b10] text-white font-bold text-xs shrink-0">
-            Lihat Semua Course
+            {tStudent('viewAllCourses')}
           </Button>
         </Link>
       </div>
@@ -89,7 +91,7 @@ export default async function StudentDashboard() {
               {/* Level & Title */}
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-amber-400 to-[#FF8928] text-white flex flex-col items-center justify-center font-black shadow-md shrink-0">
-                  <span className="text-[10px] uppercase tracking-wider font-bold">Level</span>
+                  <span className="text-[10px] uppercase tracking-wider font-bold">{tStudent('level')}</span>
                   <span className="text-xl leading-none">{gamificationProfile.level}</span>
                 </div>
                 <div>
@@ -102,7 +104,9 @@ export default async function StudentDashboard() {
                     </Badge>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Tingkatkan terus prestasimu untuk membuka gelar dan lencana baru.
+                    {gamificationProfile.level < 10
+                      ? tStudent('xpToNext', { xp: gamificationProfile.nextLevelRequiredXp - gamificationProfile.currentLevelXp })
+                      : tStudent('maxLevel')}
                   </p>
                 </div>
               </div>
@@ -111,7 +115,7 @@ export default async function StudentDashboard() {
               <div className="flex-1 max-w-md space-y-1.5">
                 <div className="flex justify-between text-xs font-semibold">
                   <span className="text-gray-600 dark:text-gray-400">
-                    Progres Level {gamificationProfile.level + 1}
+                    {tStudent('level')} {gamificationProfile.level + 1}
                   </span>
                   <span className="text-[#FF8928] font-bold">
                     {gamificationProfile.currentLevelXp} / {gamificationProfile.nextLevelRequiredXp} XP ({gamificationProfile.progressPercent}%)
@@ -130,8 +134,8 @@ export default async function StudentDashboard() {
                 <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400">
                   <Flame className="h-5 w-5 fill-orange-500 text-orange-500 animate-pulse" />
                   <div>
-                    <div className="text-xs font-black leading-none">{gamificationProfile.streakDays} Hari</div>
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400">Streak Belajar</div>
+                    <div className="text-xs font-black leading-none">{tStudent('days', { count: gamificationProfile.streakDays })}</div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400">{tStudent('learningStreak')}</div>
                   </div>
                 </div>
 
@@ -142,7 +146,7 @@ export default async function StudentDashboard() {
                     className="text-xs border-[#002446] text-[#002446] hover:bg-blue-50 dark:border-blue-400 dark:text-blue-300 dark:hover:bg-gray-800 flex items-center gap-1.5"
                   >
                     <Award className="h-4 w-4 text-amber-500" />
-                    Lemari Lencana ({gamificationProfile.totalAchievementsCount})
+                    {tStudent('badgesEarned')} ({gamificationProfile.totalAchievementsCount})
                   </Button>
                 </Link>
               </div>
@@ -162,33 +166,33 @@ export default async function StudentDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-black text-[#002446]">{enrollmentCount}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">Mata pelajaran terdaftar</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tStudent('enrolledCourses')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Tenggat Mendekati (&lt; 48 Jam)
+              {tStudent('upcomingDeadlines')}
             </CardTitle>
             <Clock className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-black text-amber-600">{upcomingDeadlines.length}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">Tugas & kuis belum dikumpulkan</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tStudent('upcomingDeadlines')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Sangat Mendesak (&le; 24 Jam)
+              {tStudent('urgent')} (&le; 24 Jam)
             </CardTitle>
             <AlertTriangle className="h-4 w-4 text-rose-600" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-black text-rose-600">{urgentCount}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">Jatuh tempo hari ini</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tStudent('urgent')}</p>
           </CardContent>
         </Card>
       </div>
@@ -201,15 +205,15 @@ export default async function StudentDashboard() {
               <Clock className="h-5 w-5 text-amber-600 animate-pulse" />
               <div>
                 <CardTitle className="text-base font-bold text-[#002446]">
-                  Tenggat Waktu Mendesak (&lt; 48 Jam)
+                  {tStudent('upcomingDeadlines')}
                 </CardTitle>
                 <p className="text-xs text-gray-600 mt-0.5">
-                  Segera selesaikan tugas atau kuis berikut sebelum batas waktu berakhir.
+                  {tStudent('emptyDeadlinesDesc')}
                 </p>
               </div>
             </div>
             <Badge className="bg-amber-600 text-white text-xs font-bold px-2.5 py-0.5">
-              {upcomingDeadlines.length} Menunggu
+              {upcomingDeadlines.length}
             </Badge>
           </CardHeader>
 
@@ -241,12 +245,12 @@ export default async function StudentDashboard() {
                               : 'border-purple-300 text-purple-700 bg-purple-50'
                           }`}
                         >
-                          {isQuiz ? 'Kuis CBT' : 'Tugas'}
+                          {isQuiz ? tStudent('quizDeadline') : tStudent('assignmentDeadline')}
                         </Badge>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Mata Pelajaran: <strong>{item.courseTitle}</strong> • Batas:{' '}
-                        {new Date(item.deadline).toLocaleString('id-ID', {
+                        {item.courseTitle} •{' '}
+                        {new Date(item.deadline).toLocaleString(locale === 'en' ? 'en-US' : 'id-ID', {
                           weekday: 'short',
                           day: 'numeric',
                           month: 'short',
@@ -265,7 +269,7 @@ export default async function StudentDashboard() {
                           : 'bg-amber-100 text-amber-800 border border-amber-300'
                       }`}
                     >
-                      {item.hoursLeft <= 1 ? 'Sisa < 1 Jam!' : `Sisa ${item.hoursLeft} Jam`}
+                      {item.hoursLeft <= 1 ? '< 1h' : `${item.hoursLeft}h`}
                     </Badge>
 
                     <Link href={item.link}>
@@ -277,7 +281,7 @@ export default async function StudentDashboard() {
                             : 'bg-[#FF8928] hover:bg-[#ff7b10]'
                         }`}
                       >
-                        <span>Kerjakan Sekarang</span>
+                        <span>{tStudent('startLearning')}</span>
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Button>
                     </Link>
@@ -294,10 +298,10 @@ export default async function StudentDashboard() {
         {/* Courses Grid */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#002446]">Mata Pelajaran Saya</h2>
+            <h2 className="text-lg font-bold text-[#002446]">{tStudent('enrolledCourses')}</h2>
             <Link href="/student/my-courses">
               <Button variant="ghost" size="sm" className="text-xs text-blue-700 hover:text-blue-900">
-                Lihat Semua ({enrollmentCount}) &rarr;
+                {tStudent('viewAllCourses')} ({enrollmentCount}) &rarr;
               </Button>
             </Link>
           </div>
@@ -305,7 +309,8 @@ export default async function StudentDashboard() {
           {enrollments.length === 0 ? (
             <Card className="p-8 text-center text-gray-400">
               <BookOpen className="h-10 w-10 mx-auto text-gray-300 mb-2" />
-              <p className="text-sm">Anda belum terdaftar pada mata pelajaran manapun.</p>
+              <p className="text-sm">{tStudent('emptyCoursesTitle')}</p>
+              <p className="text-xs text-gray-400 mt-1">{tStudent('emptyCoursesDesc')}</p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -315,19 +320,19 @@ export default async function StudentDashboard() {
                   <Card key={c.id} className="hover:shadow-md transition-all border flex flex-col justify-between">
                     <CardHeader className="p-4 pb-2 space-y-1">
                       <span className="text-[11px] font-semibold text-[#FF8928] uppercase">
-                        {c.category?.name || 'Mata Pelajaran'}
+                        {c.category?.name || '-'}
                       </span>
                       <CardTitle className="text-base font-bold text-[#002446] line-clamp-1">
                         {c.title}
                       </CardTitle>
                       <p className="text-xs text-gray-500">
-                        Guru: <strong>{c.teacher.name}</strong>
+                        {tStudent('teacher')}: <strong>{c.teacher.name}</strong>
                       </p>
                     </CardHeader>
 
                     <CardContent className="p-4 pt-0">
                       <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t">
-                        <span>{c._count.modules} Modul Materi</span>
+                        <span>{c._count.modules} Modul</span>
                         <span>{c.academicYear?.name}</span>
                       </div>
                     </CardContent>
@@ -339,7 +344,7 @@ export default async function StudentDashboard() {
                           size="sm"
                           className="w-full text-xs border-[#002446]/30 text-[#002446] hover:bg-[#002446] hover:text-white font-semibold flex items-center justify-center gap-1"
                         >
-                          <span>Buka Materi</span>
+                          <span>{tStudent('startLearning')}</span>
                           <ArrowRight className="h-3.5 w-3.5" />
                         </Button>
                       </Link>

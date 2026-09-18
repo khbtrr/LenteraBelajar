@@ -14,6 +14,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Link, useRouter } from '@/i18n/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { useDialog } from '@/context/DialogContext';
 import { reviewCourseRequest } from '@/lib/actions/course';
 import {
@@ -102,6 +103,8 @@ interface AdminDashboardClientProps {
 
 export function AdminDashboardClient({ initialData, adminName }: AdminDashboardClientProps) {
   const router = useRouter();
+  const t = useTranslations('adminDashboard');
+  const locale = useLocale();
   const { showAlert } = useDialog();
   const [data, setData] = useState<DashboardData>(initialData);
   const [selectedRequest, setSelectedRequest] = useState<DashboardData['pendingRequests']['items'][0] | null>(null);
@@ -141,15 +144,15 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
 
       await showAlert(
         reviewAction === 'APPROVE'
-          ? `Course "${selectedRequest.title}" berhasil disetujui!`
-          : `Pengajuan course "${selectedRequest.title}" telah ditolak.`,
+          ? t('dialogApprovedAlert', { title: selectedRequest.title })
+          : t('dialogRejectedAlert', { title: selectedRequest.title }),
         { type: 'success' }
       );
       setSelectedRequest(null);
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal memproses pengajuan', { type: 'error' });
+      await showAlert(err?.message || t('dialogFailedAlert'), { type: 'error' });
     } finally {
       setIsProcessing(false);
     }
@@ -162,7 +165,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
-              Pusat Kendali Administrator
+              {t('controlCenter')}
             </span>
             {data.school?.code && (
               <span className="text-xs text-white/80 font-mono">
@@ -171,10 +174,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
             )}
           </div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            Selamat Datang, {adminName || 'Admin'}! 👋
+            {t('welcome', { name: adminName || 'Admin' })}
           </h1>
           <p className="text-xs md:text-sm text-gray-200">
-            {data.school?.name || 'LenteraBelajar'} — Pantau operasional, statistik pengguna, dan integritas evaluasi pembelajaran sekolah Anda.
+            {t('description', { school: data.school?.name || 'LenteraBelajar' })}
           </p>
         </div>
 
@@ -184,7 +187,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               <Calendar className="w-4 h-4 text-[#FF8928]" />
               <div className="text-left">
                 <div className="text-[10px] uppercase font-semibold text-white/70 tracking-wider">
-                  Tahun Ajaran Aktif
+                  {t('activeAcademicYear')}
                 </div>
                 <div className="text-xs font-bold text-white">
                   {data.activeAcademicYear.name}
@@ -197,14 +200,14 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               className="text-xs bg-[#FF8928] hover:bg-[#ff790f] text-white font-medium px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5"
             >
               <Calendar className="w-3.5 h-3.5" />
-              Atur Tahun Ajaran
+              {t('setupAcademicYear')}
             </Link>
           )}
 
           <Link
             href="/admin/settings"
             className="text-xs bg-white/10 hover:bg-white/20 text-white font-medium p-2.5 rounded-xl transition-colors"
-            title="Pengaturan Sekolah"
+            title={t('schoolSettings')}
           >
             <Settings className="w-4 h-4" />
           </Link>
@@ -217,7 +220,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         <Card className="hover:shadow-md transition-shadow border-gray-200 dark:border-gray-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Total Pengguna
+              {t('totalUsers')}
             </CardTitle>
             <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center">
               <Users className="h-5 w-5" />
@@ -229,11 +232,11 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <span className="font-semibold text-gray-700 dark:text-gray-300">
-                {data.users.students} Siswa
+                {t('studentsCount', { count: data.users.students })}
               </span>
               <span>•</span>
               <span className="font-semibold text-gray-700 dark:text-gray-300">
-                {data.users.teachers} Guru
+                {t('teachersCount', { count: data.users.teachers })}
               </span>
               <span className="text-[10px] text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded font-mono ml-auto">
                 1:{data.users.studentTeacherRatio}
@@ -246,7 +249,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         <Card className="hover:shadow-md transition-shadow border-gray-200 dark:border-gray-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Kursus Pembelajaran
+              {t('learningCourses')}
             </CardTitle>
             <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-[#FF8928] flex items-center justify-center">
               <BookOpen className="h-5 w-5" />
@@ -260,9 +263,11 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <span className="text-emerald-600 font-medium">Aktif Berjalan</span>
+              <span className="text-emerald-600 font-medium">
+                {t('activeRunning', { active: data.academics.activeCourses })}
+              </span>
               <span>•</span>
-              <span>{data.academics.totalCohorts} Grup Kohort</span>
+              <span>{t('cohortGroups', { count: data.academics.totalCohorts })}</span>
             </div>
           </CardContent>
         </Card>
@@ -271,7 +276,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         <Card className="hover:shadow-md transition-shadow border-gray-200 dark:border-gray-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Evaluasi Ujian (CBT)
+              {t('cbtEvaluation')}
             </CardTitle>
             <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center">
               <ClipboardCheck className="h-5 w-5" />
@@ -282,9 +287,9 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               {data.cbt.totalQuizzes}
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <span>{data.cbt.totalAttempts} Kali Ujian Selesai</span>
+              <span>{t('completedExams', { count: data.cbt.totalAttempts })}</span>
               <span className="text-purple-600 font-medium ml-auto">
-                KKM: {data.cbt.passingThreshold}
+                {t('kkmStandard', { kkm: data.cbt.passingThreshold })}
               </span>
             </div>
           </CardContent>
@@ -294,7 +299,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         <Card className="hover:shadow-md transition-shadow border-gray-200 dark:border-gray-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Pengajuan Kursus
+              {t('courseRequests')}
             </CardTitle>
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center ${
@@ -313,11 +318,11 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
             <div className="flex items-center text-xs">
               {data.pendingRequests.total > 0 ? (
                 <span className="text-rose-600 font-semibold flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Perlu Review Admin
+                  <Clock className="w-3 h-3" /> {t('needsAction', { count: data.pendingRequests.total })}
                 </span>
               ) : (
                 <span className="text-emerald-600 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Semua Telah Ditinjau
+                  <CheckCircle2 className="w-3 h-3" /> {t('allReviewed')}
                 </span>
               )}
             </div>
@@ -333,14 +338,14 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold text-[#002446] dark:text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#FF8928]" />
-                Distribusi Peran Pengguna Sekolah
+                {t('roleDistributionTitle')}
               </CardTitle>
               <Badge variant="outline" className="text-xs font-normal">
-                {activeUserPercent}% Akun Aktif
+                {t('activeAccountBadge', { percent: activeUserPercent })}
               </Badge>
             </div>
             <CardDescription className="text-xs">
-              Proporsi pengguna aktif terdaftar di sistem sekolah Anda.
+              {t('roleDistributionDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -350,22 +355,22 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 <div
                   style={{ width: `${studentPercent}%` }}
                   className="bg-blue-600 transition-all duration-500"
-                  title={`Siswa: ${studentPercent}%`}
+                  title={`${t('students')}: ${studentPercent}%`}
                 />
                 <div
                   style={{ width: `${teacherPercent}%` }}
                   className="bg-amber-500 transition-all duration-500"
-                  title={`Guru: ${teacherPercent}%`}
+                  title={`${t('teachers')}: ${teacherPercent}%`}
                 />
                 <div
                   style={{ width: `${staffPercent}%` }}
                   className="bg-[#002446] dark:bg-sky-400 transition-all duration-500"
-                  title={`Admin & Supervisor: ${staffPercent}%`}
+                  title={`${t('staffAdmin')}: ${staffPercent}%`}
                 />
               </div>
               <div className="flex items-center justify-between text-[11px] text-gray-500">
                 <span>0%</span>
-                <span>Total Pengguna: {data.users.total} Akun</span>
+                <span>{t('totalAccounts', { count: data.users.total })}</span>
                 <span>100%</span>
               </div>
             </div>
@@ -375,39 +380,39 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-800 dark:text-blue-300">
                   <span className="w-2 h-2 rounded-full bg-blue-600" />
-                  Siswa
+                  {t('students')}
                 </div>
                 <div className="text-lg font-bold text-blue-950 dark:text-blue-100">
                   {data.users.students}
                 </div>
                 <div className="text-[10px] text-blue-700/80 dark:text-blue-400">
-                  {studentPercent}% dari total
+                  {studentPercent}% {t('fromTotal')}
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  Guru
+                  {t('teachers')}
                 </div>
                 <div className="text-lg font-bold text-amber-950 dark:text-amber-100">
                   {data.users.teachers}
                 </div>
                 <div className="text-[10px] text-amber-700/80 dark:text-amber-400">
-                  {teacherPercent}% dari total
+                  {teacherPercent}% {t('fromTotal')}
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
                   <span className="w-2 h-2 rounded-full bg-[#002446] dark:bg-sky-400" />
-                  Staf / Admin
+                  {t('staffAdmin')}
                 </div>
                 <div className="text-lg font-bold text-slate-900 dark:text-slate-100">
                   {data.users.staff}
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  {staffPercent}% dari total
+                  {staffPercent}% {t('fromTotal')}
                 </div>
               </div>
             </div>
@@ -418,7 +423,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 href="/admin/users"
                 className="text-xs text-[#002446] dark:text-sky-400 hover:underline font-semibold inline-flex items-center gap-1"
               >
-                Kelola Seluruh Pengguna
+                {t('manageAllUsers')}
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -431,17 +436,17 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold text-[#002446] dark:text-white flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#FF8928]" />
-                Kinerja Ujian & Ketuntasan Belajar CBT
+                {t('cbtTitle')}
               </CardTitle>
               <Badge
                 variant="secondary"
                 className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
               >
-                Standar KKM: {data.cbt.passingThreshold}
+                {t('kkmStandard', { kkm: data.cbt.passingThreshold })}
               </Badge>
             </div>
             <CardDescription className="text-xs">
-              Tingkat keberhasilan siswa mencapai standar KKM pada ujian CBT sekolah.
+              {t('cbtDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -474,10 +479,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
                 <div>
                   <div className="text-xs font-bold text-purple-950 dark:text-purple-100">
-                    Tingkat Kelulusan
+                    {t('passingRate')}
                   </div>
                   <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    Siswa tuntas ≥ KKM ({data.cbt.passingThreshold})
+                    {t('studentsPassed', { kkm: data.cbt.passingThreshold })}
                   </div>
                 </div>
               </div>
@@ -485,7 +490,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               {/* Average Score */}
               <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 flex flex-col justify-center">
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Rata-rata Skor
+                  {t('averageScore')}
                 </div>
                 <div className="text-2xl font-bold text-[#002446] dark:text-white mt-1">
                   {data.cbt.averageScore}
@@ -493,7 +498,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
                 <div className="text-[10px] text-emerald-600 flex items-center gap-1 mt-0.5 font-medium">
                   <TrendingUp className="w-3 h-3" />
-                  Dari {data.cbt.totalAttempts} pengerjaan
+                  {t('fromAttempts', { count: data.cbt.totalAttempts })}
                 </div>
               </div>
             </div>
@@ -501,7 +506,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
             {/* Recent Completed CBT Attempts */}
             <div className="space-y-2">
               <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                Aktivitas Ujian Terakhir
+                {t('recentAttempts')}
               </div>
               {data.cbt.recentAttempts.length > 0 ? (
                 <div className="space-y-2">
@@ -538,7 +543,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
               ) : (
                 <div className="text-center py-4 text-xs text-gray-400 border border-dashed rounded-lg">
-                  Belum ada riwayat pengerjaan ujian CBT.
+                  {t('noAttempts')}
                 </div>
               )}
             </div>
@@ -555,18 +560,18 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-bold text-[#002446] dark:text-white flex items-center gap-2">
                   <FileCheck className="w-4 h-4 text-[#FF8928]" />
-                  Pengajuan Kursus yang Perlu Tindakan
+                  {t('requestsTitle')}
                 </CardTitle>
                 <Link
                   href="/admin/course-requests"
                   className="text-xs text-[#002446] dark:text-sky-400 hover:underline font-semibold flex items-center gap-1"
                 >
-                  Lihat Semua
+                  {t('viewAll')}
                   <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
               <CardDescription className="text-xs">
-                Guru mengajukan kursus baru yang membutuhkan tinjauan dan persetujuan dari administrator.
+                {t('requestsDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
@@ -583,16 +588,16 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                             {req.title}
                           </span>
                           <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px]">
-                            MENUNGGU
+                            {t('needsAction', { count: 1 }).toUpperCase()}
                           </Badge>
                         </div>
                         <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-gray-700 dark:text-gray-300">
-                            Pengaju: {req.requester.name}
+                            {t('proposedBy')}: {req.requester.name}
                           </span>
                           <span>•</span>
                           <span>
-                            {new Date(req.createdAt).toLocaleDateString('id-ID', {
+                            {new Date(req.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                               dateStyle: 'medium',
                             })}
                           </span>
@@ -611,7 +616,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                           className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 px-3 flex items-center gap-1"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Setujui
+                          {t('reviewAction')}
                         </Button>
                         <Button
                           size="sm"
@@ -620,7 +625,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                           className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 text-xs h-8 px-3 flex items-center gap-1"
                         >
                           <XCircle className="w-3.5 h-3.5" />
-                          Tolak
+                          {t('rejectAction')}
                         </Button>
                       </div>
                     </div>
@@ -632,10 +637,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                    Tidak Ada Pengajuan Menunggu
+                    {t('noPending')}
                   </h4>
                   <p className="text-[11px] text-gray-500 mt-0.5">
-                    Semua permohonan kursus dari guru telah ditinjau dengan lengkap.
+                    {t('allReviewedDesc')}
                   </p>
                 </div>
               )}
@@ -649,10 +654,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold text-[#002446] dark:text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#FF8928]" />
-                Pintasan Aksi Cepat
+                {t('quickActionsTitle')}
               </CardTitle>
               <CardDescription className="text-xs">
-                Akses cepat untuk memfasilitasi aktivitas operasional sekolah.
+                {t('quickActionsDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5 flex-1">
@@ -665,10 +670,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    Tambah Pengguna
+                    {t('addUser')}
                   </div>
                   <div className="text-[10px] text-gray-500 truncate">
-                    Input akun siswa, guru, atau import Excel
+                    {t('addUserDesc')}
                   </div>
                 </div>
               </Link>
@@ -682,10 +687,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    Grup Kohort (Kelas)
+                    {t('createCohort')}
                   </div>
                   <div className="text-[10px] text-gray-500 truncate">
-                    Kelola rombongan belajar & anggota siswa
+                    {t('createCohortDesc')}
                   </div>
                 </div>
               </Link>
@@ -699,10 +704,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    Tahun Ajaran
+                    {t('academicYear')}
                   </div>
                   <div className="text-[10px] text-gray-500 truncate">
-                    Periode kalender & arsip kursus
+                    {t('academicYearDesc')}
                   </div>
                 </div>
               </Link>
@@ -716,10 +721,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    Kategori Kursus
+                    {t('categories.name', { default: 'Kategori Kursus' })}
                   </div>
                   <div className="text-[10px] text-gray-500 truncate">
-                    Struktur kurikulum & mata pelajaran
+                    {t('academicCalendarDesc')}
                   </div>
                 </div>
               </Link>
@@ -733,10 +738,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    Pengaturan Sekolah
+                    {t('schoolSettings')}
                   </div>
                   <div className="text-[10px] text-gray-500 truncate">
-                    Branding logo, KKM, & default CBT
+                    {t('schoolSettings')}
                   </div>
                 </div>
               </Link>
@@ -753,12 +758,12 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               {reviewAction === 'APPROVE' ? (
                 <>
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Setujui Pengajuan Course</span>
+                  <span>{t('dialogApproveTitle')}</span>
                 </>
               ) : (
                 <>
                   <XCircle className="w-5 h-5 text-rose-600" />
-                  <span>Tolak Pengajuan Course</span>
+                  <span>{t('dialogRejectTitle')}</span>
                 </>
               )}
             </DialogTitle>
@@ -768,13 +773,13 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
             <div className="space-y-4 py-2">
               <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 text-xs space-y-1">
                 <div>
-                  <span className="text-gray-500">Judul Course:</span>{' '}
+                  <span className="text-gray-500">{t('dialogCourseTitle')}:</span>{' '}
                   <span className="font-semibold text-[#002446] dark:text-white">
                     {selectedRequest.title}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Pengaju:</span>{' '}
+                  <span className="text-gray-500">{t('dialogProposedBy')}:</span>{' '}
                   <span className="font-semibold">{selectedRequest.requester.name}</span> (
                   {selectedRequest.requester.email})
                 </div>
@@ -782,17 +787,13 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
 
               <div className="space-y-1.5">
                 <Label htmlFor="adminNote" className="text-xs font-medium">
-                  Catatan untuk Guru (Opsional)
+                  {t('dialogAdminNote')}
                 </Label>
                 <Input
                   id="adminNote"
                   value={adminNote}
                   onChange={(e) => setAdminNote(e.target.value)}
-                  placeholder={
-                    reviewAction === 'APPROVE'
-                      ? 'Contoh: Course telah disetujui, silakan mulai mengunggah materi.'
-                      : 'Contoh: Silakan lengkapi silabus atau sesuaikan dengan kurikulum aktif.'
-                  }
+                  placeholder={t('dialogAdminNotePlaceholder')}
                 />
               </div>
             </div>
@@ -804,7 +805,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               onClick={() => setSelectedRequest(null)}
               disabled={isProcessing}
             >
-              Batal
+              {t('dialogCancel')}
             </Button>
             <Button
               onClick={handleConfirmReview}
@@ -816,10 +817,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
               }
             >
               {isProcessing
-                ? 'Memproses...'
+                ? t('dialogProcessing')
                 : reviewAction === 'APPROVE'
-                ? 'Ya, Setujui Course'
-                : 'Ya, Tolak Pengajuan'}
+                ? t('dialogConfirmApprove')
+                : t('dialogConfirmReject')}
             </Button>
           </DialogFooter>
         </DialogContent>

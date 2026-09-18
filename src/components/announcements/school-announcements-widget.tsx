@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ExternalLink,
 } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 
 export interface SchoolAnnouncementData {
   id: string;
@@ -42,6 +43,8 @@ export function SchoolAnnouncementsWidget({
 }: {
   announcements: SchoolAnnouncementData[];
 }) {
+  const t = useTranslations('announcementsWidget');
+  const locale = useLocale();
   const [selectedItem, setSelectedItem] = useState<SchoolAnnouncementData | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [isClient, setIsClient] = useState(false);
@@ -100,10 +103,10 @@ export function SchoolAnnouncementsWidget({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
-                  PENGUMUMAN MENDESAK
+                  {t('urgentNotice')}
                 </span>
                 <span className="text-xs text-white/80">
-                  {new Date(item.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                  {new Date(item.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { dateStyle: 'medium' })}
                 </span>
               </div>
               <h3 className="font-bold text-sm md:text-base mt-0.5 group-hover:underline truncate">
@@ -118,7 +121,7 @@ export function SchoolAnnouncementsWidget({
               variant="secondary"
               className="bg-white text-rose-700 hover:bg-gray-100 font-semibold text-xs h-8 px-3"
             >
-              Baca Pengumuman
+              {t('readNotice')}
               <ChevronRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
@@ -134,11 +137,11 @@ export function SchoolAnnouncementsWidget({
                 <Megaphone className="w-4 h-4 text-[#FF8928]" />
               </div>
               <CardTitle className="text-sm font-bold text-[#002446] dark:text-white">
-                Pengumuman Resmi Sekolah
+                {t('officialAnnouncements')}
               </CardTitle>
             </div>
             <span className="text-xs text-gray-500 font-medium">
-              {regularList.length} Pengumuman
+              {t('announcementsCount', { count: regularList.length })}
             </span>
           </CardHeader>
           <CardContent className="space-y-2.5">
@@ -157,19 +160,19 @@ export function SchoolAnnouncementsWidget({
                     {item.isPinned && (
                       <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] flex items-center gap-1">
                         <Pin className="w-3 h-3 fill-amber-700 text-amber-700" />
-                        Disematkan
+                        {t('pinnedBadge')}
                       </Badge>
                     )}
                     {item.priority === AnnouncementPriority.IMPORTANT && (
                       <Badge className="bg-amber-500 text-white text-[10px] flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
-                        Penting
+                        {t('importantBadge')}
                       </Badge>
                     )}
                     <span className="text-[11px] text-gray-500">
-                      {new Date(item.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                      {new Date(item.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { dateStyle: 'medium' })}
                     </span>
-                    <span className="text-[11px] text-gray-400">• oleh {item.author.name}</span>
+                    <span className="text-[11px] text-gray-400">• {item.author.name}</span>
                   </div>
 
                   <h4 className="font-bold text-sm text-[#002446] dark:text-white group-hover:text-brand-600 transition-colors">
@@ -189,7 +192,7 @@ export function SchoolAnnouncementsWidget({
                     type="button"
                     onClick={(e) => handleDismiss(item.id, e)}
                     className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    title="Sembunyikan Pengumuman Ini"
+                    title={t('close')}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -208,15 +211,15 @@ export function SchoolAnnouncementsWidget({
               <DialogHeader>
                 <div className="flex items-center gap-2 mb-1.5">
                   {selectedItem.priority === AnnouncementPriority.URGENT ? (
-                    <Badge className="bg-rose-600 text-white">Mendesak</Badge>
+                    <Badge className="bg-rose-600 text-white">{t('urgentBadge')}</Badge>
                   ) : selectedItem.priority === AnnouncementPriority.IMPORTANT ? (
-                    <Badge className="bg-amber-500 text-white">Penting</Badge>
+                    <Badge className="bg-amber-500 text-white">{t('importantBadge')}</Badge>
                   ) : (
-                    <Badge variant="secondary">Informasi</Badge>
+                    <Badge variant="secondary">Info</Badge>
                   )}
                   {selectedItem.isPinned && (
                     <Badge variant="outline" className="text-amber-600 border-amber-300">
-                      Disematkan
+                      {t('pinnedBadge')}
                     </Badge>
                   )}
                 </div>
@@ -224,7 +227,7 @@ export function SchoolAnnouncementsWidget({
                   {selectedItem.title}
                 </DialogTitle>
                 <div className="text-xs text-gray-500 text-left">
-                  Diterbitkan oleh <strong className="text-gray-700 dark:text-gray-300">{selectedItem.author.name}</strong> pada {new Date(selectedItem.createdAt).toLocaleDateString('id-ID', { dateStyle: 'full' })}
+                  {t('publishedBy', { name: selectedItem.author.name })} • {new Date(selectedItem.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { dateStyle: 'full' })}
                 </div>
               </DialogHeader>
 
@@ -235,7 +238,7 @@ export function SchoolAnnouncementsWidget({
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setSelectedItem(null)}>
-                  Tutup
+                  {t('close')}
                 </Button>
               </DialogFooter>
             </div>

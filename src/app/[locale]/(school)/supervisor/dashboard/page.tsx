@@ -7,6 +7,7 @@ import { Users, BookOpen, GraduationCap, UserCheck } from 'lucide-react';
 export default async function SupervisorDashboard() {
   const session = await auth();
   const t = await getTranslations('dashboard');
+  const tSup = await getTranslations('supervisorDashboard');
   const schoolId = session?.user?.schoolId;
 
   if (!schoolId) return null;
@@ -32,6 +33,7 @@ export default async function SupervisorDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-[#002446]">{teacherCount}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tSup('teachersDesc')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -41,6 +43,7 @@ export default async function SupervisorDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-[#002446]">{studentCount}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tSup('studentsDesc')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -50,6 +53,7 @@ export default async function SupervisorDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-[#002446]">{courseCount}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tSup('coursesDesc')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -59,6 +63,7 @@ export default async function SupervisorDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-[#002446]">{activeCourseCount}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tSup('activeCoursesDesc')}</p>
           </CardContent>
         </Card>
       </div>

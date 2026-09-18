@@ -12,6 +12,7 @@ import { SchoolAnnouncementsWidget } from '@/components/announcements/school-ann
 export default async function TeacherDashboard() {
   const session = await auth();
   const t = await getTranslations('dashboard');
+  const tTeacher = await getTranslations('teacherDashboard');
 
   if (!session?.user) return null;
 
@@ -47,19 +48,19 @@ export default async function TeacherDashboard() {
             </h1>
           </div>
           <p className="text-xs text-white/80">
-            Selamat datang di Portal Pendidik. Kelola materi, kuis, tugas, dan pantau kalender kegiatan belajar mengajar Anda.
+            {tTeacher('welcomeBanner')}
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <Link href="/teacher/courses">
             <Button className="bg-[#FF8928] hover:bg-[#ff7b10] text-white font-bold text-xs">
-              Kelola Kursus
+              {tTeacher('manageCourses')}
             </Button>
           </Link>
           <Link href="/calendar">
             <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 font-medium text-xs">
-              Buka Kalender
+              {tTeacher('openCalendar')}
             </Button>
           </Link>
         </div>
@@ -76,7 +77,7 @@ export default async function TeacherDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-[#002446]">{courseCount}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">Mata pelajaran yang Anda ampu</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tTeacher('coursesTaught')}</p>
           </CardContent>
         </Card>
 
@@ -89,7 +90,7 @@ export default async function TeacherDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-emerald-600">{activeCourseCount}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">Status kelas sedang aktif</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tTeacher('activeClasses')}</p>
           </CardContent>
         </Card>
 
@@ -102,7 +103,7 @@ export default async function TeacherDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-[#FF8928]">{studentCount}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">Siswa terdaftar di seluruh kelas</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{tTeacher('studentsEnrolled')}</p>
           </CardContent>
         </Card>
       </div>
@@ -112,10 +113,10 @@ export default async function TeacherDashboard() {
         {/* Recent Courses Section */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#002446]">Mata Pelajaran yang Diampu</h2>
+            <h2 className="text-lg font-bold text-[#002446]">{tTeacher('activeCoursesTitle')}</h2>
             <Link href="/teacher/courses">
               <Button variant="ghost" size="sm" className="text-xs text-blue-700 hover:text-blue-900">
-                Lihat Semua &rarr;
+                {tTeacher('viewAll')} &rarr;
               </Button>
             </Link>
           </div>
@@ -123,7 +124,7 @@ export default async function TeacherDashboard() {
           {recentCourses.length === 0 ? (
             <Card className="p-8 text-center text-gray-400">
               <BookOpen className="h-10 w-10 mx-auto text-gray-300 mb-2" />
-              <p className="text-sm">Belum ada kelas atau mata pelajaran yang dibuat.</p>
+              <p className="text-sm">{tTeacher('emptyTitle')}</p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -131,20 +132,20 @@ export default async function TeacherDashboard() {
                 <Card key={c.id} className="hover:shadow-md transition-all border flex flex-col justify-between">
                   <CardHeader className="p-4 pb-2 space-y-1">
                     <span className="text-[11px] font-semibold text-[#FF8928] uppercase">
-                      {c.category?.name || 'Mata Pelajaran'}
+                      {c.category?.name || '-'}
                     </span>
                     <CardTitle className="text-base font-bold text-[#002446] line-clamp-1">
                       {c.title}
                     </CardTitle>
                     <p className="text-xs text-gray-500">
-                      Tahun Ajaran: <strong>{c.academicYear?.name || '-'}</strong>
+                      {c.academicYear?.name || '-'}
                     </p>
                   </CardHeader>
 
                   <CardContent className="p-4 pt-0">
                     <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t">
-                      <span>{c._count.modules} Modul Materi</span>
-                      <span>{c._count.enrollments} Siswa</span>
+                      <span>{tTeacher('modulesCount', { count: c._count.modules })}</span>
+                      <span>{tTeacher('studentsCount', { count: c._count.enrollments })}</span>
                     </div>
                   </CardContent>
 
@@ -155,7 +156,7 @@ export default async function TeacherDashboard() {
                         size="sm"
                         className="w-full text-xs border-[#002446]/30 text-[#002446] hover:bg-[#002446] hover:text-white font-semibold flex items-center justify-center gap-1"
                       >
-                        <span>Kelola Kelas</span>
+                        <span>{tTeacher('manageCourses')}</span>
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Button>
                     </Link>
