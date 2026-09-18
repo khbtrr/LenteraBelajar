@@ -32,11 +32,11 @@ export function AppLayout({
   const mainContentMargin = isMobileOpen
     ? 'ml-0'
     : isSidebarVisible
-      ? 'xl:ml-[280px]'
-      : 'xl:ml-[88px]';
+      ? 'lg:ml-[280px]'
+      : 'lg:ml-[88px]';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col xl:flex-row">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col lg:flex-row">
       {/* Responsive TailAdmin Sidebar */}
       <Sidebar
         items={items}

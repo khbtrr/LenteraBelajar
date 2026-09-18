@@ -88,7 +88,7 @@ export function NotificationDropdown() {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-80 sm:w-96 max-h-[80vh] overflow-y-auto p-0">
+      <DropdownMenuContent align="end" className="w-80 sm:w-96 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto p-0">
         <div className="flex items-center justify-between p-3 border-b bg-gray-50/70">
           <DropdownMenuLabel className="p-0 font-bold text-[#002446]">
             Notifikasi {unreadCount > 0 && `(${unreadCount} baru)`}

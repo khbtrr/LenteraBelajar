@@ -38,7 +38,7 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
-  const isSidebarVisible = isExpanded || isHovered;
+  const isSidebarVisible = isExpanded || isHovered || isMobileOpen;
 
   const toggleSubmenu = (label: string) => {
     setOpenSubmenus((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -53,10 +53,10 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
         'bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800',
         'transition-all duration-300 ease-in-out',
         // Desktop width
-        isSidebarVisible ? 'xl:w-[280px]' : 'xl:w-[88px]',
+        isSidebarVisible ? 'lg:w-[280px]' : 'lg:w-[88px]',
         // Mobile drawer positioning
         'w-[280px]',
-        isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full xl:translate-x-0'
+        isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
       )}
     >
       {/* Brand Header */}
@@ -92,7 +92,7 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
         <button
           onClick={toggleSidebar}
           aria-label="Toggle Sidebar"
-          className="hidden xl:flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
+          className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
         >
           {isExpanded ? (
             <ChevronLeft className="h-4 w-4" />

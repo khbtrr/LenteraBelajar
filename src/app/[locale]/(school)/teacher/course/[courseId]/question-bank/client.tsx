@@ -668,7 +668,7 @@ POINTS: 5`;
   const getOptionLetter = (index: number) => String.fromCharCode(65 + index);
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -689,8 +689,8 @@ POINTS: 5`;
           </div>
         </div>
         <div className="flex gap-4">
-          <Card className="bg-slate-50">
-            <CardContent className="p-4 flex gap-6">
+          <Card className="bg-slate-50 w-full sm:w-auto">
+            <CardContent className="p-4 flex flex-wrap sm:flex-nowrap justify-around gap-4 sm:gap-6">
               <div className="text-center">
                 <p className="text-2xl font-bold text-[#002446]">{allQuestions.length}</p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Soal</p>
@@ -838,12 +838,12 @@ POINTS: 5`;
                 {displayedQuestions.length} Soal
               </Badge>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" className="border-[#002446] text-[#002446] hover:bg-[#002446]/5" onClick={() => setIsImportModalOpen(true)}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" className="border-[#002446] text-[#002446] hover:bg-[#002446]/5 w-full sm:w-auto" onClick={() => setIsImportModalOpen(true)}>
                 <FileUp className="w-4 h-4 mr-2" />
                 Impor Soal (Aiken / Word)
               </Button>
-              <Button className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white border-none" onClick={openAddQuestion}>
+              <Button className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white border-none w-full sm:w-auto" onClick={openAddQuestion}>
                 <Plus className="w-4 h-4 mr-2" />
                 Tambah Soal
               </Button>

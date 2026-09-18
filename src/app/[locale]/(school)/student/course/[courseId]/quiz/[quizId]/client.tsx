@@ -668,35 +668,37 @@ export function StudentQuizClient({
       )}
 
       {/* Sticky Countdown Header */}
-      <div className="sticky top-20 z-20 bg-white/95 backdrop-blur shadow-sm border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-bold text-[#002446] text-base">{quizTitle}</h2>
+      <div className="sticky top-20 z-20 bg-white/95 backdrop-blur shadow-sm border border-gray-200 rounded-xl p-3 sm:p-4 flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <h2 className="font-bold text-[#002446] text-sm sm:text-base truncate max-w-[170px] sm:max-w-xs md:max-w-md" title={quizTitle}>
+              {quizTitle}
+            </h2>
             {enableLockdown && (
-              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[10px] flex items-center gap-1">
+              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[10px] flex items-center gap-1 shrink-0">
                 <Lock className="w-3 h-3" /> CBT Lockdown
               </Badge>
             )}
             {enableLockdown && tabSwitchCount > 0 && (
-              <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">
+              <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] shrink-0">
                 Pelanggaran: {tabSwitchCount}/{maxTabSwitches}
               </Badge>
             )}
           </div>
-          <div className="text-xs text-gray-500 mt-0.5">
+          <div className="text-xs text-gray-500 mt-0.5 truncate">
             Terjawab: <strong>{answeredCount}</strong> dari {questions.length} Soal
           </div>
         </div>
 
         {remainingSeconds !== null && (
           <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono font-bold text-lg ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-mono font-bold text-sm sm:text-lg shrink-0 ${
               remainingSeconds < 300
                 ? 'bg-red-100 text-red-700 animate-pulse'
                 : 'bg-[#002446] text-white'
             }`}
           >
-            <Clock className="h-5 w-5" />
+            <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
             <span>{formatTime(remainingSeconds)}</span>
           </div>
         )}

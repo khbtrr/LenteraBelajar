@@ -90,6 +90,13 @@ export function CalendarView({
     loadEvents();
   }, [currentDate.getMonth(), currentDate.getFullYear(), courseFilter, categoryFilter]);
 
+  // Default to AGENDA view on mobile screens (< 768px)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setViewMode('AGENDA');
+    }
+  }, []);
+
   // Calendar calculations
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();

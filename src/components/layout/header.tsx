@@ -49,7 +49,7 @@ export function Header({ userName, userRole, userAvatar }: HeaderProps) {
         <button
           onClick={toggleMobileSidebar}
           aria-label="Toggle Mobile Menu"
-          className="flex xl:hidden items-center justify-center w-10 h-10 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+          className="flex lg:hidden items-center justify-center w-10 h-10 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
         >
           {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -58,13 +58,13 @@ export function Header({ userName, userRole, userAvatar }: HeaderProps) {
         <button
           onClick={toggleSidebar}
           aria-label="Toggle Sidebar"
-          className="hidden xl:flex items-center justify-center w-10 h-10 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+          className="hidden lg:flex items-center justify-center w-10 h-10 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
 
         {/* Mobile Brand Link */}
-        <Link href="/" className="flex items-center gap-2 xl:hidden">
+        <Link href="/" className="flex items-center gap-2 lg:hidden">
           <span className="font-bold text-base text-gray-900 dark:text-white">
             LenteraBelajar
           </span>

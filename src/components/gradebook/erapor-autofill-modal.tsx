@@ -562,14 +562,15 @@ export function EraporAutofillModal({
 
             {/* Columns Table */}
             <div className="border rounded-xl overflow-hidden bg-white shadow-xs">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-600 border-b uppercase font-semibold">
-                    <th className="py-3 px-4 w-24 text-center">Kolom</th>
-                    <th className="py-3 px-4">Nama Kolom di Template e-Rapor</th>
-                    <th className="py-3 px-4 w-80">Sumber Nilai di LenteraBelajar</th>
-                  </tr>
-                </thead>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[550px] text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-600 border-b uppercase font-semibold">
+                      <th className="py-3 px-4 w-24 text-center">Kolom</th>
+                      <th className="py-3 px-4">Nama Kolom di Template e-Rapor</th>
+                      <th className="py-3 px-4 w-80">Sumber Nilai di LenteraBelajar</th>
+                    </tr>
+                  </thead>
                 <tbody className="divide-y divide-gray-100">
                   {mappings.map((mapping) => {
                     const selectValue =
@@ -647,6 +648,7 @@ export function EraporAutofillModal({
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
@@ -697,8 +699,8 @@ export function EraporAutofillModal({
                 </span>
               </div>
 
-              <div className="max-h-72 overflow-y-auto">
-                <table className="w-full text-left text-xs border-collapse">
+              <div className="max-h-72 overflow-y-auto overflow-x-auto">
+                <table className="w-full min-w-[600px] text-left text-xs border-collapse">
                   <thead className="sticky top-0 bg-gray-100/90 backdrop-blur-xs text-gray-600 border-b">
                     <tr>
                       <th className="py-2.5 px-3 w-12 text-center">Baris</th>
