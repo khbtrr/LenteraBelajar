@@ -2,6 +2,8 @@
 
 import { useLocale } from 'next-intl';
 import { useRouter, usePathname } from '@/i18n/navigation';
+import { useSearchParams } from 'next/navigation';
+import { updateUserLocale } from '@/lib/actions/profile-locale';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,9 +22,18 @@ export function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const switchLocale = (newLocale: string) => {
-    router.replace(pathname, { locale: newLocale });
+  const switchLocale = async (newLocale: string) => {
+    const qs = searchParams?.toString();
+    const targetPath = qs ? `${pathname}?${qs}` : pathname;
+    router.replace(targetPath, { locale: newLocale });
+
+    try {
+      await updateUserLocale(newLocale);
+    } catch {
+      // Ignored for unauthenticated users
+    }
   };
 
   return (

@@ -33,14 +33,19 @@
     "loginTitle": "Masuk ke LenteraBelajar",
     "loginSubtitle": "Masukkan email dan kata sandi Anda",
     "loginButton": "Masuk",
+    "loginTo": "Masuk ke",
     "loginError": "Email atau kata sandi salah",
+    "accountLocked": "Akun Anda sementara dikunci selama {minutes} menit karena terlalu banyak percobaan login yang gagal. Silakan tunggu atau hubungi admin sekolah.",
+    "remainingAttempts": "Email atau kata sandi salah. Sisa kesempatan: {remaining} kali lagi sebelum akun dikunci.",
+    "rateLimit": "Terlalu banyak percobaan dari jaringan Anda. Harap tunggu 1 menit sebelum mencoba lagi.",
     "changePassword": "Ubah Kata Sandi",
     "currentPassword": "Kata Sandi Saat Ini",
     "newPassword": "Kata Sandi Baru",
     "confirmPassword": "Konfirmasi Kata Sandi Baru",
     "passwordMismatch": "Kata sandi tidak cocok",
     "passwordChanged": "Kata sandi berhasil diubah",
-    "mustChangePassword": "Anda harus mengubah kata sandi sebelum melanjutkan"
+    "mustChangePassword": "Anda harus mengubah kata sandi sebelum melanjutkan",
+    "passwordPolicyHint": "Minimal 8 karakter, harus mengandung huruf besar (A-Z), huruf kecil (a-z), dan angka (0-9)."
   },
   "sidebar": {
     "dashboard": "Dasbor",
@@ -54,10 +59,25 @@
     "courseRequests": "Pengajuan Course",
     "requestCourse": "Ajukan Course",
     "grades": "Nilai",
+    "cohortGrades": "Leger & Rapor Rombel",
     "teacherActivity": "Aktivitas Guru",
     "studentActivity": "Aktivitas Siswa",
     "reports": "Laporan",
-    "settings": "Pengaturan"
+    "settings": "Pengaturan",
+    "messages": "Pesan",
+    "messageModeration": "Moderasi Pesan",
+    "announcements": "Pengumuman Sekolah",
+    "calendar": "Kalender Akademik",
+    "achievements": "Prestasi & Lencana",
+    "profile": "Profil Saya"
+  },
+  "portal": {
+    "adminTitle": "Admin Sekolah",
+    "teacherTitle": "Portal Guru",
+    "studentTitle": "Portal Siswa",
+    "supervisorTitle": "Monitoring Sekolah",
+    "platformTitle": "Platform Admin",
+    "sharedTitle": "Portal Belajar"
   },
   "roles": {
     "SUPER_ADMIN": "Super Admin",
@@ -65,6 +85,29 @@
     "SUPERVISOR": "Kepsek/Wakasek",
     "TEACHER": "Guru",
     "STUDENT": "Siswa"
+  },
+  "profile": {
+    "title": "Profil Saya",
+    "subtitle": "Kelola informasi profil, foto identitas, dan keamanan akun Anda.",
+    "accountTab": "Informasi Akun",
+    "securityTab": "Keamanan & Kata Sandi",
+    "academicTab": "Statistik & Akademik",
+    "changeAvatar": "Ubah Foto",
+    "removeAvatar": "Hapus Foto",
+    "avatarHint": "Format JPG, PNG, atau WebP. Maksimal 2MB.",
+    "fullName": "Nama Lengkap",
+    "saveChanges": "Simpan Perubahan"
+  },
+  "messages": {
+    "title": "Pesan",
+    "selectChat": "Pilih Obrolan",
+    "selectChatDesc": "Pilih salah satu kontak dari panel sebelah kiri untuk memulai obrolan.",
+    "searchChats": "Cari obrolan...",
+    "newMessage": "Pesan Baru",
+    "typeMessage": "Ketik pesan...",
+    "send": "Kirim",
+    "noConversations": "Belum ada obrolan",
+    "moderationNotice": "Obrolan ini dapat dipantau oleh admin sekolah demi keamanan siswa."
   },
   "schools": {
     "title": "Manajemen Sekolah",

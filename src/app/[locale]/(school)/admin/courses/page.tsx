@@ -14,8 +14,8 @@ export default async function AdminCoursesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#002446]">Manajemen Course</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-[#002446] dark:text-white">Manajemen Course</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Daftar seluruh mata pelajaran / course yang diselenggarakan di sekolah.
         </p>
       </div>

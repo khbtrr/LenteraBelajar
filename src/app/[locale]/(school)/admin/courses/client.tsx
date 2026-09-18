@@ -139,18 +139,18 @@ export function AdminCoursesClient({
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Cari course, guru, atau kategori..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-white"
+              className="pl-9 bg-white dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+            className="h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
           >
             <option value="ALL">Semua Status</option>
             <option value="ACTIVE">Aktif</option>
@@ -161,7 +161,7 @@ export function AdminCoursesClient({
 
         <Button
           onClick={() => setIsCreateOpen(true)}
-          className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 w-full sm:w-auto justify-center"
+          className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white flex items-center gap-2 w-full sm:w-auto justify-center"
         >
           <Plus className="h-4 w-4" /> Buat Course Baru
         </Button>
@@ -171,7 +171,7 @@ export function AdminCoursesClient({
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow>
                 <TableHead>Course</TableHead>
                 <TableHead>Kategori</TableHead>
                 <TableHead>Guru Pengampu</TableHead>
@@ -184,7 +184,7 @@ export function AdminCoursesClient({
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-10 text-gray-500 dark:text-gray-400">
                     Tidak ada course ditemukan.
                   </TableCell>
                 </TableRow>
@@ -192,34 +192,34 @@ export function AdminCoursesClient({
                 filtered.map((course) => (
                   <TableRow key={course.id}>
                     <TableCell>
-                      <div className="font-semibold text-[#002446]">
+                      <div className="font-semibold text-[#002446] dark:text-white">
                         {course.title}
                       </div>
                       {course.description && (
-                        <div className="text-xs text-gray-500 line-clamp-1">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
                           {course.description}
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-xs font-normal">
+                      <Badge variant="outline" className="text-xs font-normal dark:border-gray-700 dark:text-gray-300">
                         {course.category?.name || 'Tanpa Kategori'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm font-medium">
+                    <TableCell className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {course.teacher.name}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm text-gray-700 dark:text-gray-300">
                       {course.academicYear.name}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3 text-xs text-gray-600">
+                      <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
                         <span className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5 text-[#FF8928]" />
+                          <Users className="h-3.5 w-3.5 text-[#FF8928] dark:text-orange-400" />
                           {course._count.enrollments} Siswa
                         </span>
                         <span className="flex items-center gap-1">
-                          <Layers className="h-3.5 w-3.5 text-[#002446]" />
+                          <Layers className="h-3.5 w-3.5 text-[#002446] dark:text-blue-400" />
                           {course._count.modules} Modul
                         </span>
                       </div>
@@ -230,8 +230,8 @@ export function AdminCoursesClient({
                           course.status === 'ACTIVE'
                             ? 'bg-[#FF8928] text-white'
                             : course.status === 'ARCHIVED'
-                            ? 'bg-gray-200 text-gray-700'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
                         }
                       >
                         {course.status === 'ACTIVE'
@@ -244,13 +244,13 @@ export function AdminCoursesClient({
                     <TableCell className="text-right space-x-3">
                       <Link
                         href={`/teacher/course/${course.id}/modules`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#002446] hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#002446] hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                       >
                         Modul <ExternalLink className="h-3 w-3" />
                       </Link>
                       <Link
                         href={`/teacher/course/${course.id}/enrollments`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#FF8928] hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#FF8928] hover:underline dark:text-orange-400 dark:hover:text-orange-300"
                       >
                         Enrollment <ExternalLink className="h-3 w-3" />
                       </Link>
@@ -268,7 +268,7 @@ export function AdminCoursesClient({
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={handleCreate}>
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-[#002446]">
+              <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
                 Buat Course Baru
               </DialogTitle>
             </DialogHeader>
@@ -301,7 +301,7 @@ export function AdminCoursesClient({
                     id="cYear"
                     value={academicYearId}
                     onChange={(e) => setAcademicYearId(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                     required
                   >
                     {academicYears.map((y) => (
@@ -318,7 +318,7 @@ export function AdminCoursesClient({
                     id="cCategory"
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                   >
                     <option value="">-- Pilih Kategori (Mapel) --</option>
                     {categories.map((c) => (
@@ -336,7 +336,7 @@ export function AdminCoursesClient({
                   id="cTeacher"
                   value={teacherId}
                   onChange={(e) => setTeacherId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                  className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                   required
                 >
                   {teachers.map((t) => (
@@ -358,7 +358,7 @@ export function AdminCoursesClient({
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-[#002446] hover:bg-[#002446]/90 text-white"
+                className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
               >
                 {loading ? 'Membuat...' : 'Buat Course'}
               </Button>

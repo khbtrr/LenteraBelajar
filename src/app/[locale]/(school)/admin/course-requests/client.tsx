@@ -87,7 +87,7 @@ export function CourseRequestsClient({
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow>
                 <TableHead>Judul Pengajuan</TableHead>
                 <TableHead>Guru Pemohon</TableHead>
                 <TableHead>Tanggal Pengajuan</TableHead>
@@ -99,7 +99,7 @@ export function CourseRequestsClient({
             <TableBody>
               {requests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
                     Belum ada pengajuan course.
                   </TableCell>
                 </TableRow>
@@ -107,20 +107,20 @@ export function CourseRequestsClient({
                 requests.map((req) => (
                   <TableRow key={req.id}>
                     <TableCell>
-                      <div className="font-semibold text-[#002446]">
+                      <div className="font-semibold text-[#002446] dark:text-white">
                         {req.title}
                       </div>
                       {req.description && (
-                        <div className="text-xs text-gray-500 line-clamp-1">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
                           {req.description}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm font-medium">
+                    <TableCell className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       <div>{req.requester.name}</div>
-                      <div className="text-xs text-gray-500">{req.requester.email}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{req.requester.email}</div>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">
+                    <TableCell className="text-sm text-gray-600 dark:text-gray-300">
                       {new Date(req.createdAt).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',
@@ -152,7 +152,7 @@ export function CourseRequestsClient({
                         )}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-gray-600 max-w-xs">
+                    <TableCell className="text-xs text-gray-600 dark:text-gray-300 max-w-xs">
                       {req.adminNote || '-'}
                     </TableCell>
                     <TableCell className="text-right">
@@ -180,7 +180,7 @@ export function CourseRequestsClient({
                           </Button>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400">Selesai</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Selesai</span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -204,14 +204,14 @@ export function CourseRequestsClient({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#002446]">
+            <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
               {reviewAction === 'APPROVE'
                 ? 'Setujui Pengajuan Course'
                 : 'Tolak Pengajuan Course'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               {reviewAction === 'APPROVE'
                 ? `Anda akan menyetujui pengajuan "${selectedRequest?.title}". Course akan otomatis aktif dan didaftarkan atas nama guru terkait.`
                 : `Anda akan menolak pengajuan "${selectedRequest?.title}".`}

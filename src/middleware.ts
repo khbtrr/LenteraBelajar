@@ -32,6 +32,19 @@ const roleHomePaths: Record<string, string> = {
   STUDENT: '/student/dashboard',
 };
 
+// Safely extract valid locale from pathname or cookie fallback
+function getValidLocale(pathname: string, request: NextRequest): string {
+  const segment = pathname.split('/')[1];
+  if (segment && routing.locales.includes(segment as any)) {
+    return segment;
+  }
+  const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
+  if (cookieLocale && routing.locales.includes(cookieLocale as any)) {
+    return cookieLocale;
+  }
+  return routing.defaultLocale;
+}
+
 export default async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -42,6 +55,11 @@ export default async function middleware(request: NextRequest) {
 
   // Apply intl middleware first
   const intlResponse = intlMiddleware(request);
+
+  // If next-intl generated a redirect (e.g. adding missing locale prefix), respect it
+  if (intlResponse.headers.get('Location')) {
+    return intlResponse;
+  }
 
   const strippedPath = stripLocale(pathname);
 
@@ -54,7 +72,7 @@ export default async function middleware(request: NextRequest) {
   const session = await auth();
 
   if (!session?.user) {
-    const locale = pathname.split('/')[1] || 'id';
+    const locale = getValidLocale(pathname, request);
     const loginUrl = new URL(`/${locale}/login`, request.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
@@ -62,7 +80,7 @@ export default async function middleware(request: NextRequest) {
 
   // Force password change
   if (session.user.mustChangePassword && !strippedPath.startsWith('/change-password')) {
-    const locale = pathname.split('/')[1] || 'id';
+    const locale = getValidLocale(pathname, request);
     return NextResponse.redirect(new URL(`/${locale}/change-password`, request.url));
   }
 
@@ -91,13 +109,13 @@ export default async function middleware(request: NextRequest) {
 
   // Redirect root to role home
   if (strippedPath === '/' || strippedPath === '') {
-    const locale = pathname.split('/')[1] || 'id';
+    const locale = getValidLocale(pathname, request);
     const homePath = roleHomePaths[role] || '/login';
     return NextResponse.redirect(new URL(`/${locale}${homePath}`, request.url));
   }
 
   if (!hasAccess) {
-    const locale = pathname.split('/')[1] || 'id';
+    const locale = getValidLocale(pathname, request);
     const homePath = roleHomePaths[role] || '/login';
     return NextResponse.redirect(new URL(`/${locale}${homePath}`, request.url));
   }

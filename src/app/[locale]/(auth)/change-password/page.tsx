@@ -53,33 +53,34 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#ECEEF0] px-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[#ECEEF0] dark:bg-gray-950 px-4 transition-colors">
+      <Card className="w-full max-w-md shadow-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-[#002446]">
+          <CardTitle className="text-2xl font-bold text-[#002446] dark:text-white">
             {t('changePassword')}
           </CardTitle>
-          <CardDescription>{t('mustChangePassword')}</CardDescription>
+          <CardDescription className="dark:text-gray-400">{t('mustChangePassword')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/40 dark:text-red-300 dark:border dark:border-red-800 rounded-lg">
                 {error}
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">{t('currentPassword')}</Label>
+              <Label htmlFor="currentPassword" className="dark:text-gray-200">{t('currentPassword')}</Label>
               <Input
                 id="currentPassword"
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
+                className="bg-white dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="newPassword">{t('newPassword')}</Label>
+              <Label htmlFor="newPassword" className="dark:text-gray-200">{t('newPassword')}</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -87,13 +88,14 @@ export default function ChangePasswordPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 minLength={8}
+                className="bg-white dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
               />
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
                 Minimal 8 karakter, harus mengandung huruf besar (A-Z), huruf kecil (a-z), dan angka (0-9).
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t('confirmPassword')}</Label>
+              <Label htmlFor="confirmPassword" className="dark:text-gray-200">{t('confirmPassword')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -101,9 +103,14 @@ export default function ChangePasswordPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={8}
+                className="bg-white dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
+              disabled={loading}
+            >
               {loading ? '...' : t('changePassword')}
             </Button>
           </form>

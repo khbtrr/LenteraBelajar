@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { UserProfileData } from '@/lib/actions/profile';
 import { ProfileHeaderCard } from '@/components/profile/profile-header-card';
 import { AccountTab } from '@/components/profile/account-tab';
@@ -16,23 +17,24 @@ interface ProfileClientProps {
 type TabType = 'account' | 'security' | 'academic';
 
 export function ProfileClient({ initialProfile }: ProfileClientProps) {
+  const t = useTranslations('profile');
   const [profile, setProfile] = useState<UserProfileData>(initialProfile);
   const [activeTab, setActiveTab] = useState<TabType>('account');
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     {
       id: 'account',
-      label: 'Informasi Akun',
+      label: t('accountTab'),
       icon: <User className="w-4 h-4" />,
     },
     {
       id: 'security',
-      label: 'Keamanan & Kata Sandi',
+      label: t('securityTab'),
       icon: <ShieldCheck className="w-4 h-4" />,
     },
     {
       id: 'academic',
-      label: 'Statistik & Akademik',
+      label: t('academicTab'),
       icon: <GraduationCap className="w-4 h-4" />,
     },
   ];

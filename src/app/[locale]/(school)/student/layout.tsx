@@ -16,6 +16,8 @@ export default async function StudentLayout({
   }
 
   const t = await getTranslations('sidebar');
+  const tPortal = await getTranslations('portal');
+  const tRoles = await getTranslations('roles');
 
   let school = null;
   if (session.user.schoolId) {
@@ -28,18 +30,18 @@ export default async function StudentLayout({
   const sidebarItems = [
     { label: t('dashboard'), href: '/student/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: t('myCourses'), href: '/student/my-courses', icon: <BookOpen className="h-5 w-5" /> },
-    { label: 'Pesan', href: '/messages', icon: <MessageSquare className="h-5 w-5" /> },
+    { label: t('messages'), href: '/messages', icon: <MessageSquare className="h-5 w-5" /> },
     { label: t('grades'), href: '/student/grades', icon: <Trophy className="h-5 w-5" /> },
-    { label: 'Prestasi & Lencana', href: '/student/achievements', icon: <Medal className="h-5 w-5" /> },
-    { label: 'Kalender & Jadwal', href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
+    { label: t('achievements'), href: '/student/achievements', icon: <Medal className="h-5 w-5" /> },
+    { label: t('calendar'), href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
   ];
 
   return (
     <AppLayout
       items={sidebarItems}
-      title="Portal Siswa"
+      title={tPortal('studentTitle')}
       userName={session.user.name}
-      userRole="Siswa"
+      userRole={tRoles('STUDENT')}
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >

@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { LogOut, Menu, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,10 +24,21 @@ interface HeaderProps {
   userName: string;
   userRole: string;
   userAvatar?: string | null;
+  xp?: number;
+  level?: number;
+  streakDays?: number;
 }
 
-export function Header({ userName, userRole, userAvatar }: HeaderProps) {
+export function Header({
+  userName,
+  userRole,
+  userAvatar,
+  xp = 0,
+  level = 1,
+  streakDays = 0,
+}: HeaderProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const { isMobileOpen, toggleMobileSidebar, toggleSidebar } = useSidebar();
 
   const initials = (userName || 'User')
@@ -38,7 +49,7 @@ export function Header({ userName, userRole, userAvatar }: HeaderProps) {
     .slice(0, 2);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    await signOut({ callbackUrl: `/${locale}/login` });
   };
 
   return (
@@ -129,7 +140,7 @@ export function Header({ userName, userRole, userAvatar }: HeaderProps) {
                 className="cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <User className="h-4 w-4 text-brand-500" />
-                <span>Profil Saya</span>
+                <span>{t('sidebar.profile')}</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-gray-800" />

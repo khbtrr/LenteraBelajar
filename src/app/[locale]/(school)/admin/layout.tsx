@@ -30,6 +30,8 @@ export default async function AdminLayout({
   }
 
   const t = await getTranslations('sidebar');
+  const tPortal = await getTranslations('portal');
+  const tRoles = await getTranslations('roles');
 
   let school = null;
   if (session.user.schoolId) {
@@ -41,26 +43,26 @@ export default async function AdminLayout({
 
   const sidebarItems = [
     { label: t('dashboard'), href: '/admin/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
-    { label: 'Pengumuman Sekolah', href: '/admin/announcements', icon: <Megaphone className="h-5 w-5" /> },
-    { label: 'Pesan', href: '/messages', icon: <MessageSquare className="h-5 w-5" /> },
-    { label: 'Moderasi Pesan', href: '/admin/messages', icon: <ShieldCheck className="h-5 w-5" /> },
+    { label: t('announcements'), href: '/admin/announcements', icon: <Megaphone className="h-5 w-5" /> },
+    { label: t('messages'), href: '/messages', icon: <MessageSquare className="h-5 w-5" /> },
+    { label: t('messageModeration'), href: '/admin/messages', icon: <ShieldCheck className="h-5 w-5" /> },
     { label: t('academicYears'), href: '/admin/academic-years', icon: <Calendar className="h-5 w-5" /> },
     { label: t('categories'), href: '/admin/categories', icon: <FolderTree className="h-5 w-5" /> },
     { label: t('courses'), href: '/admin/courses', icon: <BookOpen className="h-5 w-5" /> },
     { label: t('cohorts'), href: '/admin/cohorts', icon: <UsersRound className="h-5 w-5" /> },
-    { label: 'Leger & Rapor Rombel', href: '/admin/grades/leger', icon: <FileSpreadsheet className="h-5 w-5" /> },
+    { label: t('cohortGrades'), href: '/admin/grades/leger', icon: <FileSpreadsheet className="h-5 w-5" /> },
     { label: t('users'), href: '/admin/users', icon: <Users className="h-5 w-5" /> },
     { label: t('courseRequests'), href: '/admin/course-requests', icon: <FileCheck className="h-5 w-5" /> },
-    { label: 'Kalender Akademik', href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
+    { label: t('calendar'), href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
     { label: t('settings'), href: '/admin/settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
   return (
     <AppLayout
       items={sidebarItems}
-      title="Admin Sekolah"
+      title={tPortal('adminTitle')}
       userName={session.user.name}
-      userRole="Administrator"
+      userRole={tRoles('ADMIN')}
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >
