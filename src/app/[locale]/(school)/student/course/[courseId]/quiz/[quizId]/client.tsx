@@ -10,6 +10,7 @@ import { submitQuizAttempt } from '@/lib/actions/quiz';
 import { recordTabSwitch, pingAttemptHeartbeat } from '@/lib/actions/proctor';
 import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
 import { Link } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 
 interface QuestionOption {
   id: string;
@@ -45,6 +46,7 @@ export function StudentQuizClient({
   enableLockdown?: boolean;
   maxTabSwitches?: number;
 }) {
+  const t = useTranslations('studentQuiz');
   const storageKey = `quiz_draft_${initialAttempt.id}`;
 
   // Check if attempt is already submitted or terminated
@@ -197,7 +199,7 @@ export function StudentQuizClient({
 
       if (result.isTerminated) {
         setIsTerminated(true);
-        setTerminationReason(result.message || 'Kuis dibatalkan karena melanggar batas perpindahan tab/layar ujian.');
+        setTerminationReason(result.message || t('attemptTerminatedDefault'));
         setIsSubmitted(true);
         if (typeof window !== 'undefined') {
           localStorage.removeItem(storageKey);
@@ -216,7 +218,7 @@ export function StudentQuizClient({
         isHandlingViolationRef.current = false;
       }, 1500);
     }
-  }, [initialAttempt.id, isSubmitted, isTerminated, maxTabSwitches, storageKey]);
+  }, [initialAttempt.id, isSubmitted, isTerminated, maxTabSwitches, storageKey, t]);
 
   // Browser Lockdown Effects
   useEffect(() => {
@@ -460,17 +462,17 @@ export function StudentQuizClient({
                 <ShieldAlert className="h-10 w-10" />
               </div>
               <h2 className="text-2xl font-bold text-red-700">
-                Pengerjaan Kuis Dibatalkan!
+                {t('attemptTerminatedTitle')}
               </h2>
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm max-w-md mx-auto leading-relaxed">
-                {terminationReason || 'Anda terdeteksi melakukan pelanggaran integritas (berpindah tab / keluar layar ujian melebihi batas yang ditentukan). Pengerjaan telah dihentikan secara otomatis oleh sistem.'}
+                {terminationReason || t('attemptTerminatedDefault')}
               </div>
               <p className="text-xs text-gray-500">
-                Hubungi guru pengawas atau pengampu mata pelajaran jika Anda merasa ini merupakan kesalahan teknis.
+                {t('contactProctorNote')}
               </p>
               <div className="pt-4">
                 <Button onClick={() => window.location.href = `/student/course/${courseId}/quiz/${quizId}`} className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
-                  <ArrowLeft className="h-4 w-4" /> Kembali ke Detail Kuis
+                  <ArrowLeft className="h-4 w-4" /> {t('backToQuizDetail')}
                 </Button>
               </div>
             </CardContent>
@@ -485,16 +487,16 @@ export function StudentQuizClient({
           <CardContent className="space-y-4 pt-4">
             <CheckCircle2 className="h-16 w-16 mx-auto text-green-600" />
             <h2 className="text-2xl font-bold text-[#002446]">
-              Kuis Berhasil Dikumpulkan!
+              {t('quizSubmittedSuccess')}
             </h2>
             <p className="text-sm text-gray-600">
-              Jawaban Anda untuk <strong>{quizTitle}</strong> telah tersimpan di sistem.
+              {t('answersSavedFor', { title: quizTitle })}
             </p>
 
             {submissionResult?.score !== null && submissionResult?.score !== undefined ? (
               <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl max-w-sm mx-auto my-4">
                 <div className="text-xs uppercase font-bold text-[#FF8928] tracking-wider">
-                  Nilai Akhir (Auto-Graded)
+                  {t('finalScoreAutoGraded')}
                 </div>
                 <div className="text-4xl font-extrabold text-[#002446] mt-2">
                   {submissionResult.score} / 100
@@ -502,13 +504,13 @@ export function StudentQuizClient({
               </div>
             ) : (
               <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg max-w-md mx-auto">
-                Kuis ini memiliki soal essay yang memerlukan penilaian manual oleh guru. Nilai akhir akan diperbarui setelah diperiksa.
+                {t('essayPendingGrading')}
               </div>
             )}
 
             <div className="pt-4">
               <Button onClick={() => window.location.href = `/student/course/${courseId}/quiz/${quizId}`} className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
-                <ArrowLeft className="h-4 w-4" /> Kembali ke Detail Kuis
+                <ArrowLeft className="h-4 w-4" /> {t('backToQuizDetail')}
               </Button>
             </div>
           </CardContent>
@@ -536,19 +538,19 @@ export function StudentQuizClient({
             }
           >
             {q.type === 'MULTIPLE_CHOICE'
-              ? 'Pilihan Ganda'
+              ? t('multipleChoice')
               : q.type === 'MULTIPLE_CHOICE_COMPLEX'
-              ? 'PG Kompleks (Bisa pilih > 1)'
-              : 'Essay'}
+              ? t('multipleChoiceComplex')
+              : t('essay')}
           </Badge>
           {answers[q.id]?.trim() && (
             <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
-              ✓ Sudah Dijawab
+              {t('alreadyAnsweredBadge')}
             </Badge>
           )}
         </div>
         <span className="text-xs text-gray-400 font-medium">
-          {q.points} Poin
+          {t('pointsLabel', { points: q.points })}
         </span>
       </CardHeader>
 
@@ -596,7 +598,7 @@ export function StudentQuizClient({
           <div className="space-y-2 pt-2">
             <div className="text-xs text-indigo-700 bg-indigo-50/80 px-3 py-2 rounded-lg border border-indigo-200 flex items-center gap-2">
               <span className="font-bold">AKM:</span>
-              <span>Pilihlah satu atau lebih pilihan jawaban yang benar di bawah ini.</span>
+              <span>{t('akmInstruction')}</span>
             </div>
             {q.options.map((opt) => {
               const selectedIds = answers[q.id] ? answers[q.id].split(',').map((s) => s.trim()) : [];
@@ -636,7 +638,7 @@ export function StudentQuizClient({
           <div className="pt-2">
             <textarea
               rows={5}
-              placeholder="Tuliskan jawaban uraian Anda secara rinci di sini..."
+              placeholder={t('essayPlaceholder')}
               value={answers[q.id] || ''}
               onChange={(e) => handleSelectAnswer(q.id, e.target.value)}
               className="w-full p-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
@@ -654,7 +656,7 @@ export function StudentQuizClient({
         <div className="bg-red-500 text-white px-4 py-2.5 rounded-xl shadow-md flex items-center justify-between animate-pulse">
           <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
             <ShieldAlert className="w-5 h-5 shrink-0" />
-            <span>Mode Ujian Terkunci (CBT Lockdown). Harap berada dalam layar penuh!</span>
+            <span>{t('lockdownBannerWarning')}</span>
           </div>
           <Button
             type="button"
@@ -662,7 +664,7 @@ export function StudentQuizClient({
             onClick={enterFullscreen}
             className="bg-white text-red-700 hover:bg-gray-100 font-bold text-xs h-7 px-3 shrink-0 flex items-center gap-1.5"
           >
-            <Maximize2 className="w-3.5 h-3.5" /> Layar Penuh
+            <Maximize2 className="w-3.5 h-3.5" /> {t('fullscreenBtn')}
           </Button>
         </div>
       )}
@@ -676,17 +678,17 @@ export function StudentQuizClient({
             </h2>
             {enableLockdown && (
               <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[10px] flex items-center gap-1 shrink-0">
-                <Lock className="w-3 h-3" /> CBT Lockdown
+                <Lock className="w-3 h-3" /> {t('cbtLockdownBadge')}
               </Badge>
             )}
             {enableLockdown && tabSwitchCount > 0 && (
               <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] shrink-0">
-                Pelanggaran: {tabSwitchCount}/{maxTabSwitches}
+                {t('violationCountBadge', { count: tabSwitchCount, max: maxTabSwitches })}
               </Badge>
             )}
           </div>
           <div className="text-xs text-gray-500 mt-0.5 truncate">
-            Terjawab: <strong>{answeredCount}</strong> dari {questions.length} Soal
+            {t('answeredCountProgress', { answered: answeredCount, total: questions.length })}
           </div>
         </div>
 
@@ -720,11 +722,11 @@ export function StudentQuizClient({
                 onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
                 className="flex items-center gap-1.5 w-full sm:w-auto"
               >
-                <ChevronLeft className="w-4 h-4" /> Soal Sebelumnya
+                <ChevronLeft className="w-4 h-4" /> {t('prevQuestion')}
               </Button>
 
               <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 select-none">
-                <span>Pindah soal:</span>
+                <span>{t('keyNavHint')}</span>
                 <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono text-[10px]">←</kbd>
                 <span>/</span>
                 <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-gray-600 font-mono text-[10px]">→</kbd>
@@ -736,7 +738,7 @@ export function StudentQuizClient({
                   onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
                   className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-1.5 w-full sm:w-auto"
                 >
-                  Soal Selanjutnya <ChevronRight className="w-4 h-4" />
+                  {t('nextQuestion')} <ChevronRight className="w-4 h-4" />
                 </Button>
               ) : (
                 <Button
@@ -745,7 +747,7 @@ export function StudentQuizClient({
                   onClick={() => handleOpenSubmitConfirm()}
                   className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-bold flex items-center gap-1.5 w-full sm:w-auto"
                 >
-                  {loading ? 'Mengumpulkan...' : 'Kumpulkan Kuis'} <Send className="w-4 h-4" />
+                  {loading ? t('submitting') : t('submitQuizBtn')} <Send className="w-4 h-4" />
                 </Button>
               )}
             </div>
@@ -757,7 +759,7 @@ export function StudentQuizClient({
               <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
                 <LayoutGrid className="w-4 h-4 text-[#FF8928]" />
                 <h3 className="font-bold text-xs text-[#002446] uppercase tracking-wider">
-                  Navigasi Soal
+                  {t('questionNavSidebar')}
                 </h3>
               </div>
 
@@ -779,7 +781,7 @@ export function StudentQuizClient({
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
                       }`}
-                      title={`Soal #${qIdx + 1}: ${isAnswered ? 'Sudah dijawab' : 'Belum dijawab'}`}
+                      title={`Soal #${qIdx + 1}: ${isAnswered ? t('answeredQuestion') : t('unansweredQuestion')}`}
                     >
                       {qIdx + 1}
                     </button>
@@ -791,15 +793,15 @@ export function StudentQuizClient({
               <div className="space-y-1.5 pt-4 text-[11px] text-gray-500 border-t border-gray-100">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded bg-[#002446] ring-1 ring-[#FF8928]" />
-                  <span>Soal Aktif</span>
+                  <span>{t('activeQuestion')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded bg-emerald-100 border border-emerald-300" />
-                  <span>Sudah Dijawab</span>
+                  <span>{t('answeredQuestion')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded bg-gray-100 border border-gray-300" />
-                  <span>Belum Dijawab</span>
+                  <span>{t('unansweredQuestion')}</span>
                 </div>
               </div>
 
@@ -811,7 +813,7 @@ export function StudentQuizClient({
                   onClick={() => handleOpenSubmitConfirm()}
                   className="w-full bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-bold py-2"
                 >
-                  {loading ? 'Mengumpulkan...' : 'Kumpulkan Kuis'}
+                  {loading ? t('submitting') : t('submitQuizBtn')}
                 </Button>
               </div>
             </Card>
@@ -824,7 +826,7 @@ export function StudentQuizClient({
 
           <div className="flex justify-between items-center pt-4">
             <div className="text-xs text-gray-500">
-              Pastikan seluruh pertanyaan telah dijawab sebelum mengirimkan.
+              {t('allQuestionsNotice')}
             </div>
 
             <Button
@@ -832,7 +834,7 @@ export function StudentQuizClient({
               disabled={loading}
               className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-bold px-8 py-2.5 h-auto text-base"
             >
-              {loading ? 'Mengumpulkan...' : 'Kumpulkan Jawaban Kuis'}
+              {loading ? t('submitting') : t('submitAllBtn')}
             </Button>
           </div>
         </form>
@@ -854,19 +856,23 @@ export function StudentQuizClient({
 
             <DialogTitle className="text-xl font-bold text-[#002446]">
               {questions.length - answeredCount > 0
-                ? 'Ada Soal Belum Terjawab'
-                : 'Kumpulkan Kuis Sekarang?'}
+                ? t('confirmSubmitTitleUnanswered')
+                : t('confirmSubmitTitleAll')}
             </DialogTitle>
 
             <DialogDescription className="text-sm text-gray-600 leading-relaxed">
               {questions.length - answeredCount > 0 ? (
                 <>
-                  Masih ada <strong className="text-red-600 font-bold">{questions.length - answeredCount}</strong> dari{' '}
-                  <strong>{questions.length}</strong> butir soal yang belum Anda jawab. Apakah Anda yakin ingin tetap mengumpulkan kuis ini sekarang?
+                  {t('confirmSubmitDescUnanswered', {
+                    count: questions.length - answeredCount,
+                    total: questions.length,
+                  })}
                 </>
               ) : (
                 <>
-                  Seluruh <strong>{questions.length}</strong> butir soal telah selesai Anda jawab. Apakah Anda yakin ingin menyelesaikan dan mengumpulkan kuis ini sekarang?
+                  {t('confirmSubmitDescAll', {
+                    total: questions.length,
+                  })}
                 </>
               )}
             </DialogDescription>
@@ -874,9 +880,9 @@ export function StudentQuizClient({
 
           {/* Quick Stat Pill */}
           <div className="my-2 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between text-xs text-gray-600">
-            <span>Terjawab: <strong className="text-emerald-700">{answeredCount}</strong></span>
-            <span>Belum dijawab: <strong className="text-amber-700">{questions.length - answeredCount}</strong></span>
-            <span>Total: <strong>{questions.length} Soal</strong></span>
+            <span>{t('statAnswered')} <strong className="text-emerald-700">{answeredCount}</strong></span>
+            <span>{t('statUnanswered')} <strong className="text-amber-700">{questions.length - answeredCount}</strong></span>
+            <span><strong className="text-[#002446]">{t('statTotal', { count: questions.length })}</strong></span>
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
@@ -886,7 +892,7 @@ export function StudentQuizClient({
               onClick={() => setIsConfirmModalOpen(false)}
               className="w-full sm:w-1/2"
             >
-              {questions.length - answeredCount > 0 ? 'Lanjut Mengerjakan' : 'Periksa Kembali'}
+              {questions.length - answeredCount > 0 ? t('continueWorkingBtn') : t('reviewAgainBtn')}
             </Button>
             <Button
               type="button"
@@ -898,7 +904,7 @@ export function StudentQuizClient({
                   : 'bg-[#002446] hover:bg-[#002446]/90'
               }`}
             >
-              {loading ? 'Mengumpulkan...' : 'Ya, Kumpulkan'}
+              {loading ? t('submitting') : t('confirmSubmitYes')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -912,7 +918,7 @@ export function StudentQuizClient({
               <AlertCircle className="w-6 h-6" />
             </div>
             <DialogTitle className="text-lg font-bold text-red-700">
-              Gagal Mengumpulkan Kuis
+              {t('failedSubmitTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600">
               {submitErrorMessage}
@@ -924,7 +930,7 @@ export function StudentQuizClient({
               onClick={() => setSubmitErrorMessage(null)}
               className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
             >
-              Tutup & Coba Lagi
+              {t('closeAndRetry')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -938,7 +944,7 @@ export function StudentQuizClient({
               <ShieldAlert className="w-8 h-8" />
             </div>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              Peringatan Integritas Ujian!
+              {t('violationModalTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-700 leading-relaxed font-medium">
               {violationWarning}
@@ -946,7 +952,7 @@ export function StudentQuizClient({
           </DialogHeader>
 
           <div className="my-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 text-left">
-            <strong>PERHATIAN:</strong> Setiap tindakan meninggalkan layar ujian, membuka aplikasi lain, membuka tab browser lain, atau split screen dicatat oleh pengawas secara langsung.
+            {t('violationModalNotice')}
           </div>
 
           <DialogFooter className="pt-2">
@@ -958,7 +964,7 @@ export function StudentQuizClient({
               }}
               className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold py-2"
             >
-              Saya Mengerti & Kembali Mengerjakan
+              {t('understandAndReturn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -972,27 +978,27 @@ export function StudentQuizClient({
               {timeUpLoading ? (
                 <div className="space-y-4 py-4">
                   <div className="mx-auto w-14 h-14 border-4 border-[#002446]/20 border-t-[#FF8928] rounded-full animate-spin" />
-                  <h3 className="text-xl font-bold text-[#002446]">Waktu Habis!</h3>
+                  <h3 className="text-xl font-bold text-[#002446]">{t('timeUpTitle')}</h3>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    Waktu pengerjaan kuis telah habis. Seluruh jawaban Anda sedang disimpan dan dikumpulkan secara otomatis ke server...
+                    {t('timeUpDesc')}
                   </p>
                 </div>
               ) : timeUpError ? (
                 <div className="space-y-4 py-2">
                   <AlertTriangle className="mx-auto h-14 w-14 text-red-500" />
-                  <h3 className="text-xl font-bold text-red-700">Gagal Menyimpan Otomatis</h3>
+                  <h3 className="text-xl font-bold text-red-700">{t('timeUpFailedTitle')}</h3>
                   <p className="text-sm text-gray-600 leading-relaxed">
                     {timeUpError}
                   </p>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 text-left">
-                    <strong>Catatan:</strong> Jawaban Anda tidak hilang dan masih tersimpan di perangkat ini. Pastikan koneksi internet aktif lalu klik tombol di bawah.
+                    {t('timeUpFailedNote')}
                   </div>
                   <Button
                     type="button"
                     onClick={() => handleAutoSubmit()}
                     className="w-full bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-bold py-2.5"
                   >
-                    Coba Kirim Ulang Sekarang
+                    {t('tryResendNow')}
                   </Button>
                 </div>
               ) : null}

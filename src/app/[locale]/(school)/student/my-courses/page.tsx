@@ -2,11 +2,13 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, User, Layers, CheckCircle, CalendarCheck, MessageSquare } from 'lucide-react';
+import { BookOpen, User, Layers, CalendarCheck, MessageSquare } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { getTranslations } from 'next-intl/server';
 
 export default async function StudentMyCoursesPage() {
+  const t = await getTranslations('studentCourses');
   const session = await auth();
   if (!session?.user) return null;
 
@@ -30,9 +32,9 @@ export default async function StudentMyCoursesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#002446]">Course Saya</h1>
+        <h1 className="text-2xl font-bold text-[#002446]">{t('title')}</h1>
         <p className="text-sm text-gray-500">
-          Daftar mata pelajaran yang Anda ikuti pada semester / tahun ajaran aktif.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -42,10 +44,10 @@ export default async function StudentMyCoursesPage() {
             <BookOpen className="h-16 w-16 mx-auto text-gray-300" />
             <div className="space-y-1">
               <h3 className="text-lg font-bold text-[#002446]">
-                Belum Terdaftar di Course
+                {t('emptyTitle')}
               </h3>
               <p className="text-sm text-gray-500 max-w-md mx-auto">
-                Anda belum terdaftar pada course manapun. Guru mata pelajaran atau administrator sekolah akan mendaftarkan Anda melalui grup kohort kelas Anda.
+                {t('emptyDesc')}
               </p>
             </div>
           </CardContent>
@@ -64,7 +66,7 @@ export default async function StudentMyCoursesPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <Badge variant="outline" className="text-xs">
-                      {course.category?.name || 'Umum'}
+                      {course.category?.name || t('generalCategory')}
                     </Badge>
                     <Badge
                       className={
@@ -73,7 +75,7 @@ export default async function StudentMyCoursesPage() {
                           : 'bg-gray-200 text-gray-700'
                       }
                     >
-                      {!isArchived ? 'Aktif' : 'Arsip'}
+                      {!isArchived ? t('activeStatus') : t('archivedStatus')}
                     </Badge>
                   </div>
                   <CardTitle className="text-xl font-bold text-[#002446] line-clamp-2 mt-2">
@@ -95,7 +97,7 @@ export default async function StudentMyCoursesPage() {
                   <div className="flex items-center justify-between pt-3 border-t text-xs text-gray-600">
                     <span className="flex items-center gap-1">
                       <Layers className="h-4 w-4 text-[#002446]" />
-                      {course._count.modules} Modul Materi
+                      {t('modulesCount', { count: course._count.modules })}
                     </span>
                     <span className="text-gray-400 font-mono text-[11px]">
                       {course.academicYear.name}
@@ -112,7 +114,7 @@ export default async function StudentMyCoursesPage() {
                       className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center justify-center gap-1.5"
                       size="sm"
                     >
-                      <BookOpen className="h-4 w-4" /> Masuk ke Materi
+                      <BookOpen className="h-4 w-4" /> {t('enterModulesBtn')}
                     </Button>
                   </Link>
 
@@ -126,7 +128,7 @@ export default async function StudentMyCoursesPage() {
                         size="sm"
                         className="w-full flex items-center justify-center gap-1 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50"
                       >
-                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600" /> Presensi
+                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600" /> {t('attendanceBtn')}
                       </Button>
                     </Link>
 
@@ -139,7 +141,7 @@ export default async function StudentMyCoursesPage() {
                         size="sm"
                         className="w-full flex items-center justify-center gap-1 text-xs border-[#002446] text-[#002446] hover:bg-blue-50"
                       >
-                        <MessageSquare className="h-3.5 w-3.5 text-[#002446]" /> Forum & Info
+                        <MessageSquare className="h-3.5 w-3.5 text-[#002446]" /> {t('forumBtn')}
                       </Button>
                     </Link>
                   </div>

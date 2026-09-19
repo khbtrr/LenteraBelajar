@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookOpen, CheckCircle2, Clock, HelpCircle, FileText, ChevronRight, MessageSquareQuote } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface StudentGradesClientProps {
   courses: Array<{
@@ -34,6 +35,10 @@ interface StudentGradesClientProps {
 }
 
 export function StudentGradesClient({ courses }: StudentGradesClientProps) {
+  const t = useTranslations('studentGrades');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [activeCourseId, setActiveCourseId] = useState<string>(courses[0]?.courseId || '');
 
   if (courses.length === 0) {
@@ -42,9 +47,9 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
         <CardContent className="space-y-4">
           <BookOpen className="h-16 w-16 mx-auto text-gray-300" />
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-[#002446]">Belum Ada Course Terdaftar</h3>
+            <h3 className="text-lg font-bold text-[#002446]">{t('noCoursesTitle')}</h3>
             <p className="text-sm text-gray-500 max-w-md mx-auto">
-              Anda belum terdaftar dalam mata pelajaran manapun di tahun ajaran ini.
+              {t('noCoursesDesc')}
             </p>
           </div>
         </CardContent>
@@ -91,12 +96,12 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
         <div>
           <h2 className="text-xl font-bold text-[#002446]">{selectedCourse.courseTitle}</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Guru: {selectedCourse.teacherName} • Tahun Ajaran: {selectedCourse.academicYear}
+            {t('teacherLabel', { teacher: selectedCourse.teacherName, year: selectedCourse.academicYear })}
           </p>
         </div>
 
         <div className="flex items-center gap-3 bg-amber-50 px-4 py-2.5 rounded-lg border border-amber-200/80">
-          <span className="text-xs font-medium text-amber-900">Nilai Rata-rata:</span>
+          <span className="text-xs font-medium text-amber-900">{t('averageGrade')}</span>
           <span className="text-2xl font-bold text-[#FF8928]">
             {selectedCourse.average !== null ? selectedCourse.average : '-'}
           </span>
@@ -108,13 +113,13 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
         <Card className="bg-white shadow-sm border">
           <CardHeader className="pb-3 border-b bg-blue-50/30">
             <CardTitle className="text-base font-bold text-[#002446] flex items-center justify-between">
-              <span>Nilai Kuis ({selectedCourse.quizzes.length})</span>
+              <span>{t('quizGradesTitle', { count: selectedCourse.quizzes.length })}</span>
               <HelpCircle className="h-4 w-4 text-blue-600" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-3">
             {selectedCourse.quizzes.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">Belum ada kuis pada course ini</p>
+              <p className="text-sm text-gray-400 text-center py-6">{t('noQuizzes')}</p>
             ) : (
               selectedCourse.quizzes.map((q) => (
                 <div
@@ -126,12 +131,11 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
                     <div className="text-xs text-gray-500">
                       {q.submittedAt ? (
                         <span className="flex items-center gap-1 text-emerald-700">
-                          <CheckCircle2 className="h-3 w-3" /> Dikumpulkan:{' '}
-                          {new Date(q.submittedAt).toLocaleDateString('id-ID')}
+                          <CheckCircle2 className="h-3 w-3" /> {t('submittedOn', { date: new Date(q.submittedAt).toLocaleDateString(dateLocale) })}
                         </span>
                       ) : (
                         <span className="text-amber-700 flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> Belum Dikerjakan
+                          <Clock className="h-3 w-3" /> {t('notAttemptedYet')}
                         </span>
                       )}
                     </div>
@@ -152,15 +156,15 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
                           {q.score} / 100
                         </span>
                         {!q.isGraded && (
-                          <div className="text-[10px] text-amber-600 mt-1">Koreksi essay berjalan</div>
+                          <div className="text-[10px] text-amber-600 mt-1">{t('essayGradingInProgress')}</div>
                         )}
                       </div>
                     ) : q.submittedAt ? (
-                      <span className="text-xs text-amber-600 font-medium">Sedang Dikoreksi</span>
+                      <span className="text-xs text-amber-600 font-medium">{t('beingGraded')}</span>
                     ) : (
                       <Link href={`/student/course/${selectedCourse.courseId}/quiz/${q.id}`}>
                         <Button size="sm" className="bg-[#002446] text-white text-xs h-7">
-                          Kerjakan
+                          {t('attemptQuizBtn')}
                         </Button>
                       </Link>
                     )}
@@ -175,13 +179,13 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
         <Card className="bg-white shadow-sm border">
           <CardHeader className="pb-3 border-b bg-purple-50/30">
             <CardTitle className="text-base font-bold text-[#002446] flex items-center justify-between">
-              <span>Nilai Penugasan ({selectedCourse.assignments.length})</span>
+              <span>{t('assignmentGradesTitle', { count: selectedCourse.assignments.length })}</span>
               <FileText className="h-4 w-4 text-purple-600" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-3">
             {selectedCourse.assignments.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">Belum ada tugas pada course ini</p>
+              <p className="text-sm text-gray-400 text-center py-6">{t('noAssignments')}</p>
             ) : (
               selectedCourse.assignments.map((a) => (
                 <div
@@ -194,12 +198,11 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
                       <div className="text-xs text-gray-500">
                         {a.submittedAt ? (
                           <span className="text-emerald-700 flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" /> Dikumpulkan:{' '}
-                            {new Date(a.submittedAt).toLocaleDateString('id-ID')}
+                            <CheckCircle2 className="h-3 w-3" /> {t('submittedOn', { date: new Date(a.submittedAt).toLocaleDateString(dateLocale) })}
                           </span>
                         ) : (
                           <span className="text-amber-700 flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> Belum Mengumpulkan
+                            <Clock className="h-3 w-3" /> {t('notSubmittedYet')}
                           </span>
                         )}
                       </div>
@@ -219,11 +222,11 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
                           {a.score} / {a.maxScore}
                         </span>
                       ) : a.submittedAt ? (
-                        <span className="text-xs text-amber-600 font-medium">Menunggu Nilai Guru</span>
+                        <span className="text-xs text-amber-600 font-medium">{t('waitingTeacherScore')}</span>
                       ) : (
                         <Link href={`/student/course/${selectedCourse.courseId}/assignment/${a.id}`}>
                           <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white text-xs h-7">
-                            Kumpulkan
+                            {t('submitAssignmentBtn')}
                           </Button>
                         </Link>
                       )}
@@ -235,7 +238,7 @@ export function StudentGradesClient({ courses }: StudentGradesClientProps) {
                     <div className="text-xs text-amber-900 bg-amber-50 p-2.5 rounded border border-amber-200/80 flex items-start gap-2">
                       <MessageSquareQuote className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
                       <div>
-                        <strong>Catatan Guru:</strong> {a.teacherNote}
+                        <strong>{t('teacherNoteLabel')}</strong> {a.teacherNote}
                       </div>
                     </div>
                   )}

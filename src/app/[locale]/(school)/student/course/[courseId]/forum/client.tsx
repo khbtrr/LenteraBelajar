@@ -40,6 +40,7 @@ import {
   Sparkles,
   CheckCircle2,
 } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface Props {
   course: any;
@@ -58,6 +59,10 @@ export function StudentCourseForumClient({
   initialThreadId,
   initialModuleId,
 }: Props) {
+  const t = useTranslations('studentForum');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const router = useRouter();
   const { showAlert } = useDialog();
   const [activeTab, setActiveTab] = useState<'announcements' | 'forum'>('announcements');
@@ -167,7 +172,7 @@ export function StudentCourseForumClient({
       setNewContent('');
       router.refresh();
       setSelectedThreadId(created.id);
-      await showAlert('Pertanyaan berhasil diajukan ke forum!', { type: 'success' });
+      await showAlert(t('questionSuccess'), { type: 'success' });
     } catch (err: any) {
       await showAlert(err.message || 'Gagal mengirim pertanyaan', { type: 'error' });
     } finally {
@@ -215,16 +220,16 @@ export function StudentCourseForumClient({
               href={`/student/course/${course.id}/modules`}
               className="hover:underline flex items-center gap-1 text-gray-500 hover:text-[#002446]"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Modul Pembelajaran
+              <ArrowLeft className="h-3.5 w-3.5" /> {t('backToModules')}
             </Link>
             <span>•</span>
-            <span>{course.category?.name || 'Mata Pelajaran'}</span>
+            <span>{course.category?.name || t('defaultSubject')}</span>
           </div>
           <h1 className="text-2xl font-bold text-[#002446]">
-            Forum & Pengumuman — {course.title}
+            {t('pageTitle', { title: course.title })}
           </h1>
           <p className="text-sm text-gray-500">
-            Guru Pengampu: <strong>{course.teacher.name}</strong> • Cek pengumuman penting atau ajukan pertanyaan diskusi seputar materi.
+            {t('pageSubtitle', { teacher: course.teacher.name })}
           </p>
         </div>
 
@@ -233,7 +238,7 @@ export function StudentCourseForumClient({
           onClick={() => setIsAskOpen(true)}
           className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5"
         >
-          <Plus className="h-4 w-4" /> Tanya di Forum
+          <Plus className="h-4 w-4" /> {t('askInForumBtn')}
         </Button>
       </div>
 
@@ -251,7 +256,7 @@ export function StudentCourseForumClient({
           }`}
         >
           <Megaphone className="h-4 w-4" />
-          Pengumuman Kursus ({announcements.length})
+          {t('announcementsTab', { count: announcements.length })}
         </button>
 
         <button
@@ -263,7 +268,7 @@ export function StudentCourseForumClient({
           }`}
         >
           <MessageSquare className="h-4 w-4" />
-          Forum Tanya-Jawab ({threads.length})
+          {t('forumTab', { count: threads.length })}
         </button>
       </div>
 
@@ -274,9 +279,9 @@ export function StudentCourseForumClient({
             <Card className="text-center py-16">
               <CardContent className="space-y-3">
                 <Megaphone className="h-16 w-16 mx-auto text-gray-300" />
-                <h3 className="text-lg font-bold text-gray-900">Belum Ada Pengumuman</h3>
+                <h3 className="text-lg font-bold text-gray-900">{t('noAnnouncementsTitle')}</h3>
                 <p className="text-sm text-gray-500 max-w-md mx-auto">
-                  Guru pengampu belum menerbitkan pengumuman pada mata pelajaran ini. Silakan periksa kembali nanti.
+                  {t('noAnnouncementsDesc')}
                 </p>
               </CardContent>
             </Card>
@@ -293,16 +298,16 @@ export function StudentCourseForumClient({
                     <div className="flex items-center gap-2">
                       {ann.isPinned && (
                         <Badge className="bg-[#FF8928] text-white hover:bg-[#FF8928] flex items-center gap-1 text-[11px]">
-                          <Pin className="h-3 w-3 fill-white" /> Pengumuman Penting
+                          <Pin className="h-3 w-3 fill-white" /> {t('importantAnnouncement')}
                         </Badge>
                       )}
                       <h3 className="text-lg font-bold text-[#002446]">{ann.title}</h3>
                     </div>
                     <p className="text-xs text-gray-500 flex items-center gap-2">
-                      <span>Diterbitkan oleh: <strong>{ann.author.name}</strong></span>
+                      <span>{t('publishedBy', { author: ann.author.name })}</span>
                       <span>•</span>
                       <span>
-                        {new Date(ann.createdAt).toLocaleDateString('id-ID', {
+                        {new Date(ann.createdAt).toLocaleDateString(dateLocale, {
                           weekday: 'long',
                           day: 'numeric',
                           month: 'long',
@@ -322,7 +327,7 @@ export function StudentCourseForumClient({
                   <div className="pt-4 border-t border-gray-100 space-y-3">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
                       <MessageCircle className="h-4 w-4 text-[#002446]" />
-                      Tanggapan Siswa ({ann.comments?.length || 0})
+                      {t('studentResponses', { count: ann.comments?.length || 0 })}
                     </div>
 
                     {ann.comments && ann.comments.length > 0 && (
@@ -334,12 +339,12 @@ export function StudentCourseForumClient({
                                 {c.author.name}
                                 {c.author.role === 'TEACHER' && (
                                   <Badge variant="outline" className="text-[10px] px-1 py-0 border-blue-400 text-blue-700">
-                                    Guru
+                                    {t('teacherBadge')}
                                   </Badge>
                                 )}
                               </span>
                               <span>
-                                {new Date(c.createdAt).toLocaleDateString('id-ID', {
+                                {new Date(c.createdAt).toLocaleDateString(dateLocale, {
                                   day: 'numeric',
                                   month: 'short',
                                   hour: '2-digit',
@@ -356,7 +361,7 @@ export function StudentCourseForumClient({
                     {/* Form Tulis Tanggapan */}
                     <div className="flex items-center gap-2 pt-1">
                       <Input
-                        placeholder="Tanyakan atau tanggapi pengumuman ini..."
+                        placeholder={t('responsePlaceholder')}
                         value={commentInputs[ann.id] || ''}
                         onChange={(e) =>
                           setCommentInputs((prev) => ({ ...prev, [ann.id]: e.target.value }))
@@ -397,7 +402,7 @@ export function StudentCourseForumClient({
                 onClick={() => setSelectedThreadId(null)}
                 className="flex items-center gap-1.5 text-xs text-gray-600"
               >
-                <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Daftar Topik
+                <ArrowLeft className="h-3.5 w-3.5" /> {t('backToTopics')}
               </Button>
 
               <Card className="border border-gray-200 shadow-sm bg-white">
@@ -406,17 +411,17 @@ export function StudentCourseForumClient({
                     <div className="flex flex-wrap items-center gap-2">
                       {activeThreadDetail.isPinned && (
                         <Badge className="bg-[#FF8928] text-white flex items-center gap-1 text-[11px]">
-                          <Pin className="h-3 w-3 fill-white" /> Disematkan
+                          <Pin className="h-3 w-3 fill-white" /> {t('pinnedBadge')}
                         </Badge>
                       )}
                       {activeThreadDetail.isSolved && (
                         <Badge className="bg-emerald-100 text-emerald-800 flex items-center gap-1 text-[11px]">
-                          <CheckCircle2 className="h-3 w-3" /> Solusi Terverifikasi
+                          <CheckCircle2 className="h-3 w-3" /> {t('solvedBadge')}
                         </Badge>
                       )}
                       {activeThreadDetail.moduleTitle && (
                         <Badge variant="outline" className="text-xs text-gray-600">
-                          Modul: {activeThreadDetail.moduleTitle}
+                          {t('modulePrefix', { title: activeThreadDetail.moduleTitle })}
                         </Badge>
                       )}
                     </div>
@@ -424,10 +429,10 @@ export function StudentCourseForumClient({
                       {activeThreadDetail.title}
                     </CardTitle>
                     <p className="text-xs text-gray-500 flex items-center gap-2">
-                      <span>Ditanyakan oleh: <strong>{activeThreadDetail.authorName}</strong></span>
+                      <span>{t('askedBy', { author: activeThreadDetail.authorName })}</span>
                       <span>•</span>
                       <span>
-                        {new Date(activeThreadDetail.createdAt).toLocaleDateString('id-ID', {
+                        {new Date(activeThreadDetail.createdAt).toLocaleDateString(dateLocale, {
                           weekday: 'long',
                           day: 'numeric',
                           month: 'long',
@@ -447,12 +452,12 @@ export function StudentCourseForumClient({
                   <div className="space-y-4">
                     <h4 className="text-sm font-bold text-[#002446] flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
-                      Jawaban & Diskusi ({activeThreadDetail.rootComments?.length || 0})
+                      {t('answersAndDiscussion', { count: activeThreadDetail.rootComments?.length || 0 })}
                     </h4>
 
                     {activeThreadDetail.rootComments?.length === 0 ? (
                       <p className="text-xs text-gray-500 italic">
-                        Belum ada yang menjawab pertanyaan ini. Bantu temanmu dengan memberikan jawaban!
+                        {t('noAnswersYet')}
                       </p>
                     ) : (
                       <div className="space-y-3">
@@ -470,18 +475,18 @@ export function StudentCourseForumClient({
                                 <span className="font-bold text-gray-900">{comm.authorName}</span>
                                 {comm.authorRole === 'TEACHER' && (
                                   <Badge className="bg-[#002446] text-white text-[10px] py-0 px-1.5">
-                                    Guru
+                                    {t('teacherBadge')}
                                   </Badge>
                                 )}
                                 {comm.isAnswer && (
                                   <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-1.5 flex items-center gap-1 font-semibold">
-                                    <Sparkles className="h-3 w-3" /> Solusi Guru Terpilih
+                                    <Sparkles className="h-3 w-3" /> {t('selectedTeacherSolution')}
                                   </Badge>
                                 )}
                               </div>
 
                               <span>
-                                {new Date(comm.createdAt).toLocaleDateString('id-ID', {
+                                {new Date(comm.createdAt).toLocaleDateString(dateLocale, {
                                   day: 'numeric',
                                   month: 'short',
                                   hour: '2-digit',
@@ -502,7 +507,7 @@ export function StudentCourseForumClient({
                                 }}
                                 className="text-xs font-semibold text-gray-500 hover:text-[#002446] flex items-center gap-1"
                               >
-                                <CornerDownRight className="h-3.5 w-3.5" /> Balas
+                                <CornerDownRight className="h-3.5 w-3.5" /> {t('replyBtn')}
                               </button>
                             </div>
 
@@ -530,19 +535,19 @@ export function StudentCourseForumClient({
                     <form onSubmit={handleAddReply} className="pt-4 border-t border-gray-200 space-y-2">
                       {replyingToId && (
                         <div className="flex items-center justify-between bg-blue-50 px-3 py-1.5 rounded text-xs text-blue-800">
-                          <span>Membalas komentar...</span>
+                          <span>{t('replyingTo')}</span>
                           <button
                             type="button"
                             onClick={() => setReplyingToId(null)}
                             className="text-blue-600 hover:underline font-bold"
                           >
-                            Batal
+                            {t('cancel')}
                           </button>
                         </div>
                       )}
                       <textarea
                         id="studentForumReplyBox"
-                        placeholder="Tulis balasan atau penjelasan Anda..."
+                        placeholder={t('replyPlaceholder')}
                         value={replyContent}
                         onChange={(e) => setReplyContent(e.target.value)}
                         rows={3}
@@ -555,7 +560,7 @@ export function StudentCourseForumClient({
                           disabled={submittingReply}
                           className="bg-[#002446] hover:bg-[#001b33] text-white text-xs px-4"
                         >
-                          {submittingReply ? 'Mengirim...' : 'Kirim Balasan'}
+                          {submittingReply ? t('sending') : t('sendReplyBtn')}
                         </Button>
                       </div>
                     </form>
@@ -568,13 +573,13 @@ export function StudentCourseForumClient({
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 bg-white p-3 border border-gray-200 rounded-lg shadow-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase">Filter Modul:</span>
+                  <span className="text-xs font-semibold text-gray-500 uppercase">{t('filterModule')}</span>
                   <select
                     value={selectedModuleFilter}
                     onChange={(e) => setSelectedModuleFilter(e.target.value)}
                     className="h-8 px-2 text-xs border border-gray-300 rounded bg-white text-gray-700"
                   >
-                    <option value="ALL">Semua Modul</option>
+                    <option value="ALL">{t('allModules')}</option>
                     {modules.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.title}
@@ -584,7 +589,7 @@ export function StudentCourseForumClient({
                 </div>
 
                 <span className="text-xs text-gray-500">
-                  Menampilkan {filteredThreads.length} topik
+                  {t('showingTopicsCount', { count: filteredThreads.length })}
                 </span>
               </div>
 
@@ -593,59 +598,59 @@ export function StudentCourseForumClient({
                   <CardContent className="space-y-4">
                     <MessageSquare className="h-16 w-16 mx-auto text-gray-300" />
                     <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-gray-900">Belum Ada Topik Diskusi</h3>
+                      <h3 className="text-lg font-bold text-gray-900">{t('noTopicsTitle')}</h3>
                       <p className="text-sm text-gray-500 max-w-md mx-auto">
-                        Punya pertanyaan seputar materi pelajaran? Jadilah yang pertama bertanya di forum ini!
+                        {t('noTopicsDesc')}
                       </p>
                     </div>
                     <Button onClick={() => setIsAskOpen(true)} className="bg-[#002446] text-white">
-                      <Plus className="h-4 w-4 mr-1.5" /> Tanya Sekarang
+                      <Plus className="h-4 w-4 mr-1.5" /> {t('askNow')}
                     </Button>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {filteredThreads.map((t) => (
+                  {filteredThreads.map((tItem) => (
                     <Card
-                      key={t.id}
-                      onClick={() => setSelectedThreadId(t.id)}
+                      key={tItem.id}
+                      onClick={() => setSelectedThreadId(tItem.id)}
                       className={`cursor-pointer hover:shadow-md transition-all border bg-white ${
-                        t.isPinned ? 'border-[#FF8928]/40 ring-1 ring-[#FF8928]/20' : 'border-gray-200'
+                        tItem.isPinned ? 'border-[#FF8928]/40 ring-1 ring-[#FF8928]/20' : 'border-gray-200'
                       }`}
                     >
                       <CardContent className="p-4 sm:p-5 flex items-start justify-between gap-4">
                         <div className="space-y-1.5 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            {t.isPinned && (
+                            {tItem.isPinned && (
                               <Badge className="bg-[#FF8928] text-white text-[10px] py-0 px-1.5 flex items-center gap-1">
-                                <Pin className="h-2.5 w-2.5 fill-white" /> Disematkan
+                                <Pin className="h-2.5 w-2.5 fill-white" /> {t('pinnedBadge')}
                               </Badge>
                             )}
-                            {t.isSolved && (
+                            {tItem.isSolved && (
                               <Badge className="bg-emerald-100 text-emerald-800 text-[10px] py-0 px-1.5 flex items-center gap-1 font-semibold">
-                                <CheckCircle2 className="h-2.5 w-2.5" /> Solved
+                                <CheckCircle2 className="h-2.5 w-2.5" /> {t('solvedBadge')}
                               </Badge>
                             )}
-                            {t.moduleTitle && (
+                            {tItem.moduleTitle && (
                               <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-gray-600">
-                                {t.moduleTitle}
+                                {tItem.moduleTitle}
                               </Badge>
                             )}
                           </div>
 
                           <h4 className="text-base font-bold text-[#002446] hover:text-[#FF8928] transition-colors">
-                            {t.title}
+                            {tItem.title}
                           </h4>
 
-                          <p className="text-xs text-gray-600 line-clamp-2">{t.content}</p>
+                          <p className="text-xs text-gray-600 line-clamp-2">{tItem.content}</p>
 
                           <div className="flex items-center gap-3 text-xs text-gray-400 pt-1">
                             <span>
-                              Ditanyakan oleh <strong>{t.authorName}</strong>
+                              {t('askedBy', { author: tItem.authorName })}
                             </span>
                             <span>•</span>
                             <span>
-                              {new Date(t.createdAt).toLocaleDateString('id-ID', {
+                              {new Date(tItem.createdAt).toLocaleDateString(dateLocale, {
                                 day: 'numeric',
                                 month: 'short',
                               })}
@@ -656,7 +661,7 @@ export function StudentCourseForumClient({
                         <div className="flex flex-col items-end justify-between self-stretch">
                           <Badge variant="outline" className="flex items-center gap-1 text-xs text-gray-600">
                             <MessageSquare className="h-3.5 w-3.5 text-[#002446]" />
-                            {t._count.comments} Balasan
+                            {t('repliesCount', { count: tItem._count.comments })}
                           </Badge>
                         </div>
                       </CardContent>
@@ -675,19 +680,19 @@ export function StudentCourseForumClient({
           <form onSubmit={handleCreateQuestion}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446]">
-                Ajukan Pertanyaan ke Forum
+                {t('modalAskTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-gray-500">
-                Pertanyaan Anda akan dilihat oleh guru dan teman-teman sekelas.
+                {t('modalAskDesc')}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
-                <Label htmlFor="qTitle">Judul Pertanyaan *</Label>
+                <Label htmlFor="qTitle">{t('modalQuestionTitleLabel')}</Label>
                 <Input
                   id="qTitle"
-                  placeholder="Contoh: Mengapa nilai sin 90 derajat sama dengan 1?"
+                  placeholder={t('modalQuestionTitlePlaceholder')}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   required
@@ -695,14 +700,14 @@ export function StudentCourseForumClient({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="qModule">Terkait Bab / Modul (Opsional)</Label>
+                <Label htmlFor="qModule">{t('modalModuleLabel')}</Label>
                 <select
                   id="qModule"
                   value={newModuleId}
                   onChange={(e) => setNewModuleId(e.target.value)}
                   className="w-full h-10 px-3 border border-gray-300 rounded-md text-sm bg-white"
                 >
-                  <option value="">-- Pertanyaan Umum --</option>
+                  <option value="">{t('modalGeneralQuestion')}</option>
                   {modules.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
@@ -712,11 +717,11 @@ export function StudentCourseForumClient({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="qContent">Detail Pertanyaan *</Label>
+                <Label htmlFor="qContent">{t('modalQuestionDetailLabel')}</Label>
                 <textarea
                   id="qContent"
                   rows={4}
-                  placeholder="Uraikan apa yang belum Anda pahami atau bagikan bagian soal yang ingin dibahas..."
+                  placeholder={t('modalQuestionDetailPlaceholder')}
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
                   required
@@ -732,14 +737,14 @@ export function StudentCourseForumClient({
                 onClick={() => setIsAskOpen(false)}
                 disabled={submittingQuestion}
               >
-                Batal
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={submittingQuestion}
                 className="bg-[#002446] hover:bg-[#001b33] text-white"
               >
-                {submittingQuestion ? 'Mengirim...' : 'Kirim Pertanyaan'}
+                {submittingQuestion ? t('sending') : t('sendQuestionBtn')}
               </Button>
             </DialogFooter>
           </form>
@@ -748,3 +753,5 @@ export function StudentCourseForumClient({
     </div>
   );
 }
+
+

@@ -24,6 +24,7 @@ import { submitAssignment } from '@/lib/actions/assignment';
 import { Link } from '@/i18n/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { FilePreviewer } from '@/components/assignment/file-previewer';
+import { useTranslations, useLocale } from 'next-intl';
 
 export function StudentAssignmentClient({
   courseId,
@@ -32,6 +33,10 @@ export function StudentAssignmentClient({
   courseId: string;
   assignment: any;
 }) {
+  const t = useTranslations('studentAssignment');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const existingSubmission = assignment.submissions?.[0] || null;
   const [submission, setSubmission] = useState<any>(existingSubmission);
   const [file, setFile] = useState<File | null>(null);
@@ -66,8 +71,8 @@ export function StudentAssignmentClient({
     const fileExt = (selected.name.split('.').pop() || '').toLowerCase();
     if (allowedExts.length > 0 && !allowedExts.includes(fileExt)) {
       setNoticeModal({
-        title: 'Format Berkas Tidak Diizinkan',
-        message: `Format berkas ".${fileExt}" tidak diizinkan. Tugas ini hanya menerima format berkas: ${allowedExts.join(', ').toUpperCase()}`,
+        title: t('invalidFormatTitle'),
+        message: t('invalidFormatDesc', { ext: fileExt, types: allowedExts.join(', ').toUpperCase() }),
         type: 'warning',
       });
       e.target.value = '';
@@ -78,8 +83,11 @@ export function StudentAssignmentClient({
     const maxMb = assignment.maxFileSize || 25;
     if (selected.size > maxMb * 1024 * 1024) {
       setNoticeModal({
-        title: 'Ukuran Berkas Terlalu Besar',
-        message: `Ukuran berkas (${(selected.size / (1024 * 1024)).toFixed(1)}MB) melebihi batas maksimal yang ditentukan yaitu ${maxMb}MB.`,
+        title: t('fileTooLargeTitle'),
+        message: t('fileTooLargeDesc', {
+          size: (selected.size / (1024 * 1024)).toFixed(1),
+          max: maxMb,
+        }),
         type: 'warning',
       });
       e.target.value = '';
@@ -110,7 +118,7 @@ export function StudentAssignmentClient({
 
       if (!uploadRes.ok) {
         const errJson = await uploadRes.json();
-        throw new Error(errJson.error || 'Gagal mengunggah file');
+        throw new Error(errJson.error || t('uploadFailedDefault'));
       }
 
       const uploadData = await uploadRes.json();
@@ -125,12 +133,12 @@ export function StudentAssignmentClient({
 
       setSubmission(res);
       setFile(null);
-      setSuccessMsg('Tugas berhasil dikumpulkan!');
+      setSuccessMsg(t('uploadSuccess'));
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Mengumpulkan Tugas',
-        message: err?.message || 'Terjadi kesalahan saat mengunggah berkas tugas. Silakan coba lagi.',
+        title: t('uploadFailedTitle'),
+        message: err?.message || t('uploadFailedDefault'),
         type: 'error',
       });
     } finally {
@@ -143,7 +151,7 @@ export function StudentAssignmentClient({
       <div className="flex items-center gap-3">
         <Link href={`/student/course/${courseId}/modules`}>
           <Button variant="ghost" size="sm" className="gap-1 text-gray-600">
-            <ArrowLeft className="h-4 w-4" /> Kembali
+            <ArrowLeft className="h-4 w-4" /> {t('back')}
           </Button>
         </Link>
       </div>
@@ -154,7 +162,7 @@ export function StudentAssignmentClient({
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <ClipboardList className="h-4 w-4" /> Penugasan Terstruktur
+                <ClipboardList className="h-4 w-4" /> {t('structuredAssignment')}
               </div>
               <CardTitle className="text-2xl font-bold text-[#002446]">
                 {assignment.title}
@@ -171,10 +179,10 @@ export function StudentAssignmentClient({
               }
             >
               {submission
-                ? 'Sudah Dikumpulkan'
+                ? t('submittedBadge')
                 : isDeadlinePassed
-                ? 'Batas Waktu Berakhir'
-                : 'Belum Dikumpulkan'}
+                ? t('deadlinePassedBadge')
+                : t('notSubmittedBadge')}
             </Badge>
           </div>
 
@@ -182,28 +190,28 @@ export function StudentAssignmentClient({
             <div className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4 text-[#FF8928]" />
               <span>
-                Batas Pengumpulan:{' '}
+                {t('deadlineLabel')}{' '}
                 <strong>
                   {assignment.deadline
-                    ? new Date(assignment.deadline).toLocaleDateString('id-ID', {
+                    ? new Date(assignment.deadline).toLocaleDateString(dateLocale, {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit',
                       })
-                    : 'Tidak ada batas waktu'}
+                    : t('noDeadline')}
                 </strong>
               </span>
             </div>
 
             <div>
-              Nilai Maksimal: <strong>{assignment.maxScore} Poin</strong>
+              {t('maxScoreLabel')} <strong>{t('pointsUnit', { points: assignment.maxScore })}</strong>
             </div>
 
             <div>
-              Format Berkas Diizinkan:{' '}
-              <strong className="uppercase">{assignment.allowedTypes || 'Semua'}</strong>
+              {t('allowedTypesLabel')}{' '}
+              <strong className="uppercase">{assignment.allowedTypes || t('allTypes')}</strong>
             </div>
           </div>
         </CardHeader>
@@ -211,9 +219,9 @@ export function StudentAssignmentClient({
         <CardContent className="p-6 pt-2 space-y-4">
           {/* Instruksi Tugas */}
           <div className="space-y-2">
-            <h4 className="text-sm font-bold text-gray-700">Instruksi & Petunjuk Pengerjaan:</h4>
+            <h4 className="text-sm font-bold text-gray-700">{t('instructionsTitle')}</h4>
             <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-800 leading-relaxed whitespace-pre-wrap border">
-              {assignment.description || 'Tidak ada petunjuk tambahan dari guru.'}
+              {assignment.description || t('noInstructions')}
             </div>
           </div>
 
@@ -226,10 +234,10 @@ export function StudentAssignmentClient({
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-purple-950 uppercase tracking-wider">
-                    Berkas Lampiran Soal / Panduan Guru
+                    {t('teacherAttachmentTitle')}
                   </div>
                   <div className="text-sm font-semibold text-purple-900 truncate">
-                    {assignment.fileName || 'Lampiran Tugas'}
+                    {assignment.fileName || t('assignmentAttachment')}
                   </div>
                 </div>
               </div>
@@ -242,21 +250,21 @@ export function StudentAssignmentClient({
                   onClick={() =>
                     setPreviewFileModal({
                       url: assignment.fileUrl,
-                      name: assignment.fileName || 'Lampiran Guru',
+                      name: assignment.fileName || t('assignmentAttachment'),
                       size: assignment.fileSize,
-                      title: 'Pratinjau Berkas Lampiran Soal Guru',
+                      title: t('teacherAttachmentTitle'),
                     })
                   }
                   className="h-8 text-xs border-purple-300 text-purple-700 hover:bg-purple-100 flex items-center gap-1.5"
                 >
-                  <Eye className="h-3.5 w-3.5" /> Pratinjau
+                  <Eye className="h-3.5 w-3.5" /> {t('preview')}
                 </Button>
                 <a
                   href={assignment.fileUrl}
-                  download={assignment.fileName || 'Lampiran'}
+                  download={assignment.fileName || t('assignmentAttachment')}
                   className="h-8 px-3 text-xs bg-purple-700 hover:bg-purple-800 text-white font-medium rounded-md flex items-center gap-1.5 shadow-xs transition-colors"
                 >
-                  <Download className="h-3.5 w-3.5" /> Unduh Berkas
+                  <Download className="h-3.5 w-3.5" /> {t('downloadFile')}
                 </a>
               </div>
             </div>
@@ -268,7 +276,7 @@ export function StudentAssignmentClient({
       <Card className="border border-gray-200 bg-white shadow-sm">
         <CardHeader className="p-6 pb-3">
           <CardTitle className="text-lg font-bold text-[#002446]">
-            Status Pengumpulan Tugas
+            {t('submissionStatusTitle')}
           </CardTitle>
         </CardHeader>
 
@@ -286,11 +294,11 @@ export function StudentAssignmentClient({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-green-800 font-bold text-sm">
                     <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    Berkas Tugas Telah Terkirim
+                    {t('fileSubmittedTitle')}
                   </div>
                   <span className="text-xs text-gray-500">
-                    Dikumpulkan pada:{' '}
-                    {new Date(submission.submittedAt).toLocaleDateString('id-ID', {
+                    {t('submittedAt')}{' '}
+                    {new Date(submission.submittedAt).toLocaleDateString(dateLocale, {
                       day: 'numeric',
                       month: 'short',
                       year: 'numeric',
@@ -318,12 +326,12 @@ export function StudentAssignmentClient({
                           url: submission.fileUrl,
                           name: submission.fileName,
                           size: submission.fileSize,
-                          title: 'Pratinjau Berkas Tugas Saya',
+                          title: t('mySubmissionFile'),
                         })
                       }
                       className="h-7 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1"
                     >
-                      <Eye className="h-3.5 w-3.5" /> Pratinjau
+                      <Eye className="h-3.5 w-3.5" /> {t('preview')}
                     </Button>
                     <a
                       href={submission.fileUrl}
@@ -332,7 +340,7 @@ export function StudentAssignmentClient({
                       download
                       className="text-xs text-blue-600 hover:underline flex items-center gap-1 px-2 py-1"
                     >
-                      <FileDown className="h-3.5 w-3.5" /> Unduh
+                      <FileDown className="h-3.5 w-3.5" /> {t('download')}
                     </a>
                   </div>
                 </div>
@@ -340,20 +348,20 @@ export function StudentAssignmentClient({
                 {submission.score !== null ? (
                   <div className="p-4 bg-white border border-blue-200 rounded-md">
                     <div className="text-xs font-bold text-[#FF8928] uppercase">
-                      Nilai dari Guru
+                      {t('teacherGrade')}
                     </div>
                     <div className="text-2xl font-black text-[#002446] mt-1">
                       {submission.score} / {assignment.maxScore}
                     </div>
                     {submission.teacherNote && (
                       <p className="text-xs text-gray-600 mt-2 bg-gray-50 p-2.5 rounded border">
-                        <strong>Catatan Guru:</strong> {submission.teacherNote}
+                        <strong>{t('teacherNote')}</strong> {submission.teacherNote}
                       </p>
                     )}
                   </div>
                 ) : (
                   <p className="text-xs text-amber-700 italic">
-                    Tugas Anda sedang menunggu pemeriksaan dan penilaian dari guru pengampu.
+                    {t('waitingForGrading')}
                   </p>
                 )}
               </div>
@@ -361,7 +369,7 @@ export function StudentAssignmentClient({
           ) : isDeadlinePassed ? (
             <div className="p-4 bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
-              Batas waktu pengumpulan tugas ini telah berakhir. Anda tidak dapat mengunggah berkas lagi.
+              {t('deadlinePassedNotice')}
             </div>
           ) : null}
 
@@ -370,7 +378,7 @@ export function StudentAssignmentClient({
             <form onSubmit={handleSubmitFile} className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label htmlFor="subFile">
-                  {submission ? 'Kirim Ulang / Ganti Berkas Tugas' : 'Pilih Berkas Tugas Anda'}
+                  {submission ? t('reuploadLabel') : t('chooseFileLabel')}
                 </Label>
                 <Input
                   id="subFile"
@@ -381,8 +389,10 @@ export function StudentAssignmentClient({
                   className="bg-white"
                 />
                 <p className="text-xs text-gray-500">
-                  Maksimal ukuran berkas {assignment.maxFileSize || 25}MB. Format yang diterima:{' '}
-                  <strong className="uppercase text-gray-700">{assignment.allowedTypes || 'Semua'}</strong>.
+                  {t('maxFileSizeHint', {
+                    size: assignment.maxFileSize || 25,
+                    types: (assignment.allowedTypes || t('allTypes')).toUpperCase(),
+                  })}
                 </p>
               </div>
 
@@ -392,7 +402,7 @@ export function StudentAssignmentClient({
                 className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2"
               >
                 <Upload className="h-4 w-4" />
-                {loading ? 'Mengunggah...' : submission ? 'Kirim Pembaruan Berkas' : 'Kumpulkan Tugas Sekarang'}
+                {loading ? t('uploading') : submission ? t('submitUpdateBtn') : t('submitNowBtn')}
               </Button>
             </form>
           )}
@@ -459,7 +469,7 @@ export function StudentAssignmentClient({
               onClick={() => setNoticeModal(null)}
               className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
             >
-              Mengerti
+              {t('understand')}
             </Button>
           </DialogFooter>
         </DialogContent>

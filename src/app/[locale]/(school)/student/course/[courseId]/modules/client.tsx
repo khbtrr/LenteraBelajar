@@ -25,6 +25,7 @@ import {
 import { Link } from '@/i18n/navigation';
 import { LeaderboardModal } from '@/components/course/leaderboard-modal';
 import { markLessonCompleted } from '@/lib/actions/gamification';
+import { useTranslations, useLocale } from 'next-intl';
 
 export function StudentCourseModulesClient({
   course,
@@ -41,6 +42,9 @@ export function StudentCourseModulesClient({
   activeSession?: any | null;
   completedLessonIds?: string[];
 }) {
+  const t = useTranslations('studentModules');
+  const locale = useLocale();
+
   const [completedIds, setCompletedIds] = useState<string[]>(completedLessonIds);
   const [markingId, setMarkingId] = useState<string | null>(null);
 
@@ -71,7 +75,7 @@ export function StudentCourseModulesClient({
               className="text-xs flex items-center gap-1.5 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
             >
               <CalendarCheck className="h-4 w-4 text-emerald-600" />
-              Presensi Kehadiran
+              {t('attendanceBtn')}
             </Button>
           </Link>
 
@@ -82,7 +86,7 @@ export function StudentCourseModulesClient({
               className="text-xs flex items-center gap-1.5 border-[#002446] text-[#002446] hover:bg-blue-50"
             >
               <MessageSquare className="h-4 w-4 text-[#002446]" />
-              Forum & Pengumuman
+              {t('forumBtn')}
             </Button>
           </Link>
 
@@ -93,7 +97,7 @@ export function StudentCourseModulesClient({
               className="text-xs flex items-center gap-1.5 text-gray-600 hover:bg-gray-50"
             >
               <Trophy className="h-4 w-4 text-[#FF8928]" />
-              Buku Nilai
+              {t('gradebookBtn')}
             </Button>
           </Link>
 
@@ -102,7 +106,7 @@ export function StudentCourseModulesClient({
         </div>
 
         <span className="text-xs text-gray-500 font-medium">
-          {modules.length} Modul Tersedia
+          {t('modulesAvailable', { count: modules.length })}
         </span>
       </div>
 
@@ -120,14 +124,14 @@ export function StudentCourseModulesClient({
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
                 <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
-                  Sesi Presensi Aktif
+                  {t('activeSessionBadge')}
                 </span>
               </div>
               <h4 className="text-sm font-bold text-[#002446] mt-0.5">
                 {activeSession.title}
               </h4>
               <p className="text-xs text-gray-500">
-                Guru sedang membuka sesi presensi pertemuan ini. Segera masukkan kode token untuk check-in.
+                {t('activeSessionDesc')}
               </p>
             </div>
           </div>
@@ -137,7 +141,7 @@ export function StudentCourseModulesClient({
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 whitespace-nowrap"
             >
-              Check-in Sekarang <ArrowRight className="h-3.5 w-3.5 ml-1" />
+              {t('checkinNowBtn')} <ArrowRight className="h-3.5 w-3.5 ml-1" />
             </Button>
           </Link>
         </div>
@@ -153,10 +157,10 @@ export function StudentCourseModulesClient({
             <div className="space-y-0.5">
               <div className="flex items-center gap-1.5">
                 <Badge className="bg-[#FF8928] text-white text-[10px] py-0 px-1.5 flex items-center gap-1">
-                  <Pin className="h-2.5 w-2.5 fill-white" /> Pengumuman Penting
+                  <Pin className="h-2.5 w-2.5 fill-white" /> {t('pinnedAnnouncementBadge')}
                 </Badge>
                 <span className="text-xs text-gray-500">
-                  {new Date(pinnedAnnouncement.createdAt).toLocaleDateString('id-ID', {
+                  {new Date(pinnedAnnouncement.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                     day: 'numeric',
                     month: 'short',
                   })}
@@ -177,7 +181,7 @@ export function StudentCourseModulesClient({
               size="sm"
               className="border-[#FF8928] text-[#FF8928] hover:bg-amber-100/50 text-xs font-semibold whitespace-nowrap"
             >
-              Lihat Pengumuman
+              {t('viewAnnouncementBtn')}
             </Button>
           </Link>
         </div>
@@ -187,9 +191,9 @@ export function StudentCourseModulesClient({
         <Card className="text-center py-16">
           <CardContent className="space-y-3">
             <Layers className="h-12 w-12 mx-auto text-gray-300" />
-            <h3 className="text-lg font-bold text-[#002446]">Belum Ada Modul Materi</h3>
+            <h3 className="text-lg font-bold text-[#002446]">{t('emptyModulesTitle')}</h3>
             <p className="text-sm text-gray-500 max-w-md mx-auto">
-              Guru belum mengunggah materi pembelajaran untuk course ini. Silakan periksa kembali nanti.
+              {t('emptyModulesDesc')}
             </p>
           </CardContent>
         </Card>
@@ -213,7 +217,7 @@ export function StudentCourseModulesClient({
                   className="text-xs text-gray-600 hover:text-[#002446] flex items-center gap-1"
                 >
                   <MessageSquare className="h-3.5 w-3.5 text-[#FF8928]" />
-                  <span className="hidden sm:inline">Tanya di Forum Modul</span>
+                  <span className="hidden sm:inline">{t('askInForumBtn')}</span>
                 </Button>
               </Link>
             </CardHeader>
@@ -223,7 +227,7 @@ export function StudentCourseModulesClient({
               {mod.contents.length > 0 && (
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="h-4 w-4 text-blue-600" /> Materi Pembelajaran
+                    <FileText className="h-4 w-4 text-blue-600" /> {t('materialsHeading')}
                   </h4>
 
                   <div className="space-y-4">
@@ -264,7 +268,7 @@ export function StudentCourseModulesClient({
                             <div className="flex items-center gap-2">
                               <FileDown className="h-5 w-5 text-emerald-600" />
                               <span className="text-sm font-medium text-gray-800">
-                                {cnt.fileName || 'Berkas Dokumen'}
+                                {cnt.fileName || t('docFile')}
                               </span>
                             </div>
                             <a
@@ -274,7 +278,7 @@ export function StudentCourseModulesClient({
                               download
                               className="inline-flex items-center gap-1.5 text-xs font-medium bg-[#002446] text-white px-3 py-1.5 rounded hover:bg-[#002446]/90 transition-colors"
                             >
-                              <FileDown className="h-3.5 w-3.5" /> Unduh Dokumen
+                              <FileDown className="h-3.5 w-3.5" /> {t('downloadDoc')}
                             </a>
                           </div>
                         )}
@@ -304,12 +308,12 @@ export function StudentCourseModulesClient({
                         {/* Mark completed button / badge */}
                         <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/60">
                           <span className="text-[11px] text-gray-500">
-                            Aktivitas Pembelajaran
+                            {t('learningActivity')}
                           </span>
                           {completedIds.includes(cnt.id) ? (
                             <Badge className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 flex items-center gap-1 text-xs">
                               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                              Selesai Dibaca (+10 XP)
+                              {t('completedBadge')}
                             </Badge>
                           ) : (
                             <Button
@@ -320,7 +324,7 @@ export function StudentCourseModulesClient({
                               className="text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-950/30 flex items-center gap-1.5 h-8"
                             >
                               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                              {markingId === cnt.id ? 'Menyimpan...' : 'Tandai Selesai (+10 XP)'}
+                              {markingId === cnt.id ? t('saving') : t('markCompleteBtn')}
                             </Button>
                           )}
                         </div>
@@ -334,7 +338,7 @@ export function StudentCourseModulesClient({
               {mod.quizzes.length > 0 && (
                 <div className="space-y-3 pt-3 border-t">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <HelpCircle className="h-4 w-4 text-[#FF8928]" /> Kuis
+                    <HelpCircle className="h-4 w-4 text-[#FF8928]" /> {t('quizzesHeading')}
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -356,28 +360,28 @@ export function StudentCourseModulesClient({
                                 <span>{quiz.title}</span>
                                 {quiz.isRemedial && (
                                   <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-900 border border-amber-300">
-                                    Remedial
+                                    {t('remedialBadge')}
                                   </Badge>
                                 )}
                               </CardTitle>
                               {/* Status Badge */}
                               {statusType === 'NOT_STARTED' && (
-                                <Badge variant="outline" className="text-xs text-gray-500 border-gray-300">Belum Dikerjakan</Badge>
+                                <Badge variant="outline" className="text-xs text-gray-500 border-gray-300">{t('statusNotStarted')}</Badge>
                               )}
                               {statusType === 'IN_PROGRESS' && (
-                                <Badge className="text-xs bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">Sedang Dikerjakan</Badge>
+                                <Badge className="text-xs bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">{t('statusInProgress')}</Badge>
                               )}
                               {statusType === 'COMPLETED' && status?.passed === true && (
-                                <Badge className="text-xs bg-green-100 text-green-800 border border-green-300">Lulus ✓</Badge>
+                                <Badge className="text-xs bg-green-100 text-green-800 border border-green-300">{t('statusPassed')}</Badge>
                               )}
                               {statusType === 'COMPLETED' && status?.passed === false && (
-                                <Badge className="text-xs bg-red-100 text-red-800 border border-red-300">Tidak Lulus ✗</Badge>
+                                <Badge className="text-xs bg-red-100 text-red-800 border border-red-300">{t('statusFailed')}</Badge>
                               )}
                               {statusType === 'COMPLETED' && status?.passed === null && (
-                                <Badge className="text-xs bg-green-100 text-green-800 border border-green-300">Sudah Dikerjakan</Badge>
+                                <Badge className="text-xs bg-green-100 text-green-800 border border-green-300">{t('statusCompleted')}</Badge>
                               )}
                               {statusType === 'EXPIRED' && (
-                                <Badge className="text-xs bg-red-100 text-red-800 border border-red-300">Batas Waktu Habis</Badge>
+                                <Badge className="text-xs bg-red-100 text-red-800 border border-red-300">{t('statusExpired')}</Badge>
                               )}
                             </div>
                             {quiz.description && (
@@ -386,17 +390,17 @@ export function StudentCourseModulesClient({
                           </CardHeader>
                           <CardContent className="p-4 pt-0 space-y-3">
                             <div className="flex items-center gap-4 text-xs text-gray-600 pt-2 border-t border-gray-100">
-                              <span>{quiz._count.questions} Soal</span>
+                              <span>{t('questionsCount', { count: quiz._count.questions })}</span>
                               {quiz.duration && (
                                 <span className="flex items-center gap-1 font-medium text-[#002446]">
                                   <Clock className="h-3.5 w-3.5 text-[#FF8928]" />
-                                  {quiz.duration} Menit
+                                  {t('durationMinutes', { count: quiz.duration })}
                                 </span>
                               )}
                               {quiz.deadline && (
                                 <span className="flex items-center gap-1 text-gray-500">
                                   <Calendar className="h-3.5 w-3.5" />
-                                  {new Date(quiz.deadline).toLocaleDateString('id-ID')}
+                                  {new Date(quiz.deadline).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID')}
                                 </span>
                               )}
                             </div>
@@ -405,11 +409,16 @@ export function StudentCourseModulesClient({
                             {statusType === 'COMPLETED' && status && (
                               <div className="flex items-center gap-3 text-xs bg-white rounded-md p-2 border">
                                 {status.bestScore !== null && (
-                                  <span className="font-bold text-[#002446]">Nilai Terbaik: <span className={status.passed === true ? 'text-green-700' : status.passed === false ? 'text-red-700' : 'text-[#FF8928]'}>{status.bestScore}/100</span></span>
+                                  <span className="font-bold text-[#002446]">
+                                    {t('bestScore')}{' '}
+                                    <span className={status.passed === true ? 'text-green-700' : status.passed === false ? 'text-red-700' : 'text-[#FF8928]'}>
+                                      {status.bestScore}/100
+                                    </span>
+                                  </span>
                                 )}
                                 <span className="text-gray-400">•</span>
                                 <span className="text-gray-600">
-                                  Percobaan: {status.submittedCount}/{status.maxAttempts === null ? '∞' : status.maxAttempts}
+                                  {t('attempts')} {status.submittedCount}/{status.maxAttempts === null ? '∞' : status.maxAttempts}
                                 </span>
                               </div>
                             )}
@@ -417,15 +426,15 @@ export function StudentCourseModulesClient({
                             {/* Action Button */}
                             {status?.isTargeted === false ? (
                               <Button size="sm" disabled className="w-full bg-gray-200 text-gray-500 cursor-not-allowed">
-                                Bukan Peserta Remedial
+                                {t('notRemedialParticipant')}
                               </Button>
                             ) : statusType === 'EXPIRED' ? (
                               <Button size="sm" disabled className="w-full bg-gray-200 text-gray-500 cursor-not-allowed">
-                                Batas Waktu Habis
+                                {t('expiredBtn')}
                               </Button>
                             ) : !canAttempt ? (
                               <Button size="sm" disabled className="w-full bg-gray-200 text-gray-500 cursor-not-allowed">
-                                Kesempatan Habis ({status?.submittedCount}/{status?.maxAttempts})
+                                {t('attemptsExhausted', { count: status?.submittedCount, max: status?.maxAttempts })}
                               </Button>
                             ) : (
                               <Link href={`/student/course/${course.id}/quiz/${quiz.id}`} className="block">
@@ -439,7 +448,11 @@ export function StudentCourseModulesClient({
                                       : 'bg-[#FF8928] hover:bg-[#FF8928]/90 text-white'
                                   }`}
                                 >
-                                  {isInProgress ? 'Lanjutkan Kuis' : statusType === 'COMPLETED' ? `Coba Lagi (${status?.submittedCount}/${status?.maxAttempts === null ? '∞' : status?.maxAttempts})` : 'Mulai Kerjakan Kuis'}
+                                  {isInProgress
+                                    ? t('continueQuizBtn')
+                                    : statusType === 'COMPLETED'
+                                    ? t('retryQuizBtn', { count: status?.submittedCount, max: status?.maxAttempts === null ? '∞' : status?.maxAttempts })
+                                    : t('startQuizBtn')}
                                   <ArrowRight className="h-4 w-4" />
                                 </Button>
                               </Link>
@@ -456,7 +469,7 @@ export function StudentCourseModulesClient({
               {mod.assignments.length > 0 && (
                 <div className="space-y-3 pt-3 border-t">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <ClipboardList className="h-4 w-4 text-purple-600" /> Penugasan
+                    <ClipboardList className="h-4 w-4 text-purple-600" /> {t('assignmentsHeading')}
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -477,11 +490,11 @@ export function StudentCourseModulesClient({
                         </CardHeader>
                         <CardContent className="p-4 pt-0 space-y-3">
                           <div className="flex items-center gap-4 text-xs text-gray-600 pt-2 border-t border-purple-100">
-                            <span>Max Skor: {assign.maxScore}</span>
+                            <span>{t('maxScore', { score: assign.maxScore })}</span>
                             {assign.deadline && (
                               <span className="flex items-center gap-1 text-purple-700 font-medium">
                                 <Calendar className="h-3.5 w-3.5" />
-                                Deadline: {new Date(assign.deadline).toLocaleDateString('id-ID')}
+                                {t('deadline', { date: new Date(assign.deadline).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID') })}
                               </span>
                             )}
                           </div>
@@ -495,7 +508,7 @@ export function StudentCourseModulesClient({
                               variant="outline"
                               className="w-full border-purple-400 text-purple-800 hover:bg-purple-600 hover:text-white flex items-center justify-center gap-1.5"
                             >
-                              Kumpulkan Tugas <ArrowRight className="h-4 w-4" />
+                              {t('submitAssignmentBtn')} <ArrowRight className="h-4 w-4" />
                             </Button>
                           </Link>
                         </CardContent>

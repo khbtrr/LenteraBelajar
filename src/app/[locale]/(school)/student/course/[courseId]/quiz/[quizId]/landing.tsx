@@ -10,8 +10,13 @@ import { Clock, Calendar, HelpCircle, ArrowLeft, ArrowRight, Trophy, AlertTriang
 import { startOrGetQuizAttempt } from '@/lib/actions/quiz';
 import { StudentQuizClient } from './client';
 import { Link } from '@/i18n/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 
 export function StudentQuizLanding({ courseId, quiz, status }: { courseId: string; quiz: any; status: any }) {
+  const t = useTranslations('studentQuiz');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [quizData, setQuizData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +35,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
 
   const handleStart = async () => {
     if (isRequireToken && !isInProgress && !tokenInput.trim()) {
-      setError('Harap masukkan token akses ujian yang diberikan guru pengawas.');
+      setError(t('tokenRequiredError'));
       return;
     }
 
@@ -40,7 +45,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
       const data = await startOrGetQuizAttempt(quiz.id, tokenInput.trim());
       setQuizData(data);
     } catch (err: any) {
-      setError(err.message || 'Gagal memulai kuis');
+      setError(err.message || t('failedStartQuiz'));
     } finally {
       setLoading(false);
     }
@@ -68,7 +73,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
     <div className="max-w-2xl mx-auto py-8 space-y-6">
       <Link href={`/student/course/${courseId}/modules`}>
         <Button variant="ghost" size="sm" className="text-gray-500 hover:text-[#002446] flex items-center gap-1">
-          <ArrowLeft className="h-4 w-4" /> Kembali ke Materi
+          <ArrowLeft className="h-4 w-4" /> {t('backToModules')}
         </Button>
       </Link>
 
@@ -87,33 +92,33 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <div className="text-2xl font-bold text-[#002446]">{quiz._count?.questions || quiz.questions?.length || 0}</div>
-              <div className="text-xs text-gray-500">Soal</div>
+              <div className="text-xs text-gray-500">{t('questionsUnit')}</div>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <div className="text-2xl font-bold text-[#002446]">{quiz.duration || '∞'}</div>
-              <div className="text-xs text-gray-500">Menit</div>
+              <div className="text-xs text-gray-500">{t('minutesUnit')}</div>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <div className="text-2xl font-bold text-[#002446]">{status.maxAttempts === null ? '∞' : status.maxAttempts}</div>
-              <div className="text-xs text-gray-500">Kesempatan</div>
+              <div className="text-xs text-gray-500">{t('attemptsUnit')}</div>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <div className="text-2xl font-bold text-[#002446]">{quiz.passingGrade ?? '-'}</div>
-              <div className="text-xs text-gray-500">KKM</div>
+              <div className="text-xs text-gray-500">{t('passingGradeUnit')}</div>
             </div>
           </div>
 
           {quiz.deadline && (
             <div className="flex items-center gap-2 text-sm text-gray-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
               <Calendar className="h-4 w-4 text-amber-600" />
-              Batas Waktu: <strong>{new Date(quiz.deadline).toLocaleString('id-ID')}</strong>
+              {t('deadlineLabel')} <strong>{new Date(quiz.deadline).toLocaleString(dateLocale)}</strong>
             </div>
           )}
 
           {quiz.passingGrade && (
             <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
               <Target className="h-4 w-4 text-blue-600" />
-              Nilai Minimal Lulus (KKM): <strong>{quiz.passingGrade}</strong>
+              {t('passingGradeLabel')} <strong>{quiz.passingGrade}</strong>
             </div>
           )}
 
@@ -122,12 +127,14 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
               <Sparkles className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <div className="font-bold flex items-center gap-2">
-                  <span>Program Remedial Terarah</span>
-                  <Badge className="bg-amber-600 text-white hover:bg-amber-700 text-[10px] uppercase">Remedial</Badge>
+                  <span>{t('remedialProgramTitle')}</span>
+                  <Badge className="bg-amber-600 text-white hover:bg-amber-700 text-[10px] uppercase">{t('remedialBadge')}</Badge>
                 </div>
                 <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                  Kuis ini diselenggarakan sebagai perbaikan kompetensi{status.parentQuiz?.title ? ` untuk ujian "${status.parentQuiz.title}"` : ''}. 
-                  Nilai yang diperoleh akan dicatat ke Buku Nilai dengan batas maksimal sebesar KKM (<strong>{status.parentQuiz?.passingGrade || quiz.passingGrade || 75}</strong>).
+                  {t('remedialProgramDesc', {
+                    forExam: status.parentQuiz?.title ? t('remedialForExam', { title: status.parentQuiz.title }) : '',
+                    kkm: status.parentQuiz?.passingGrade || quiz.passingGrade || 75
+                  })}
                 </p>
               </div>
             </div>
@@ -137,9 +144,9 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
             <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-sm flex items-center gap-3">
               <ShieldAlert className="h-5 w-5 shrink-0 text-rose-600" />
               <div>
-                <div className="font-bold">Bukan Peserta Remedial</div>
+                <div className="font-bold">{t('notRemedialCandidate')}</div>
                 <div className="text-xs text-rose-700 mt-0.5">
-                  Kuis ini dikhususkan bagi siswa yang terdaftar dalam program remedial. Akun Anda tidak termasuk dalam daftar target kuis ini.
+                  {t('notRemedialDesc')}
                 </div>
               </div>
             </div>
@@ -152,7 +159,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
         <Card className="shadow-sm">
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-base font-bold text-[#002446] flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-[#FF8928]" /> Riwayat Pengerjaan ({status.submittedCount}x)
+              <Trophy className="h-5 w-5 text-[#FF8928]" /> {t('attemptHistory', { count: status.submittedCount })}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
@@ -160,7 +167,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
             <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
               {status.bestScore !== null && (
                 <div>
-                  <div className="text-xs text-gray-500">Nilai Terbaik</div>
+                  <div className="text-xs text-gray-500">{t('bestScore')}</div>
                   <div className={`text-2xl font-bold ${status.passed === true ? 'text-green-700' : status.passed === false ? 'text-red-700' : 'text-[#002446]'}`}>
                     {status.bestScore}/100
                   </div>
@@ -168,11 +175,11 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
               )}
               {status.passed !== null && (
                 <Badge className={status.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                  {status.passed ? '✓ Lulus' : '✗ Tidak Lulus'}
+                  {status.passed ? t('passedBadge') : t('notPassedBadge')}
                 </Badge>
               )}
               <div className="ml-auto text-right">
-                <div className="text-xs text-gray-500">Percobaan</div>
+                <div className="text-xs text-gray-500">{t('attemptProgress')}</div>
                 <div className="text-lg font-bold text-[#002446]">
                   {status.submittedCount}/{status.maxAttempts === null ? '∞' : status.maxAttempts}
                 </div>
@@ -188,15 +195,15 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
           <CardContent className="p-5 space-y-2">
             <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
               <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0" />
-              Peraturan Mode Ujian Aman (CBT Lockdown)
+              {t('lockdownTitle')}
             </div>
             <ul className="text-xs text-rose-700 space-y-1 list-disc pl-5">
-              <li>Ujian akan secara otomatis meminta tampilan <strong>Layar Penuh (Fullscreen)</strong>.</li>
-              <li>Dilarang berpindah tab browser, membuka aplikasi lain, atau meminimalkan layar.</li>
+              <li>{t('lockdownRule1')}</li>
+              <li>{t('lockdownRule2')}</li>
               <li>
-                Batas toleransi meninggalkan layar ujian adalah <strong>{maxTabSwitches} kali</strong>. Jika melanggar melebihi batas, lembar ujian Anda akan <strong>otomatis ter-submit</strong>.
+                {t('lockdownRule3', { count: maxTabSwitches })}
               </li>
-              <li>Fungsi klik kanan, copy-paste, dan pintasan keyboard tertentu dinonaktifkan demi integritas ujian.</li>
+              <li>{t('lockdownRule4')}</li>
             </ul>
           </CardContent>
         </Card>
@@ -207,10 +214,10 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
         <Card className="border-2 border-[#002446]/20 bg-linear-to-b from-blue-50/50 to-white shadow-md p-5 text-center space-y-4">
           <div className="space-y-1">
             <Label htmlFor="cbtTokenInput" className="text-sm font-bold text-[#002446] flex items-center justify-center gap-2">
-              <KeyRound className="h-4 w-4 text-[#FF8928]" /> Token Akses Ujian
+              <KeyRound className="h-4 w-4 text-[#FF8928]" /> {t('tokenBoxTitle')}
             </Label>
             <p className="text-xs text-gray-500">
-              Token untuk membuka kuis ini tersedia langsung di bawah:
+              {t('tokenBoxDesc')}
             </p>
           </div>
 
@@ -227,7 +234,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
                 onClick={() => setTokenInput(quiz.token)}
                 className="text-xs border-[#002446]/30 text-[#002446] hover:bg-[#002446] hover:text-white font-medium h-10"
               >
-                Gunakan Token
+                {t('useTokenBtn')}
               </Button>
             </div>
           )}
@@ -235,7 +242,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
           <div className="max-w-xs mx-auto pt-1">
             <Input
               id="cbtTokenInput"
-              placeholder={quiz.token ? `Ketik atau klik tombol (${quiz.token})` : "Masukkan Token"}
+              placeholder={quiz.token ? t('tokenPlaceholderWithToken', { token: quiz.token }) : t('tokenPlaceholder')}
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
               maxLength={12}
@@ -257,15 +264,15 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
       <div className="flex justify-center">
         {status.isTargeted === false ? (
           <Button disabled size="lg" className="bg-gray-300 text-gray-600 cursor-not-allowed px-12">
-            Bukan Peserta Remedial
+            {t('notRemedialCandidate')}
           </Button>
         ) : status.status === 'EXPIRED' ? (
           <Button disabled size="lg" className="bg-gray-300 text-gray-600 cursor-not-allowed px-12">
-            Batas Waktu Habis
+            {t('deadlinePassedBtn')}
           </Button>
         ) : !canAttempt ? (
           <Button disabled size="lg" className="bg-gray-300 text-gray-600 cursor-not-allowed px-12">
-            Kesempatan Mengerjakan Habis ({status.submittedCount}/{status.maxAttempts})
+            {t('attemptsExhaustedBtn', { count: status.submittedCount, max: status.maxAttempts })}
           </Button>
         ) : (
           <Button
@@ -274,7 +281,7 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
             size="lg"
             className={`px-12 text-lg font-bold ${isInProgress ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[#FF8928] hover:bg-[#FF8928]/90'} text-white flex items-center gap-2`}
           >
-            {loading ? 'Mempersiapkan Kuis...' : isInProgress ? 'Lanjutkan Kuis' : status.submittedCount > 0 ? `Coba Lagi (Percobaan ke-${status.submittedCount + 1})` : 'Mulai Kerjakan Kuis'}
+            {loading ? t('preparingQuiz') : isInProgress ? t('continueQuiz') : status.submittedCount > 0 ? t('tryAgainAttempt', { count: status.submittedCount + 1 }) : t('startQuizBtn')}
             <ArrowRight className="h-5 w-5" />
           </Button>
         )}

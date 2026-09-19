@@ -18,6 +18,7 @@ import {
   History,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface AchievementBadge {
   code: string;
@@ -60,6 +61,10 @@ export function StudentAchievementsClient({
   profile,
   allBadges,
 }: StudentAchievementsClientProps) {
+  const t = useTranslations('studentAchievements');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [filter, setFilter] = useState<'ALL' | 'UNLOCKED' | 'LOCKED'>('ALL');
 
   const filteredBadges = allBadges.filter((b) => {
@@ -73,17 +78,17 @@ export function StudentAchievementsClient({
   const getActionTypeLabel = (type: string) => {
     switch (type) {
       case 'QUIZ':
-        return { label: 'Kuis', color: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300' };
+        return { label: t('actQuiz'), color: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300' };
       case 'ASSIGNMENT':
-        return { label: 'Tugas', color: 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300' };
+        return { label: t('actAssignment'), color: 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300' };
       case 'LESSON':
-        return { label: 'Materi', color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' };
+        return { label: t('actLesson'), color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' };
       case 'ATTENDANCE':
-        return { label: 'Presensi', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' };
+        return { label: t('actAttendance'), color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' };
       case 'FORUM':
-        return { label: 'Forum', color: 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300' };
+        return { label: t('actForum'), color: 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300' };
       default:
-        return { label: 'Aktivitas', color: 'bg-gray-100 text-gray-800' };
+        return { label: t('actActivity'), color: 'bg-gray-100 text-gray-800' };
     }
   };
 
@@ -92,14 +97,14 @@ export function StudentAchievementsClient({
       {/* Page Header */}
       <div>
         <div className="text-xs font-semibold text-[#FF8928] uppercase tracking-wider">
-          Gamifikasi & Motivasi
+          {t('badgeCategory')}
         </div>
         <h1 className="text-2xl font-bold text-[#002446] dark:text-white flex items-center gap-2.5">
           <Trophy className="h-6 w-6 text-amber-500" />
-          Prestasi & Lemari Lencana
+          {t('pageTitle')}
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Kumpulkan poin XP, pelihara streak belajar harian, dan raih semua lencana prestasi kebanggaanmu.
+          {t('pageSubtitle')}
         </p>
       </div>
 
@@ -111,7 +116,7 @@ export function StudentAchievementsClient({
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
               <div className="relative">
                 <div className="w-20 h-20 rounded-3xl bg-linear-to-tr from-amber-400 to-[#FF8928] flex flex-col items-center justify-center font-black shadow-xl ring-4 ring-white/20">
-                  <span className="text-[10px] uppercase tracking-wider opacity-90">Level</span>
+                  <span className="text-[10px] uppercase tracking-wider opacity-90">{t('levelLabel')}</span>
                   <span className="text-3xl leading-none">{profile.level}</span>
                 </div>
                 <div className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-950 rounded-full p-1 shadow">
@@ -124,11 +129,11 @@ export function StudentAchievementsClient({
                   <h2 className="text-2xl font-black">{profile.name}</h2>
                 </div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold">
-                  <span>Gelar:</span>
+                  <span>{t('titlePrefix')}</span>
                   <span>{profile.title}</span>
                 </div>
                 <p className="text-xs text-blue-200 mt-1">
-                  Capai level berikutnya dengan terus menyelesaikan modul belajar, kuis, dan tugas.
+                  {t('reachNextLevel')}
                 </p>
               </div>
             </div>
@@ -140,15 +145,15 @@ export function StudentAchievementsClient({
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div className="text-lg sm:text-xl font-black">{profile.totalXp.toLocaleString()}</div>
-                <div className="text-[10px] text-blue-200 uppercase font-semibold">Total XP</div>
+                <div className="text-[10px] text-blue-200 uppercase font-semibold">{t('totalXp')}</div>
               </div>
 
               <div className="bg-white/10 backdrop-blur-xs border border-white/10 p-3.5 rounded-2xl text-center min-w-[90px]">
                 <div className="flex items-center justify-center text-orange-400 mb-1">
                   <Flame className="h-4 w-4 fill-orange-400" />
                 </div>
-                <div className="text-lg sm:text-xl font-black">{profile.streakDays} Hari</div>
-                <div className="text-[10px] text-blue-200 uppercase font-semibold">Streak Api</div>
+                <div className="text-lg sm:text-xl font-black">{t('streakDays', { days: profile.streakDays })}</div>
+                <div className="text-[10px] text-blue-200 uppercase font-semibold">{t('fireStreak')}</div>
               </div>
 
               <div className="bg-white/10 backdrop-blur-xs border border-white/10 p-3.5 rounded-2xl text-center min-w-[90px]">
@@ -156,7 +161,7 @@ export function StudentAchievementsClient({
                   <Award className="h-4 w-4" />
                 </div>
                 <div className="text-lg sm:text-xl font-black">{unlockedCount} / {allBadges.length}</div>
-                <div className="text-[10px] text-blue-200 uppercase font-semibold">Lencana</div>
+                <div className="text-[10px] text-blue-200 uppercase font-semibold">{t('badges')}</div>
               </div>
             </div>
           </div>
@@ -164,7 +169,7 @@ export function StudentAchievementsClient({
           {/* Level Progress Bar inside Banner */}
           <div className="mt-6 pt-6 border-t border-white/10 space-y-2">
             <div className="flex justify-between text-xs font-semibold text-blue-100">
-              <span>Progres Menuju Level {profile.level + 1}</span>
+              <span>{t('progressToLevel', { level: profile.level + 1 })}</span>
               <span className="text-amber-300 font-bold">
                 {profile.currentLevelXp} / {profile.nextLevelRequiredXp} XP ({profile.progressPercent}%)
               </span>
@@ -185,10 +190,10 @@ export function StudentAchievementsClient({
           <div>
             <h3 className="text-lg font-bold text-[#002446] dark:text-gray-100 flex items-center gap-2">
               <Award className="h-5 w-5 text-[#FF8928]" />
-              Koleksi Lencana Prestasi
+              {t('badgesCabinetTitle')}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Setiap pencapaian belajar akan mengabadikan lencana kehormatan di lemari prestasimu.
+              {t('badgesCabinetSubtitle')}
             </p>
           </div>
 
@@ -200,7 +205,7 @@ export function StudentAchievementsClient({
               onClick={() => setFilter('ALL')}
               className={`text-xs h-7 rounded-lg ${filter === 'ALL' ? 'bg-[#002446] text-white hover:bg-[#002446]/90' : ''}`}
             >
-              Semua ({allBadges.length})
+              {t('filterAll', { count: allBadges.length })}
             </Button>
             <Button
               variant={filter === 'UNLOCKED' ? 'default' : 'ghost'}
@@ -208,7 +213,7 @@ export function StudentAchievementsClient({
               onClick={() => setFilter('UNLOCKED')}
               className={`text-xs h-7 rounded-lg ${filter === 'UNLOCKED' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : ''}`}
             >
-              Terbuka ({unlockedCount})
+              {t('filterUnlocked', { count: unlockedCount })}
             </Button>
             <Button
               variant={filter === 'LOCKED' ? 'default' : 'ghost'}
@@ -216,7 +221,7 @@ export function StudentAchievementsClient({
               onClick={() => setFilter('LOCKED')}
               className={`text-xs h-7 rounded-lg ${filter === 'LOCKED' ? 'bg-gray-600 text-white hover:bg-gray-700' : ''}`}
             >
-              Terkunci ({allBadges.length - unlockedCount})
+              {t('filterLocked', { count: allBadges.length - unlockedCount })}
             </Button>
           </div>
         </div>
@@ -237,11 +242,11 @@ export function StudentAchievementsClient({
                 <div className="absolute top-3 right-3 flex items-center gap-1">
                   {badge.unlocked ? (
                     <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300 text-[10px] px-1.5 py-0 flex items-center gap-0.5">
-                      <CheckCircle2 className="h-3 w-3" /> Terbuka
+                      <CheckCircle2 className="h-3 w-3" /> {t('badgeUnlocked')}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-[10px] text-gray-400 border-gray-300 flex items-center gap-0.5">
-                      <Lock className="h-3 w-3" /> Terkunci
+                      <Lock className="h-3 w-3" /> {t('badgeLocked')}
                     </Badge>
                   )}
                 </div>
@@ -275,7 +280,7 @@ export function StudentAchievementsClient({
                     </span>
                     <span className="text-gray-400">
                       {badge.unlocked && badge.unlockedAt
-                        ? new Date(badge.unlockedAt).toLocaleDateString('id-ID', {
+                        ? new Date(badge.unlockedAt).toLocaleDateString(dateLocale, {
                             day: 'numeric',
                             month: 'short',
                           })
@@ -296,22 +301,22 @@ export function StudentAchievementsClient({
             <History className="h-5 w-5 text-[#002446] dark:text-blue-400" />
             <div>
               <CardTitle className="text-base font-bold text-[#002446] dark:text-gray-100">
-                Riwayat Aktivitas XP
+                {t('recentXpHistoryTitle')}
               </CardTitle>
               <p className="text-xs text-gray-500 mt-0.5">
-                Log perolehan poin pengalaman terbaru dari berbagai aktivitas belajarmu.
+                {t('recentXpHistorySubtitle')}
               </p>
             </div>
           </div>
           <Badge variant="outline" className="text-xs">
-            {profile.recentXpLogs.length} Aktivitas Terakhir
+            {t('lastActivities', { count: profile.recentXpLogs.length })}
           </Badge>
         </CardHeader>
 
         <CardContent className="p-0 divide-y divide-gray-100 dark:divide-gray-800">
           {profile.recentXpLogs.length === 0 ? (
             <div className="p-8 text-center text-gray-400 text-xs">
-              Belum ada aktivitas XP yang tercatat. Selesaikan kuis, tugas, atau presensi untuk mulai mengumpulkan XP!
+              {t('noXpLogs')}
             </div>
           ) : (
             profile.recentXpLogs.map((log) => {
@@ -330,7 +335,7 @@ export function StudentAchievementsClient({
                         {log.reason}
                       </p>
                       <p className="text-[10px] text-gray-400 mt-0.5">
-                        {new Date(log.createdAt).toLocaleString('id-ID', {
+                        {new Date(log.createdAt).toLocaleString(dateLocale, {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',
@@ -353,3 +358,4 @@ export function StudentAchievementsClient({
     </div>
   );
 }
+

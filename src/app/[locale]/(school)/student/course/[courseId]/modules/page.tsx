@@ -7,12 +7,14 @@ import { getQuizStatusForStudent } from '@/lib/actions/quiz';
 import { getPinnedAnnouncement } from '@/lib/actions/announcement';
 import { getCourseAttendanceSessions } from '@/lib/actions/attendance';
 import { StudentCourseModulesClient } from './client';
+import { getTranslations } from 'next-intl/server';
 
 export default async function StudentCourseModulesPage({
   params,
 }: {
   params: Promise<{ courseId: string }>;
 }) {
+  const t = await getTranslations('studentModules');
   const { courseId } = await params;
   const session = await auth();
   const [course, modules, pinnedAnnouncement, sessions, completedLessons] = await Promise.all([
@@ -54,13 +56,13 @@ export default async function StudentCourseModulesPage({
     <div className="space-y-6">
       <div>
         <div className="text-xs font-semibold text-[#FF8928] uppercase tracking-wider">
-          {course.category?.name || 'Mata Pelajaran'} • {course.academicYear.name}
+          {course.category?.name || t('defaultCategory')} • {course.academicYear.name}
         </div>
         <h1 className="text-2xl font-bold text-[#002446]">
           {course.title}
         </h1>
         <p className="text-sm text-gray-500">
-          Guru Pengampu: <strong>{course.teacher.name}</strong>
+          {t('teacherLabel')} <strong>{course.teacher.name}</strong>
         </p>
       </div>
 

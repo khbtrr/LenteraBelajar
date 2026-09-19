@@ -186,7 +186,7 @@ export default async function StudentDashboard() {
         <Card className="bg-white border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {tStudent('urgent')} (&le; 24 Jam)
+              {tStudent('urgent24h')}
             </CardTitle>
             <AlertTriangle className="h-4 w-4 text-rose-600" />
           </CardHeader>
@@ -332,7 +332,7 @@ export default async function StudentDashboard() {
 
                     <CardContent className="p-4 pt-0">
                       <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t">
-                        <span>{c._count.modules} Modul</span>
+                        <span>{tStudent('modulesCount', { count: c._count.modules })}</span>
                         <span>{c.academicYear?.name}</span>
                       </div>
                     </CardContent>
