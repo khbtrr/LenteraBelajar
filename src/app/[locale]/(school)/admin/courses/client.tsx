@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +67,7 @@ export function AdminCoursesClient({
   categories: Category[];
   teachers: Teacher[];
 }) {
+  const t = useTranslations('adminCourses');
   const { showAlert } = useDialog();
   const [courses, setCourses] = useState<CourseItem[]>(initialCourses);
   const [search, setSearch] = useState('');
@@ -85,7 +87,7 @@ export function AdminCoursesClient({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!academicYearId) {
-      await showAlert('Pilih Tahun Ajaran aktif terlebih dahulu', { type: 'warning' });
+      await showAlert(t('selectYearAlert'), { type: 'warning' });
       return;
     }
     setLoading(true);
@@ -116,10 +118,10 @@ export function AdminCoursesClient({
       setIsCreateOpen(false);
       setTitle('');
       setDescription('');
-      await showAlert(`Course "${created.title}" berhasil dibuat!`, { type: 'success' });
+      await showAlert(t('courseCreatedAlert', { title: created.title }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal membuat course', { type: 'error' });
+      await showAlert(err?.message || t('courseCreateFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -141,7 +143,7 @@ export function AdminCoursesClient({
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
-              placeholder="Cari course, guru, atau kategori..."
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 bg-white dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
@@ -152,10 +154,10 @@ export function AdminCoursesClient({
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
           >
-            <option value="ALL">Semua Status</option>
-            <option value="ACTIVE">Aktif</option>
-            <option value="DRAFT">Draf</option>
-            <option value="ARCHIVED">Arsip</option>
+            <option value="ALL">{t('statusAll')}</option>
+            <option value="ACTIVE">{t('statusActive')}</option>
+            <option value="DRAFT">{t('statusDraft')}</option>
+            <option value="ARCHIVED">{t('statusArchived')}</option>
           </select>
         </div>
 
@@ -163,7 +165,7 @@ export function AdminCoursesClient({
           onClick={() => setIsCreateOpen(true)}
           className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white flex items-center gap-2 w-full sm:w-auto justify-center"
         >
-          <Plus className="h-4 w-4" /> Buat Course Baru
+          <Plus className="h-4 w-4" /> {t('btnCreateCourse')}
         </Button>
       </div>
 
@@ -172,20 +174,20 @@ export function AdminCoursesClient({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Course</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Guru Pengampu</TableHead>
-                <TableHead>Tahun Ajaran</TableHead>
-                <TableHead>Siswa / Modul</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead>{t('colCourse')}</TableHead>
+                <TableHead>{t('colCategory')}</TableHead>
+                <TableHead>{t('colTeacher')}</TableHead>
+                <TableHead>{t('colAcademicYear')}</TableHead>
+                <TableHead>{t('colStudentsModules')}</TableHead>
+                <TableHead>{t('colStatus')}</TableHead>
+                <TableHead className="text-right">{t('colActions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-10 text-gray-500 dark:text-gray-400">
-                    Tidak ada course ditemukan.
+                    {t('emptyCourses')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -203,7 +205,7 @@ export function AdminCoursesClient({
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs font-normal dark:border-gray-700 dark:text-gray-300">
-                        {course.category?.name || 'Tanpa Kategori'}
+                        {course.category?.name || t('noCategory')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -216,11 +218,11 @@ export function AdminCoursesClient({
                       <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
                         <span className="flex items-center gap-1">
                           <Users className="h-3.5 w-3.5 text-[#FF8928] dark:text-orange-400" />
-                          {course._count.enrollments} Siswa
+                          {t('studentsCount', { count: course._count.enrollments })}
                         </span>
                         <span className="flex items-center gap-1">
                           <Layers className="h-3.5 w-3.5 text-[#002446] dark:text-blue-400" />
-                          {course._count.modules} Modul
+                          {t('modulesCount', { count: course._count.modules })}
                         </span>
                       </div>
                     </TableCell>
@@ -235,10 +237,10 @@ export function AdminCoursesClient({
                         }
                       >
                         {course.status === 'ACTIVE'
-                          ? 'Aktif'
+                          ? t('statusActive')
                           : course.status === 'ARCHIVED'
-                          ? 'Arsip'
-                          : 'Draf'}
+                          ? t('statusArchived')
+                          : t('statusDraft')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-3">
@@ -246,13 +248,13 @@ export function AdminCoursesClient({
                         href={`/teacher/course/${course.id}/modules`}
                         className="inline-flex items-center gap-1 text-xs font-medium text-[#002446] hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                       >
-                        Modul <ExternalLink className="h-3 w-3" />
+                        {t('linkModules')} <ExternalLink className="h-3 w-3" />
                       </Link>
                       <Link
                         href={`/teacher/course/${course.id}/enrollments`}
                         className="inline-flex items-center gap-1 text-xs font-medium text-[#FF8928] hover:underline dark:text-orange-400 dark:hover:text-orange-300"
                       >
-                        Enrollment <ExternalLink className="h-3 w-3" />
+                        {t('linkEnrollment')} <ExternalLink className="h-3 w-3" />
                       </Link>
                     </TableCell>
                   </TableRow>
@@ -269,15 +271,15 @@ export function AdminCoursesClient({
           <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
-                Buat Course Baru
+                {t('modalTitle')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="cTitle">Judul Course</Label>
+                <Label htmlFor="cTitle">{t('courseTitleLabel')}</Label>
                 <Input
                   id="cTitle"
-                  placeholder="misal: Matematika Wajib Kelas X"
+                  placeholder={t('courseTitlePlaceholder')}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
@@ -285,10 +287,10 @@ export function AdminCoursesClient({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cDesc">Deskripsi (Opsional)</Label>
+                <Label htmlFor="cDesc">{t('courseDescLabel')}</Label>
                 <Input
                   id="cDesc"
-                  placeholder="Keterangan singkat materi yang akan dipelajari"
+                  placeholder={t('courseDescPlaceholder')}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -296,7 +298,7 @@ export function AdminCoursesClient({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cYear">Tahun Ajaran</Label>
+                  <Label htmlFor="cYear">{t('academicYearLabel')}</Label>
                   <select
                     id="cYear"
                     value={academicYearId}
@@ -306,24 +308,24 @@ export function AdminCoursesClient({
                   >
                     {academicYears.map((y) => (
                       <option key={y.id} value={y.id}>
-                        {y.name} {y.status === 'ACTIVE' ? '(Aktif)' : '(Arsip)'}
+                        {y.name} {y.status === 'ACTIVE' ? `(${t('statusActive')})` : `(${t('statusArchived')})`}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="cCategory">Kategori</Label>
+                  <Label htmlFor="cCategory">{t('categoryLabel')}</Label>
                   <select
                     id="cCategory"
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
                     className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                   >
-                    <option value="">-- Pilih Kategori (Mapel) --</option>
+                    <option value="">{t('categoryPlaceholder')}</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.parent ? `${c.parent.name} → ${c.name}` : `${c.name} (Tahun Ajaran)`}
+                        {c.parent ? `${c.parent.name} → ${c.name}` : c.name}
                       </option>
                     ))}
                   </select>
@@ -331,7 +333,7 @@ export function AdminCoursesClient({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cTeacher">Guru Pengampu</Label>
+                <Label htmlFor="cTeacher">{t('teacherLabel')}</Label>
                 <select
                   id="cTeacher"
                   value={teacherId}
@@ -353,14 +355,14 @@ export function AdminCoursesClient({
                 variant="outline"
                 onClick={() => setIsCreateOpen(false)}
               >
-                Batal
+                {t('cancelButton')}
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
                 className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
               >
-                {loading ? 'Membuat...' : 'Buat Course'}
+                {loading ? t('saving') : t('saveButton')}
               </Button>
             </DialogFooter>
           </form>

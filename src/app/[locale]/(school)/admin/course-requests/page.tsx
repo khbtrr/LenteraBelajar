@@ -1,15 +1,17 @@
 import { getCourseRequests } from '@/lib/actions/course';
 import { CourseRequestsClient } from './client';
+import { getTranslations } from 'next-intl/server';
 
 export default async function AdminCourseRequestsPage() {
+  const t = await getTranslations('adminCourseRequests');
   const requests = await getCourseRequests();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#002446] dark:text-white">Persetujuan Pengajuan Course</h1>
+        <h1 className="text-2xl font-bold text-[#002446] dark:text-white">{t('pageTitle')}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Tinjau dan setujui pengajuan pembuatan course baru yang diajukan oleh para guru.
+          {t('pageDesc')}
         </p>
       </div>
 

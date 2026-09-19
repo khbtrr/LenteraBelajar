@@ -534,7 +534,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                                 : 'bg-rose-600 text-white hover:bg-rose-700'
                             }
                           >
-                            Skor: {attempt.score ?? 0}
+                            {t('scoreLabel', { score: attempt.score ?? 0 })}
                           </Badge>
                         </div>
                       </div>
@@ -721,10 +721,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    {t('categories.name', { default: 'Kategori Kursus' })}
+                    {t('courseCategories')}
                   </div>
                   <div className="text-[10px] text-gray-500 truncate">
-                    {t('academicCalendarDesc')}
+                    {t('courseCategoriesDesc')}
                   </div>
                 </div>
               </Link>
@@ -741,7 +741,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                     {t('schoolSettings')}
                   </div>
                   <div className="text-[10px] text-gray-500 truncate">
-                    {t('schoolSettings')}
+                    {t('schoolSettingsDesc')}
                   </div>
                 </div>
               </Link>

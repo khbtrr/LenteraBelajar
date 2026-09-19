@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import type { CohortLegerReportData } from '@/lib/actions/leger';
 import * as XLSX from 'xlsx';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface Props {
   cohorts: Array<{ id: string; name: string; _count: { members: number } }>;
@@ -55,6 +56,9 @@ export function AdminLegerClient({
   initialAcademicYearId,
   initialLegerData,
 }: Props) {
+  const t = useTranslations('adminLeger');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
@@ -98,27 +102,31 @@ export function AdminLegerClient({
     rows.push([legerData.school.name.toUpperCase()]);
     if (legerData.school.address) rows.push([legerData.school.address]);
     rows.push([
-      `LEGER REKAPITULASI NILAI DAN PRESENSI KELAS ${legerData.cohort.name.toUpperCase()}`,
+      t('exportHeaderTitle', { cohort: legerData.cohort.name.toUpperCase() }),
     ]);
     rows.push([
-      `Tahun Ajaran: ${legerData.academicYear?.name || '-'} | KKM Sekolah: ${legerData.school.passingGrade} | Dicetak: ${new Date().toLocaleDateString('id-ID')}`,
+      t('exportHeaderSub', {
+        year: legerData.academicYear?.name || '-',
+        kkm: legerData.school.passingGrade,
+        date: new Date().toLocaleDateString(dateLocale),
+      }),
     ]);
     rows.push([]); // Baris kosong
 
     // Baris Header Kolom
     const headerRow = [
-      'No',
-      'NIS',
-      'Nama Siswa',
+      t('colNo'),
+      t('colNis'),
+      t('colStudentName'),
       ...legerData.subjects.map((s) => s.title),
-      'Jumlah Nilai',
-      'Rata-rata',
-      'Peringkat',
-      'Hadir (H)',
-      'Sakit (S)',
-      'Izin (I)',
-      'Alpa (A)',
-      'Keterangan',
+      t('colTotalScore'),
+      t('colAverage'),
+      t('colRank'),
+      t('colAttendanceH'),
+      t('colAttendanceS'),
+      t('colAttendanceI'),
+      t('colAttendanceA'),
+      t('colStatus'),
     ];
     rows.push(headerRow);
 
@@ -141,7 +149,7 @@ export function AdminLegerClient({
         st.attendance.sick,
         st.attendance.permission,
         st.attendance.absent,
-        st.isPassed ? 'TUNTAS' : 'BELUM TUNTAS',
+        st.isPassed ? t('statusPassed') : t('statusNotPassed'),
       ]);
     });
 
@@ -150,7 +158,7 @@ export function AdminLegerClient({
     const avgRow = [
       '',
       '',
-      'RATA-RATA KELAS',
+      t('summaryClassAverage'),
       ...legerData.subjects.map((s) => {
         const stat = legerData.subjectStats[s.id];
         return stat?.average !== null && stat?.average !== undefined ? stat.average : '-';
@@ -169,7 +177,7 @@ export function AdminLegerClient({
     const highestRow = [
       '',
       '',
-      'NILAI TERTINGGI',
+      t('summaryHighest'),
       ...legerData.subjects.map((s) => {
         const stat = legerData.subjectStats[s.id];
         return stat?.highest !== null && stat?.highest !== undefined ? stat.highest : '-';
@@ -188,7 +196,7 @@ export function AdminLegerClient({
     const lowestRow = [
       '',
       '',
-      'NILAI TERENDAH',
+      t('summaryLowest'),
       ...legerData.subjects.map((s) => {
         const stat = legerData.subjectStats[s.id];
         return stat?.lowest !== null && stat?.lowest !== undefined ? stat.lowest : '-';
@@ -288,10 +296,10 @@ export function AdminLegerClient({
             </div>
             <div>
               <h1 className="text-2xl font-bold text-[#002446] dark:text-white">
-                Leger Nilai & Rekapitulasi Rombel
+                {t('pageTitle')}
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Kompilasi nilai akhir seluruh mata pelajaran, peringkat kelas, dan rekapitulasi presensi rombel.
+                {t('pageDesc')}
               </p>
             </div>
           </div>
@@ -306,7 +314,7 @@ export function AdminLegerClient({
             className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200"
           >
             <Printer className="h-4 w-4 text-blue-600" />
-            Cetak / Simpan PDF
+            {t('printPdfBtn')}
           </Button>
 
           <Button
@@ -315,7 +323,7 @@ export function AdminLegerClient({
             className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
           >
             <FileSpreadsheet className="h-4 w-4" />
-            Ekspor Excel (.xlsx)
+            {t('btnExportExcel')}
           </Button>
         </div>
       </div>
@@ -326,7 +334,7 @@ export function AdminLegerClient({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                Pilih Grup Kohort / Kelas
+                {t('cohortLabel')}
               </Label>
               <Select
                 value={selectedCohortId}
@@ -334,12 +342,12 @@ export function AdminLegerClient({
                 disabled={isPending}
               >
                 <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Pilih Kohort" />
+                  <SelectValue placeholder={t('cohortLabel')} />
                 </SelectTrigger>
                 <SelectContent>
                   {cohorts.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c._count.members} Siswa)
+                      {c.name} ({t('studentsPersonUnit', { count: c._count.members })})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -348,7 +356,7 @@ export function AdminLegerClient({
 
             <div>
               <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                Tahun Ajaran
+                {t('academicYearLabel')}
               </Label>
               <Select
                 value={selectedYearId}
@@ -356,12 +364,12 @@ export function AdminLegerClient({
                 disabled={isPending}
               >
                 <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Pilih Tahun Ajaran" />
+                  <SelectValue placeholder={t('academicYearLabel')} />
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears.map((ay) => (
                     <SelectItem key={ay.id} value={ay.id}>
-                      {ay.name} {ay.status === 'ACTIVE' ? '(Aktif)' : ''}
+                      {ay.name} {ay.status === 'ACTIVE' ? `(${locale === 'id' ? 'Aktif' : 'Active'})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -370,12 +378,12 @@ export function AdminLegerClient({
 
             <div>
               <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                Cari Siswa di Leger
+                {t('searchStudentPlaceholder')}
               </Label>
               <div className="relative mt-1.5">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Cari berdasarkan NIS atau Nama..."
+                  placeholder={t('searchStudentPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 text-sm"
@@ -402,21 +410,21 @@ export function AdminLegerClient({
               )}
               <div className="pt-2">
                 <h3 className="text-base sm:text-lg font-bold text-[#002446] dark:text-blue-400 uppercase">
-                  LEGER REKAPITULASI NILAI & PRESENSI KELAS
+                  {t('exportHeaderTitle', { cohort: legerData.cohort.name.toUpperCase() })}
                 </h3>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-gray-600 dark:text-gray-300 pt-1">
                 <span>
-                  <strong>Kelas / Kohort:</strong> {legerData.cohort.name}
+                  <strong>{t('schoolKopClass')}</strong> {legerData.cohort.name}
                 </span>
                 <span>
-                  <strong>Tahun Ajaran:</strong> {legerData.academicYear?.name || '-'}
+                  <strong>{t('schoolKopYear')}</strong> {legerData.academicYear?.name || '-'}
                 </span>
                 <span>
-                  <strong>KKM Kelulusan:</strong> {legerData.school.passingGrade}
+                  <strong>{t('schoolKopKkm')}</strong> {legerData.school.passingGrade}
                 </span>
                 <span>
-                  <strong>Total Siswa:</strong> {legerData.cohort.totalStudents} Orang
+                  <strong>{t('schoolKopTotalStudents')}</strong> {t('studentsPersonUnit', { count: legerData.cohort.totalStudents })}
                 </span>
               </div>
             </div>
@@ -425,7 +433,7 @@ export function AdminLegerClient({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
               <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50">
                 <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                  Rata-rata Kelas
+                  {t('kpiClassAverage')}
                 </span>
                 <p className="text-xl font-bold text-blue-900 dark:text-blue-100 mt-0.5">
                   {legerData.overallClassAverage !== null ? legerData.overallClassAverage : '-'}
@@ -434,28 +442,28 @@ export function AdminLegerClient({
 
               <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50">
                 <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
-                  Tuntas KKM
+                  {t('kpiMasteryRate')}
                 </span>
                 <p className="text-xl font-bold text-emerald-900 dark:text-emerald-100 mt-0.5">
-                  {legerData.students.filter((s) => s.isPassed).length} Siswa
+                  {t('kkmPassedCount', { count: legerData.students.filter((s) => s.isPassed).length })}
                 </p>
               </div>
 
               <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
                 <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">
-                  Perlu Remidial
+                  {t('remedialNeeded')}
                 </span>
                 <p className="text-xl font-bold text-amber-900 dark:text-amber-100 mt-0.5">
-                  {legerData.students.filter((s) => !s.isPassed && s.averageScore !== null).length} Siswa
+                  {t('remedialNeededCount', { count: legerData.students.filter((s) => !s.isPassed && s.averageScore !== null).length })}
                 </p>
               </div>
 
               <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50">
                 <span className="text-xs text-purple-700 dark:text-purple-300 font-medium">
-                  Total Mata Pelajaran
+                  {t('totalSubjects')}
                 </span>
                 <p className="text-xl font-bold text-purple-900 dark:text-purple-100 mt-0.5">
-                  {legerData.subjects.length} Mapel
+                  {t('subjectsCount', { count: legerData.subjects.length })}
                 </p>
               </div>
             </div>
@@ -466,13 +474,13 @@ export function AdminLegerClient({
                 <TableHeader className="bg-gray-100 dark:bg-gray-800/80">
                   <TableRow className="border-b border-gray-300 dark:border-gray-700">
                     <TableHead rowSpan={2} className="w-10 text-center font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-700">
-                      No
+                      {t('colNo')}
                     </TableHead>
                     <TableHead rowSpan={2} className="w-24 font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-700">
-                      NIS
+                      {t('colNis')}
                     </TableHead>
                     <TableHead rowSpan={2} className="min-w-[180px] font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-700">
-                      Nama Siswa
+                      {t('colStudentName')}
                     </TableHead>
 
                     {/* Group Mata Pelajaran */}
@@ -481,31 +489,31 @@ export function AdminLegerClient({
                         colSpan={legerData.subjects.length}
                         className="text-center font-bold text-[#002446] dark:text-blue-300 border-r border-gray-300 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-950/30"
                       >
-                        Nilai Akhir Mata Pelajaran (Skala 0-100)
+                        {t('finalGradeHeader')}
                       </TableHead>
                     ) : (
                       <TableHead className="text-center font-bold text-gray-500 border-r border-gray-300 dark:border-gray-700">
-                        Belum Ada Course Terhubung
+                        {t('noCoursesConnected')}
                       </TableHead>
                     )}
 
                     <TableHead rowSpan={2} className="w-16 text-center font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-700">
-                      Jumlah
+                      {t('colTotalShort')}
                     </TableHead>
                     <TableHead rowSpan={2} className="w-16 text-center font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-700 bg-blue-50 dark:bg-blue-950/30">
-                      Rata2
+                      {t('colAverageShort')}
                     </TableHead>
                     <TableHead rowSpan={2} className="w-14 text-center font-bold text-amber-700 dark:text-amber-400 border-r border-gray-300 dark:border-gray-700 bg-amber-50/50 dark:bg-amber-950/20">
-                      Rank
+                      {t('colRankShort')}
                     </TableHead>
 
                     {/* Group Kehadiran */}
                     <TableHead colSpan={4} className="text-center font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-700 bg-emerald-50/50 dark:bg-emerald-950/20">
-                      Kehadiran
+                      {t('attendanceHeader')}
                     </TableHead>
 
                     <TableHead rowSpan={2} className="w-24 text-center font-bold text-gray-900 dark:text-white">
-                      Ket.
+                      {t('colStatusShort')}
                     </TableHead>
                   </TableRow>
 
@@ -545,7 +553,7 @@ export function AdminLegerClient({
                         colSpan={8 + Math.max(legerData.subjects.length, 1)}
                         className="text-center py-8 text-gray-400 italic"
                       >
-                        Tidak ada data siswa yang sesuai filter.
+                        {t('noStudentsMatchingFilter')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -630,11 +638,11 @@ export function AdminLegerClient({
                           <TableCell className="text-center">
                             {st.isPassed ? (
                               <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] px-1.5 py-0 border-none font-semibold">
-                                Tuntas
+                                {t('statusPassedBadge')}
                               </Badge>
                             ) : (
                               <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 text-[10px] px-1.5 py-0 border-none font-semibold">
-                                Belum
+                                {t('statusNotPassedBadge')}
                               </Badge>
                             )}
                           </TableCell>
@@ -649,7 +657,7 @@ export function AdminLegerClient({
                       {/* 1. Rata-rata Kelas */}
                       <TableRow className="bg-blue-50/60 dark:bg-blue-950/40 font-bold border-t-2 border-gray-400">
                         <TableCell colSpan={3} className="text-right pr-4 text-blue-950 dark:text-blue-200 uppercase tracking-wider border-r border-gray-300 dark:border-gray-700">
-                          Rata-rata Kelas
+                          {t('summaryClassAverage')}
                         </TableCell>
                         {legerData.subjects.map((sub) => {
                           const stat = legerData.subjectStats[sub.id];
@@ -676,7 +684,7 @@ export function AdminLegerClient({
                       {/* 2. Nilai Tertinggi */}
                       <TableRow className="bg-emerald-50/40 dark:bg-emerald-950/20 font-semibold">
                         <TableCell colSpan={3} className="text-right pr-4 text-emerald-900 dark:text-emerald-200 uppercase tracking-wider border-r border-gray-300 dark:border-gray-700">
-                          Nilai Tertinggi
+                          {t('summaryHighest')}
                         </TableCell>
                         {legerData.subjects.map((sub) => {
                           const stat = legerData.subjectStats[sub.id];
@@ -697,7 +705,7 @@ export function AdminLegerClient({
                       {/* 3. Nilai Terendah */}
                       <TableRow className="bg-rose-50/40 dark:bg-rose-950/20 font-semibold">
                         <TableCell colSpan={3} className="text-right pr-4 text-rose-900 dark:text-rose-200 uppercase tracking-wider border-r border-gray-300 dark:border-gray-700">
-                          Nilai Terendah
+                          {t('summaryLowest')}
                         </TableCell>
                         {legerData.subjects.map((sub) => {
                           const stat = legerData.subjectStats[sub.id];
@@ -723,7 +731,7 @@ export function AdminLegerClient({
             {/* Footer / Lembar Pengesahan Cetak */}
             <div className="pt-6 grid grid-cols-2 text-center text-xs text-gray-800 dark:text-gray-200">
               <div className="space-y-16">
-                <p>Mengetahui,<br />Kepala Sekolah</p>
+                <p>{t('acknowledgement')}<br />{t('principal')}</p>
                 <div>
                   <p className="font-bold underline">_________________________</p>
                   <p className="text-[11px] text-gray-500">NIP. -</p>
@@ -731,8 +739,8 @@ export function AdminLegerClient({
               </div>
               <div className="space-y-16">
                 <p>
-                  Dibuat pada: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br />
-                  Wali Kelas
+                  {t('createdOn', { date: new Date().toLocaleDateString(dateLocale, { day: 'numeric', month: 'long', year: 'numeric' }) })}<br />
+                  {t('homeroomTeacher')}
                 </p>
                 <div>
                   <p className="font-bold underline">_________________________</p>
@@ -746,10 +754,10 @@ export function AdminLegerClient({
         <Card className="border-dashed border-2 p-8 text-center text-gray-400">
           <GraduationCap className="w-12 h-12 mx-auto text-gray-300 mb-2" />
           <p className="font-medium text-gray-600 dark:text-gray-300">
-            Belum ada grup kohort yang dipilih atau tidak ada data kohort.
+            {t('emptyCohortPrompt')}
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            Silakan pilih kohort pada dropdown filter di atas untuk melihat leger nilai.
+            {t('emptyCohortPromptSub')}
           </p>
         </Card>
       )}

@@ -27,6 +27,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface AdminMessagesClientProps {
   initialConversations: AdminConversationItem[];
@@ -39,6 +40,10 @@ export function AdminMessagesClient({
   initialTotal,
   initialTotalPages,
 }: AdminMessagesClientProps) {
+  const t = useTranslations('adminMessages');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [conversations, setConversations] =
     useState<AdminConversationItem[]>(initialConversations);
   const [total, setTotal] = useState(initialTotal);
@@ -102,15 +107,15 @@ export function AdminMessagesClient({
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'TEACHER':
-        return 'Guru';
+        return t('roleTeacher');
       case 'STUDENT':
-        return 'Siswa';
+        return t('roleStudent');
       case 'ADMIN':
-        return 'Admin';
+        return t('roleAdmin');
       case 'SUPERVISOR':
-        return 'Pengawas';
+        return t('roleSupervisor');
       case 'SUPER_ADMIN':
-        return 'Super Admin';
+        return t('roleSuperAdmin');
       default:
         return role;
     }
@@ -147,7 +152,7 @@ export function AdminMessagesClient({
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             type="text"
-            placeholder="Cari nama atau email partisipan..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-9 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
@@ -157,7 +162,7 @@ export function AdminMessagesClient({
         <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 self-end sm:self-auto">
           <ShieldCheck className="w-4 h-4 text-brand-500" />
           <span>
-            Total <strong>{total}</strong> percakapan tercatat
+            {t('totalConversations', { count: total })}
           </span>
         </div>
       </div>
@@ -168,11 +173,11 @@ export function AdminMessagesClient({
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 font-semibold border-b border-gray-200 dark:border-gray-800">
               <tr>
-                <th className="py-3 px-4">Partisipan</th>
-                <th className="py-3 px-4">Pesan Terakhir</th>
-                <th className="py-3 px-4 text-center">Jumlah Pesan</th>
-                <th className="py-3 px-4">Waktu Terakhir</th>
-                <th className="py-3 px-4 text-right">Aksi</th>
+                <th className="py-3 px-4">{t('colParticipants')}</th>
+                <th className="py-3 px-4">{t('colLastMessage')}</th>
+                <th className="py-3 px-4 text-center">{t('colTotalMessages')}</th>
+                <th className="py-3 px-4">{t('colLastActivity')}</th>
+                <th className="py-3 px-4 text-right">{t('colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -180,13 +185,13 @@ export function AdminMessagesClient({
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-gray-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-500 mb-1" />
-                    <span>Mencari...</span>
+                    <span>{t('searching')}</span>
                   </td>
                 </tr>
               ) : conversations.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-gray-400">
-                    Tidak ada percakapan yang ditemukan.
+                    {t('emptyTitle')}
                   </td>
                 </tr>
               ) : (
@@ -235,12 +240,12 @@ export function AdminMessagesClient({
                             )}
                           >
                             {conv.lastMessage.isDeleted
-                              ? `[Dihapus] ${conv.lastMessage.content}`
+                              ? t('deletedPrefix', { content: conv.lastMessage.content })
                               : conv.lastMessage.content}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-gray-400 italic">Belum ada pesan</span>
+                        <span className="text-gray-400 italic">{t('noMessages')}</span>
                       )}
                     </td>
 
@@ -252,7 +257,7 @@ export function AdminMessagesClient({
                     </td>
 
                     <td className="py-3 px-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      {new Date(conv.lastMessageAt).toLocaleString('id-ID', {
+                      {new Date(conv.lastMessageAt).toLocaleString(dateLocale, {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
@@ -269,7 +274,7 @@ export function AdminMessagesClient({
                         className="h-7 text-xs gap-1 hover:border-brand-500 hover:text-brand-500"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>Audit</span>
+                        <span>{t('btnAudit')}</span>
                       </Button>
                     </td>
                   </tr>
@@ -283,7 +288,7 @@ export function AdminMessagesClient({
         {totalPages > 1 && (
           <div className="p-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500">
             <span>
-              Halaman {page} dari {totalPages}
+              {t('pageIndicator', { current: page, total: totalPages })}
             </span>
             <div className="flex gap-1">
               <Button
@@ -293,7 +298,7 @@ export function AdminMessagesClient({
                 onClick={() => handlePageChange(page - 1)}
                 className="h-7 text-xs"
               >
-                Sebelumnya
+                {t('paginationPrev')}
               </Button>
               <Button
                 variant="outline"
@@ -302,7 +307,7 @@ export function AdminMessagesClient({
                 onClick={() => handlePageChange(page + 1)}
                 className="h-7 text-xs"
               >
-                Selanjutnya
+                {t('paginationNext')}
               </Button>
             </div>
           </div>
@@ -323,11 +328,11 @@ export function AdminMessagesClient({
           <DialogHeader className="p-5 pb-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
               <ShieldCheck className="w-5 h-5 text-brand-500" />
-              <span>Transkrip Audit Obrolan (Mode Moderasi)</span>
+              <span>{t('auditModalTitle')}</span>
             </DialogTitle>
             {auditData && (
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="text-xs text-gray-500">Partisipan:</span>
+                <span className="text-xs text-gray-500">{t('conversationWith')}:</span>
                 {auditData.conversation.participants.map((p) => (
                   <Badge
                     key={p.id}
@@ -346,11 +351,11 @@ export function AdminMessagesClient({
             {auditLoading ? (
               <div className="py-16 text-center text-xs text-gray-400">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto text-brand-500 mb-2" />
-                <span>Memuat riwayat pesan...</span>
+                <span>{t('loadingHistory')}</span>
               </div>
             ) : !auditData || auditData.messages.length === 0 ? (
               <div className="py-16 text-center text-xs text-gray-400">
-                Tidak ada pesan dalam obrolan ini.
+                {t('noMessages')}
               </div>
             ) : (
               auditData.messages.map((msg) => (
@@ -381,13 +386,13 @@ export function AdminMessagesClient({
                           className="text-[9px] px-1 py-0 h-3.5 gap-0.5 bg-red-600 text-white"
                         >
                           <AlertTriangle className="w-2.5 h-2.5" />
-                          <span>Pesan Dihapus Pengguna</span>
+                          <span>{t('deletedBadge')}</span>
                         </Badge>
                       )}
                     </div>
 
                     <span className="text-[10px] text-gray-400">
-                      {new Date(msg.createdAt).toLocaleString('id-ID', {
+                      {new Date(msg.createdAt).toLocaleString(dateLocale, {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',

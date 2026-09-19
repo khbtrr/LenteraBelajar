@@ -39,6 +39,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import Image from 'next/image';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface SchoolData {
   id: string;
@@ -84,6 +85,9 @@ export function AdminSettingsClient({
   activeAcademicYear,
   adminUser,
 }: AdminSettingsClientProps) {
+  const t = useTranslations('adminSettings');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
   const { showAlert } = useDialog();
   const [activeTab, setActiveTab] = useState<'profile' | 'academic' | 'cbt' | 'admin'>('profile');
 
@@ -128,12 +132,12 @@ export function AdminSettingsClient({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      await showAlert('File harus berupa gambar (.png, .jpg, .jpeg, .webp, .svg)', { type: 'error' });
+      await showAlert(t('fileMustBeImage'), { type: 'error' });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      await showAlert('Ukuran gambar maksimal 5 MB', { type: 'error' });
+      await showAlert(t('imageMaxSize'), { type: 'error' });
       return;
     }
 
@@ -149,14 +153,14 @@ export function AdminSettingsClient({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Gagal mengunggah logo');
+        throw new Error(data.error || t('logoUploadFailed'));
       }
 
       setLogo(data.url);
-      await showAlert('Logo berhasil diunggah! Jangan lupa klik "Simpan Profil Sekolah".', { type: 'success' });
+      await showAlert(t('logoUploadedSuccess'), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Terjadi kesalahan saat mengunggah logo', { type: 'error' });
+      await showAlert(err?.message || t('logoUploadError'), { type: 'error' });
     } finally {
       setIsUploadingLogo(false);
     }
@@ -176,10 +180,10 @@ export function AdminSettingsClient({
         website,
         logo: logo || undefined,
       });
-      await showAlert('Profil dan identitas sekolah berhasil diperbarui!', { type: 'success' });
+      await showAlert(t('profileSavedAlert'), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menyimpan profil sekolah', { type: 'error' });
+      await showAlert(err?.message || t('profileSaveFailedAlert'), { type: 'error' });
     } finally {
       setSavingProfile(false);
     }
@@ -193,10 +197,10 @@ export function AdminSettingsClient({
       await updateAcademicSettings({
         defaultPassingGrade: Number(passingGrade),
       });
-      await showAlert('Standar KKM akademik sekolah berhasil diperbarui!', { type: 'success' });
+      await showAlert(t('academicSavedAlert'), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menyimpan standar akademik', { type: 'error' });
+      await showAlert(err?.message || t('academicSaveFailedAlert'), { type: 'error' });
     } finally {
       setSavingAcademic(false);
     }
@@ -214,10 +218,10 @@ export function AdminSettingsClient({
         cbtShuffleQuestions: shuffleQuestions,
         cbtShuffleOptions: shuffleOptions,
       });
-      await showAlert('Pengaturan default CBT berhasil disimpan!', { type: 'success' });
+      await showAlert(t('cbtSavedAlert'), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menyimpan pengaturan CBT', { type: 'error' });
+      await showAlert(err?.message || t('cbtSaveFailedAlert'), { type: 'error' });
     } finally {
       setSavingCbt(false);
     }
@@ -232,10 +236,10 @@ export function AdminSettingsClient({
         name: adminName,
         email: adminEmail,
       });
-      await showAlert('Data akun administrator berhasil diperbarui!', { type: 'success' });
+      await showAlert(t('adminProfileSavedAlert'), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menyimpan profil administrator', { type: 'error' });
+      await showAlert(err?.message || t('adminProfileSaveFailedAlert'), { type: 'error' });
     } finally {
       setSavingAdminProfile(false);
     }
@@ -245,7 +249,7 @@ export function AdminSettingsClient({
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      await showAlert('Konfirmasi kata sandi baru tidak cocok', { type: 'error' });
+      await showAlert(t('passwordMismatchAlert'), { type: 'error' });
       return;
     }
     setSavingPassword(true);
@@ -258,10 +262,10 @@ export function AdminSettingsClient({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      await showAlert('Kata sandi administrator berhasil diubah!', { type: 'success' });
+      await showAlert(t('passwordSavedAlert'), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal mengubah kata sandi', { type: 'error' });
+      await showAlert(err?.message || t('passwordSaveFailedAlert'), { type: 'error' });
     } finally {
       setSavingPassword(false);
     }
@@ -281,7 +285,7 @@ export function AdminSettingsClient({
           }`}
         >
           <Building2 className="w-4 h-4" />
-          Profil & Branding Sekolah
+          {t('tabProfile')}
         </button>
 
         <button
@@ -294,7 +298,7 @@ export function AdminSettingsClient({
           }`}
         >
           <GraduationCap className="w-4 h-4" />
-          Standar Akademik
+          {t('tabAcademic')}
         </button>
 
         <button
@@ -307,7 +311,7 @@ export function AdminSettingsClient({
           }`}
         >
           <ShieldCheck className="w-4 h-4" />
-          Default Keamanan CBT
+          {t('tabCbt')}
         </button>
 
         <button
@@ -320,7 +324,7 @@ export function AdminSettingsClient({
           }`}
         >
           <UserCog className="w-4 h-4" />
-          Akun Administrator
+          {t('tabAdmin')}
         </button>
       </div>
 
@@ -332,10 +336,10 @@ export function AdminSettingsClient({
               <CardHeader>
                 <CardTitle className="text-lg font-bold text-[#002446] dark:text-white flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-[#FF8928]" />
-                  Informasi & Kontak Sekolah
+                  {t('profileTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Data ini digunakan sebagai identitas resmi sekolah dan tercantum pada laporan hasil belajar.
+                  {t('profileDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -343,26 +347,26 @@ export function AdminSettingsClient({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="schoolName" className="font-medium">
-                        Nama Sekolah <span className="text-red-500">*</span>
+                        {t('schoolNameLabel')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="schoolName"
                         value={schoolName}
                         onChange={(e) => setSchoolName(e.target.value)}
-                        placeholder="Contoh: SMA Negeri 1 Maju Bersama"
+                        placeholder={t('schoolNamePlaceholder')}
                         required
                       />
                     </div>
 
                     <div className="space-y-1.5">
                       <Label htmlFor="schoolCode" className="font-medium">
-                        NPSN / Kode Sekolah <span className="text-red-500">*</span>
+                        {t('schoolCodeLabel')} <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="schoolCode"
                         value={schoolCode}
                         onChange={(e) => setSchoolCode(e.target.value)}
-                        placeholder="Contoh: 10203040"
+                        placeholder={t('schoolCodePlaceholder')}
                         required
                       />
                     </div>
@@ -370,13 +374,13 @@ export function AdminSettingsClient({
 
                   <div className="space-y-1.5">
                     <Label htmlFor="address" className="font-medium">
-                      Alamat Lengkap Sekolah
+                      {t('addressLabel')}
                     </Label>
                     <Textarea
                       id="address"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Jl. Pendidikan No. 123, Kelurahan, Kecamatan, Kota/Kabupaten, Provinsi"
+                      placeholder={t('addressPlaceholder')}
                       rows={2}
                     />
                   </div>
@@ -385,47 +389,47 @@ export function AdminSettingsClient({
                     <div className="space-y-1.5">
                       <Label htmlFor="phone" className="font-medium flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-gray-500" />
-                        Nomor Telepon
+                        {t('phoneLabel')}
                       </Label>
                       <Input
                         id="phone"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        placeholder="(021) 1234567"
+                        placeholder={t('phonePlaceholder')}
                       />
                     </div>
 
                     <div className="space-y-1.5">
                       <Label htmlFor="email" className="font-medium flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 text-gray-500" />
-                        Email Resmi
+                        {t('emailLabel')}
                       </Label>
                       <Input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="info@sman1maju.sch.id"
+                        placeholder={t('emailPlaceholder')}
                       />
                     </div>
 
                     <div className="space-y-1.5">
                       <Label htmlFor="website" className="font-medium flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-gray-500" />
-                        Website Sekolah
+                        {t('websiteLabel')}
                       </Label>
                       <Input
                         id="website"
                         value={website}
                         onChange={(e) => setWebsite(e.target.value)}
-                        placeholder="https://sman1maju.sch.id"
+                        placeholder={t('websitePlaceholder')}
                       />
                     </div>
                   </div>
 
                   {/* Logo Upload Section */}
                   <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-                    <Label className="font-medium block mb-2">Logo Resmi Sekolah</Label>
+                    <Label className="font-medium block mb-2">{t('logoLabel')}</Label>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                       {logo ? (
                         <div className="relative w-20 h-20 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white p-2 shadow-sm flex items-center justify-center flex-shrink-0">
@@ -439,7 +443,7 @@ export function AdminSettingsClient({
                       ) : (
                         <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex flex-col items-center justify-center text-gray-400 flex-shrink-0">
                           <Building2 className="w-8 h-8 text-gray-300" />
-                          <span className="text-[10px] mt-1">Belum Ada</span>
+                          <span className="text-[10px] mt-1">{t('noLogoYet')}</span>
                         </div>
                       )}
 
@@ -450,7 +454,7 @@ export function AdminSettingsClient({
                             className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 cursor-pointer transition-colors"
                           >
                             <Upload className="w-3.5 h-3.5" />
-                            {isUploadingLogo ? 'Mengunggah...' : 'Pilih File Logo'}
+                            {isUploadingLogo ? t('uploading') : t('uploadLogo')}
                           </label>
                           <input
                             id="logo-upload"
@@ -468,12 +472,12 @@ export function AdminSettingsClient({
                               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                              Hapus Logo
+                              {t('removeLogo')}
                             </button>
                           )}
                         </div>
                         <p className="text-xs text-gray-500">
-                          Format disarankan: PNG, SVG, atau JPG transparan (resolusi minimal 200x200 px, maks 5MB).
+                          {t('logoHint')}
                         </p>
                       </div>
                     </div>
@@ -486,7 +490,7 @@ export function AdminSettingsClient({
                       className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-2 px-5"
                     >
                       <Save className="w-4 h-4" />
-                      {savingProfile ? 'Menyimpan...' : 'Simpan Profil Sekolah'}
+                      {savingProfile ? t('saving') : t('saveProfile')}
                     </Button>
                   </div>
                 </form>
@@ -500,17 +504,17 @@ export function AdminSettingsClient({
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-[#FF8928]" />
-                  Live Preview Branding Aplikasi
+                  {t('previewTitle')}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Simulasi tampilan logo & nama sekolah di navigasi sistem.
+                  {t('previewDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Simulated Sidebar Header */}
                 <div className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-2">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                    Preview Header Sidebar
+                    {t('previewSidebarHeader')}
                   </div>
                   <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800/60 rounded-lg">
                     <div className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm overflow-hidden flex-shrink-0 bg-white">
@@ -541,7 +545,7 @@ export function AdminSettingsClient({
                 {/* Simulated School Identity Card */}
                 <div className="p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-3">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                    Kartu Identitas Sekolah
+                    {t('previewSchoolCard')}
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center p-1 flex-shrink-0">
@@ -558,17 +562,17 @@ export function AdminSettingsClient({
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-sm font-bold text-[#002446] dark:text-white line-clamp-1">
-                        {schoolName || 'Nama Sekolah Belum Diatur'}
+                        {schoolName || t('previewSchoolNameFallback')}
                       </h4>
                       <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">
-                        {address || 'Alamat sekolah belum diatur'}
+                        {address || t('previewAddressFallback')}
                       </p>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 space-y-1">
-                    <div>Telepon: {phone || '-'}</div>
-                    <div>Email: {email || '-'}</div>
-                    <div>Website: {website || '-'}</div>
+                    <div>{t('previewPhone')} {phone || '-'}</div>
+                    <div>{t('previewEmail')} {email || '-'}</div>
+                    <div>{t('previewWebsite')} {website || '-'}</div>
                   </div>
                 </div>
               </CardContent>
@@ -585,10 +589,10 @@ export function AdminSettingsClient({
               <CardHeader>
                 <CardTitle className="text-lg font-bold text-[#002446] dark:text-white flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-[#FF8928]" />
-                  Standar Ketuntasan & KKM Sekolah
+                  {t('academicTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Tetapkan standar Kriteria Ketuntasan Minimal (KKM) sekolah yang akan digunakan sebagai acuan default pada buku nilai dan kuis baru.
+                  {t('academicDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -596,16 +600,16 @@ export function AdminSettingsClient({
                   <div className="p-4 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-xl space-y-2">
                     <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
                       <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      Informasi Ketuntasan Belajar
+                      {t('academicInfoTitle')}
                     </h4>
                     <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
-                      Nilai KKM ini menjadi tolok ukur standar sekolah untuk menentukan apakah siswa telah lulus kompetensi pada evaluasi atau kuis. Guru dapat tetap menyesuaikan KKM spesifik pada masing-masing mata pelajaran atau kuis jika diperlukan.
+                      {t('academicInfoDesc')}
                     </p>
                   </div>
 
                   <div className="max-w-xs space-y-2">
                     <Label htmlFor="passingGrade" className="font-medium">
-                      Nilai KKM Standar (0 - 100) <span className="text-red-500">*</span>
+                      {t('kkmLabel')} <span className="text-red-500">*</span>
                     </Label>
                     <div className="relative">
                       <Input
@@ -624,7 +628,7 @@ export function AdminSettingsClient({
                       </span>
                     </div>
                     <p className="text-xs text-gray-500">
-                      Standar KKM rata-rata sekolah di Indonesia umumnya adalah 75.
+                      {t('kkmHint')}
                     </p>
                   </div>
 
@@ -635,7 +639,7 @@ export function AdminSettingsClient({
                       className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-2 px-5"
                     >
                       <Save className="w-4 h-4" />
-                      {savingAcademic ? 'Menyimpan...' : 'Simpan Standar KKM'}
+                      {savingAcademic ? t('saving') : t('saveAcademic')}
                     </Button>
                   </div>
                 </form>
@@ -649,10 +653,10 @@ export function AdminSettingsClient({
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-bold text-[#002446] dark:text-white flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-[#FF8928]" />
-                  Tahun Ajaran Aktif
+                  {t('activeYearLabel')}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Status periode pembelajaran sekolah saat ini.
+                  {t('activeYearDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -660,22 +664,25 @@ export function AdminSettingsClient({
                   <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                        Status: Sedang Berjalan
+                        {t('statusRunning')}
                       </span>
                       <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 text-[10px]">
-                        AKTIF
+                        {t('badgeActive')}
                       </Badge>
                     </div>
                     <div className="text-base font-bold text-emerald-950 dark:text-emerald-100">
                       {activeAcademicYear.name}
                     </div>
                     <div className="text-xs text-emerald-700 dark:text-emerald-400">
-                      Periode: {new Date(activeAcademicYear.startDate).toLocaleDateString('id-ID', { dateStyle: 'medium' })} s/d {new Date(activeAcademicYear.endDate).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                      {t('periodRange', {
+                        start: new Date(activeAcademicYear.startDate).toLocaleDateString(dateLocale, { dateStyle: 'medium' }),
+                        end: new Date(activeAcademicYear.endDate).toLocaleDateString(dateLocale, { dateStyle: 'medium' }),
+                      })}
                     </div>
                   </div>
                 ) : (
                   <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl text-xs text-amber-800 dark:text-amber-300">
-                    Belum ada tahun ajaran aktif. Silakan buat atau aktifkan tahun ajaran pada menu Manajemen Tahun Ajaran.
+                    {t('noActiveYear')}
                   </div>
                 )}
 
@@ -684,7 +691,7 @@ export function AdminSettingsClient({
                   className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  Buka Manajemen Tahun Ajaran
+                  {t('manageYearsLink')}
                 </Link>
               </CardContent>
             </Card>
@@ -700,10 +707,10 @@ export function AdminSettingsClient({
               <CardHeader>
                 <CardTitle className="text-lg font-bold text-[#002446] dark:text-white flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-[#FF8928]" />
-                  Default Parameter Ujian Online (CBT)
+                  {t('cbtTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Nilai-nilai di bawah ini akan digunakan sebagai nilai bawaan (auto-fill) ketika Guru membuat Kuis / Ujian CBT baru di kelasnya.
+                  {t('cbtDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -712,13 +719,13 @@ export function AdminSettingsClient({
                   <div className="flex items-start justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                     <div className="space-y-1 pr-4">
                       <div className="font-semibold text-sm text-[#002446] dark:text-white flex items-center gap-2">
-                        <span>Aktifkan CBT Lockdown Environment Secara Default</span>
+                        <span>{t('lockdownTitle')}</span>
                         <Badge variant="outline" className="text-[10px] text-brand-600 border-brand-200">
-                          Keamanan
+                          {t('badgeSecurity')}
                         </Badge>
                       </div>
                       <p className="text-xs text-gray-500 leading-relaxed">
-                        Memaksa layar ujian fullscreen, menonaktifkan klik kanan, blokir shortcut salin-tempel (Ctrl+C/Ctrl+V), dan memonitor perpindahan jendela/tab aplikasi.
+                        {t('lockdownDesc')}
                       </p>
                     </div>
                     <input
@@ -734,10 +741,10 @@ export function AdminSettingsClient({
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label htmlFor="tabSwitches" className="font-semibold text-sm text-[#002446] dark:text-white">
-                          Batas Toleransi Pindah Tab / Layar
+                          {t('maxSwitchesLabel')}
                         </Label>
                         <p className="text-xs text-gray-500">
-                          Jumlah maksimal siswa diizinkan meninggalkan tab ujian sebelum sistem melakukan auto-submit paksa.
+                          {t('maxSwitchesHint')}
                         </p>
                       </div>
                       <div className="w-24">
@@ -758,10 +765,10 @@ export function AdminSettingsClient({
                   <div className="flex items-start justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                     <div className="space-y-1 pr-4">
                       <div className="font-semibold text-sm text-[#002446] dark:text-white">
-                        Wajib Token Masuk Ujian Default
+                        {t('tokenTitle')}
                       </div>
                       <p className="text-xs text-gray-500 leading-relaxed">
-                        Siswa harus memasukkan 6 digit token rahasia sebelum dapat memulai pengerjaan soal ujian.
+                        {t('tokenDesc')}
                       </p>
                     </div>
                     <input
@@ -777,10 +784,10 @@ export function AdminSettingsClient({
                     <div className="flex items-start justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                       <div className="space-y-1 pr-2">
                         <div className="font-semibold text-xs text-[#002446] dark:text-white">
-                          Acak Urutan Soal
+                          {t('shuffleQuestionsTitle')}
                         </div>
                         <p className="text-[11px] text-gray-500">
-                          Tiap siswa menerima urutan nomor soal yang berbeda.
+                          {t('shuffleQuestionsDesc')}
                         </p>
                       </div>
                       <input
@@ -794,10 +801,10 @@ export function AdminSettingsClient({
                     <div className="flex items-start justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                       <div className="space-y-1 pr-2">
                         <div className="font-semibold text-xs text-[#002446] dark:text-white">
-                          Acak Opsi Pilihan Ganda
+                          {t('shuffleOptionsTitle')}
                         </div>
                         <p className="text-[11px] text-gray-500">
-                          Pilihan A, B, C, D diacak posisinya di setiap soal.
+                          {t('shuffleOptionsDesc')}
                         </p>
                       </div>
                       <input
@@ -816,7 +823,7 @@ export function AdminSettingsClient({
                       className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-2 px-5"
                     >
                       <Save className="w-4 h-4" />
-                      {savingCbt ? 'Menyimpan...' : 'Simpan Default CBT'}
+                      {savingCbt ? t('saving') : t('saveCbt')}
                     </Button>
                   </div>
                 </form>
@@ -829,15 +836,15 @@ export function AdminSettingsClient({
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Fleksibilitas Guru
+                  {t('teacherFlexTitle')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
                 <p>
-                  Pengaturan ini berfungsi sebagai <strong>rekomendasi & nilai standar</strong> sekolah agar tercipta keseragaman integritas pelaksanaan ujian.
+                  {t('teacherFlexP1')}
                 </p>
                 <p>
-                  Guru tetap memiliki wewenang untuk mematikan lockdown atau menonaktifkan token jika ujian bersifat kuis latihan harian ringan di kelas.
+                  {t('teacherFlexP2')}
                 </p>
               </CardContent>
             </Card>
@@ -853,17 +860,17 @@ export function AdminSettingsClient({
             <CardHeader>
               <CardTitle className="text-lg font-bold text-[#002446] dark:text-white flex items-center gap-2">
                 <UserCog className="w-5 h-5 text-[#FF8928]" />
-                Profil Pengguna Administrator
+                {t('adminTitle')}
               </CardTitle>
               <CardDescription>
-                Perbarui nama tampilan dan email resmi yang terhubung dengan akun admin ini.
+                {t('adminDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAdminProfileSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="adminName" className="font-medium">
-                    Nama Lengkap <span className="text-red-500">*</span>
+                    {t('adminNameLabel')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="adminName"
@@ -875,7 +882,7 @@ export function AdminSettingsClient({
 
                 <div className="space-y-1.5">
                   <Label htmlFor="adminEmail" className="font-medium">
-                    Alamat Email <span className="text-red-500">*</span>
+                    {t('adminEmailLabel')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="adminEmail"
@@ -893,7 +900,7 @@ export function AdminSettingsClient({
                     className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
-                    {savingAdminProfile ? 'Menyimpan...' : 'Perbarui Profil Admin'}
+                    {savingAdminProfile ? t('saving') : t('saveAdminProfile')}
                   </Button>
                 </div>
               </form>
@@ -905,17 +912,17 @@ export function AdminSettingsClient({
             <CardHeader>
               <CardTitle className="text-lg font-bold text-[#002446] dark:text-white flex items-center gap-2">
                 <KeyRound className="w-5 h-5 text-[#FF8928]" />
-                Ganti Kata Sandi
+                {t('changePasswordTitle')}
               </CardTitle>
               <CardDescription>
-                Gunakan kata sandi yang kuat dengan minimal 6 karakter kombinasi huruf dan angka.
+                {t('changePasswordDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="currentPassword" className="font-medium">
-                    Kata Sandi Saat Ini <span className="text-red-500">*</span>
+                    {t('currentPasswordLabel')} <span className="text-red-500">*</span>
                   </Label>
                   <div className="relative">
                     <Input
@@ -923,7 +930,7 @@ export function AdminSettingsClient({
                       type={showCurrentPassword ? 'text' : 'password'}
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Masukkan kata sandi lama Anda"
+                      placeholder={t('currentPasswordPlaceholder')}
                       required
                     />
                     <button
@@ -938,7 +945,7 @@ export function AdminSettingsClient({
 
                 <div className="space-y-1.5">
                   <Label htmlFor="newPassword" className="font-medium">
-                    Kata Sandi Baru <span className="text-red-500">*</span>
+                    {t('newPasswordLabel')} <span className="text-red-500">*</span>
                   </Label>
                   <div className="relative">
                     <Input
@@ -946,7 +953,7 @@ export function AdminSettingsClient({
                       type={showNewPassword ? 'text' : 'password'}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimal 6 karakter"
+                      placeholder={t('newPasswordPlaceholder')}
                       required
                     />
                     <button
@@ -961,14 +968,14 @@ export function AdminSettingsClient({
 
                 <div className="space-y-1.5">
                   <Label htmlFor="confirmPassword" className="font-medium">
-                    Konfirmasi Kata Sandi Baru <span className="text-red-500">*</span>
+                    {t('confirmPasswordLabel')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="confirmPassword"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Ulangi kata sandi baru"
+                    placeholder={t('confirmPasswordPlaceholder')}
                     required
                   />
                 </div>
@@ -980,7 +987,7 @@ export function AdminSettingsClient({
                     className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-2"
                   >
                     <Lock className="w-4 h-4" />
-                    {savingPassword ? 'Mengubah...' : 'Ubah Kata Sandi'}
+                    {savingPassword ? t('saving') : t('savePassword')}
                   </Button>
                 </div>
               </form>

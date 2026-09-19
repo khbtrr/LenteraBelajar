@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -88,6 +89,7 @@ export function CohortsClient({
   initialCohorts: CohortItem[];
   availableStudents: Student[];
 }) {
+  const t = useTranslations('adminCohorts');
   const { showAlert, showConfirm } = useDialog();
   const [cohorts, setCohorts] = useState<CohortItem[]>(initialCohorts);
   const [students, setStudents] = useState<Student[]>(availableStudents);
@@ -152,21 +154,21 @@ export function CohortsClient({
   // Export cohort members to Excel (.xlsx)
   const handleExportCohortExcel = (cohort: CohortItem) => {
     if (!cohort.members || cohort.members.length === 0) {
-      showAlert(`Grup kohort "${cohort.name}" belum memiliki siswa untuk diekspor.`, { type: 'error' });
+      showAlert(t('exportEmptyAlert', { name: cohort.name }), { type: 'error' });
       return;
     }
 
     const rows = cohort.members.map((m, idx) => ({
-      'No': idx + 1,
-      'NIS': m.user.nis || '-',
-      'Nama Lengkap': m.user.name,
-      'Email Siswa': m.user.email,
-      'Grup Kelas / Kohort': cohort.name,
+      [t('colNo')]: idx + 1,
+      [t('sheetNis')]: m.user.nis || '-',
+      [t('sheetFullName')]: m.user.name,
+      [t('sheetStudentEmail')]: m.user.email,
+      [t('sheetGroupName')]: cohort.name,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Daftar Siswa');
+    XLSX.utils.book_append_sheet(workbook, worksheet, t('sheetStudentList'));
 
     const safeFileName = `Daftar_Siswa_${cohort.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.xlsx`;
     XLSX.writeFile(workbook, safeFileName);
@@ -189,10 +191,10 @@ export function CohortsClient({
       ]);
       setCohortName('');
       setIsCreateOpen(false);
-      await showAlert(`Grup kohort "${created.name}" berhasil dibuat!`, { type: 'success' });
+      await showAlert(t('cohortCreatedAlert', { name: created.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal membuat grup kohort', { type: 'error' });
+      await showAlert(err?.message || t('cohortCreateFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -250,10 +252,10 @@ export function CohortsClient({
       );
 
       setSelectedToAddStudentIds(new Set());
-      await showAlert(`${userIds.length} siswa berhasil ditambahkan ke grup ${selectedCohort.name}!`, { type: 'success' });
+      await showAlert(t('addSuccessAlert', { count: userIds.length, cohortName: selectedCohort.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menambahkan siswa secara massal', { type: 'error' });
+      await showAlert(err?.message || t('addFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -263,11 +265,11 @@ export function CohortsClient({
   const handleBulkRemove = async () => {
     if (!selectedCohort || selectedToRemoveStudentIds.size === 0) return;
     const confirmed = await showConfirm(
-      `Apakah Anda yakin ingin mengeluarkan ${selectedToRemoveStudentIds.size} siswa dari ${selectedCohort.name}?`,
+      t('confirmRemoveDesc', { count: selectedToRemoveStudentIds.size, cohortName: selectedCohort.name }),
       {
-        title: 'Keluarkan Siswa',
-        confirmText: 'Ya, Keluarkan',
-        cancelText: 'Batal',
+        title: t('confirmRemoveTitle'),
+        confirmText: t('confirmRemoveButton'),
+        cancelText: t('cancelButton'),
       }
     );
     if (!confirmed) return;
@@ -311,10 +313,10 @@ export function CohortsClient({
       );
 
       setSelectedToRemoveStudentIds(new Set());
-      await showAlert(`${userIds.length} siswa berhasil dikeluarkan dari ${selectedCohort.name}`, { type: 'success' });
+      await showAlert(t('removeSuccessAlert', { count: userIds.length, cohortName: selectedCohort.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal mengeluarkan siswa', { type: 'error' });
+      await showAlert(err?.message || t('removeFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -358,7 +360,7 @@ export function CohortsClient({
 
     const exportList = Array.from(studentMap.values());
     if (exportList.length === 0) {
-      showAlert('Tidak ada data siswa untuk diekspor ke template', { type: 'error' });
+      showAlert(t('noStudentToExport'), { type: 'error' });
       return;
     }
 
@@ -393,7 +395,7 @@ export function CohortsClient({
         const json = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
 
         if (!json || json.length === 0) {
-          showAlert('File Excel kosong atau tidak memiliki baris data', { type: 'error' });
+          showAlert(t('emptyExcelAlert'), { type: 'error' });
           return;
         }
 
@@ -483,9 +485,7 @@ export function CohortsClient({
         setParsedExcelRows(parsed);
       } catch (err) {
         console.error(err);
-        showAlert('Gagal membaca file Excel. Pastikan format file .xlsx, .xls, atau .csv valid.', {
-          type: 'error',
-        });
+        showAlert(t('excelReadError'), { type: 'error' });
       }
     };
     reader.readAsBinaryString(file);
@@ -510,15 +510,13 @@ export function CohortsClient({
 
   const handleExecuteExcelPromotion = async () => {
     if (parsedExcelRows.length === 0) {
-      showAlert('Unggah file Excel pemetaan terlebih dahulu', { type: 'error' });
+      showAlert(t('emptyExcelAlert'), { type: 'error' });
       return;
     }
 
     const validRows = parsedExcelRows.filter((r) => r.nis && r.newCohortName);
     if (validRows.length === 0) {
-      showAlert('Tidak ada baris data valid (kolom NIS dan Kelas Baru harus terisi)', {
-        type: 'error',
-      });
+      showAlert(t('invalidExcelAlert'), { type: 'error' });
       return;
     }
 
@@ -528,15 +526,16 @@ export function CohortsClient({
     const retainedCount = parsedExcelRows.filter((r) => r.status === 'retained').length;
 
     const confirmed = await showConfirm(
-      `Terapkan pemetaan kenaikan kelas dari file Excel?\n\n` +
-      `• Naik Kelas: ${promoteCount} siswa\n` +
-      `• Mutasi Masuk (Siswa Baru): ${transferInCount} siswa (akun otomatis dibuat)\n` +
-      `• Mutasi Keluar: ${transferOutCount} siswa (akun dinonaktifkan)\n` +
-      `• Tinggal Kelas: ${retainedCount} siswa (dipertahankan di kelas asal)`,
+      t('confirmExcelDesc', {
+        promote: promoteCount,
+        transferIn: transferInCount,
+        transferOut: transferOutCount,
+        retained: retainedCount,
+      }),
       {
-        title: 'Terapkan Pemetaan Excel',
-        confirmText: 'Ya, Terapkan Sekarang',
-        cancelText: 'Batal',
+        title: t('confirmExcelTitle'),
+        confirmText: t('confirmExcelBtn'),
+        cancelText: t('cancelButton'),
       }
     );
     if (!confirmed) return;
@@ -555,18 +554,19 @@ export function CohortsClient({
       });
 
       await showAlert(
-        `Pemetaan kenaikan kelas berhasil diterapkan!\n\n` +
-        `• ${res.promotedCount} siswa berhasil naik kelas\n` +
-        `• ${res.transferInCount} siswa mutasi masuk baru didaftarkan\n` +
-        `• ${res.transferOutCount} siswa mutasi keluar telah dinonaktifkan\n` +
-        `• ${res.retainedCount} siswa tetap berada di rombel lama`,
-        { type: 'success' }
+        t('excelAppliedSuccess', {
+        promoted: res.promotedCount,
+        transferIn: res.transferInCount,
+        transferOut: res.transferOutCount,
+        retained: res.retainedCount,
+      }),
+      { type: 'success' }
       );
       setIsPromoteOpen(false);
       window.location.reload();
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menerapkan pemetaan Excel', { type: 'error' });
+      await showAlert(err?.message || t('excelApplyFailed'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -594,22 +594,22 @@ export function CohortsClient({
 
   const handleExecutePromotion = async () => {
     if (!sourceCohortId) {
-      await showAlert('Pilih kelas/kohort asal terlebih dahulu', { type: 'error' });
+      await showAlert(t('pickSourceFirst'), { type: 'error' });
       return;
     }
 
     if (targetCohortMode === 'new' && !newTargetCohortName.trim()) {
-      await showAlert('Ketikkan nama kohort tujuan baru', { type: 'error' });
+      await showAlert(t('typeNewTargetName'), { type: 'error' });
       return;
     }
 
     if (targetCohortMode === 'existing' && !existingTargetCohortId) {
-      await showAlert('Pilih kohort tujuan yang sudah ada', { type: 'error' });
+      await showAlert(t('pickExistingTarget'), { type: 'error' });
       return;
     }
 
     if (promotedStudentIds.size === 0) {
-      await showAlert('Pilih minimal satu siswa yang naik kelas', { type: 'error' });
+      await showAlert(t('pickMinOneStudent'), { type: 'error' });
       return;
     }
 
@@ -624,14 +624,14 @@ export function CohortsClient({
       });
 
       await showAlert(
-        `Kenaikan kelas berhasil! ${res.promotedCount} siswa telah dipromosikan ke kelas tujuan.`,
+        t('linearSuccessAlert', { count: res.promotedCount }),
         { type: 'success' }
       );
       setIsPromoteOpen(false);
       window.location.reload();
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal mengeksekusi kenaikan kelas', { type: 'error' });
+      await showAlert(err?.message || t('linearFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -657,18 +657,19 @@ export function CohortsClient({
 
   const handleExecuteGraduation = async () => {
     if (!gradCohortId || graduatedStudentIds.size === 0) {
-      await showAlert('Pilih kohort dan minimal satu siswa yang lulus', { type: 'error' });
+      await showAlert(t('pickCohortAndStudentAlert'), { type: 'error' });
       return;
     }
 
     const confirmed = await showConfirm(
-      `Yakin ingin meluluskan ${graduatedStudentIds.size} siswa terpilih?${
-        deactivateAccounts ? ' Akun siswa juga akan dinonaktifkan (status alumni).' : ''
-      }`,
+      t('confirmGradDesc', {
+        count: graduatedStudentIds.size,
+        deactNote: deactivateAccounts ? t('confirmGradDeactNote') : '',
+      }),
       {
-        title: 'Konfirmasi Kelulusan Siswa',
-        confirmText: 'Ya, Luluskan Siswa',
-        cancelText: 'Batal',
+        title: t('confirmGradTitle'),
+        confirmText: t('confirmGradBtn'),
+        cancelText: t('cancelButton'),
       }
     );
     if (!confirmed) return;
@@ -681,12 +682,12 @@ export function CohortsClient({
         deactivateAccount: deactivateAccounts,
       });
 
-      await showAlert(`Proses kelulusan selesai! ${res.graduatedCount} siswa telah diluluskan.`, { type: 'success' });
+      await showAlert(t('gradSuccessAlert', { count: res.graduatedCount }), { type: 'success' });
       setIsGraduationOpen(false);
       window.location.reload();
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal memproses kelulusan', { type: 'error' });
+      await showAlert(err?.message || t('gradFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -719,9 +720,9 @@ export function CohortsClient({
           <div className="flex items-center gap-2.5 text-amber-900 dark:text-amber-200">
             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
             <div>
-              <span className="font-bold">{unassignedStudentsCount} Siswa Belum Memiliki Kelas!</span>
+              <span className="font-bold">{t('unassignedBannerTitle', { count: unassignedStudentsCount })}</span>
               <p className="text-amber-700 dark:text-amber-300 mt-0.5">
-                Siswa-siswa ini belum terdaftar di grup kohort manapun. Anda dapat memasukkannya menggunakan fitur Multi-Select Tambah Siswa.
+                {t('unassignedBannerDesc')}
               </p>
             </div>
           </div>
@@ -735,7 +736,7 @@ export function CohortsClient({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari nama grup kohort..."
+            placeholder={t('searchPlaceholder')}
             className="pl-9 text-sm"
           />
         </div>
@@ -746,7 +747,7 @@ export function CohortsClient({
             className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 text-xs font-semibold"
           >
             <TrendingUp className="w-4 h-4" />
-            Kenaikan Kelas (Promosi)
+            {t('btnPromote')}
           </Button>
 
           <Button
@@ -755,7 +756,7 @@ export function CohortsClient({
             className="border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950/30 flex items-center gap-1.5 text-xs font-semibold"
           >
             <Award className="w-4 h-4 text-purple-600" />
-            Kelulusan Siswa
+            {t('btnGraduation')}
           </Button>
 
           <Button
@@ -763,7 +764,7 @@ export function CohortsClient({
             className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5 text-xs font-semibold"
           >
             <Plus className="w-4 h-4" />
-            Buat Kohort Baru
+            {t('btnCreateCohort')}
           </Button>
         </div>
       </div>
@@ -773,9 +774,9 @@ export function CohortsClient({
         {filteredCohorts.length === 0 ? (
           <div className="col-span-full text-center py-12 text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-dashed p-8">
             <UsersRound className="h-10 w-10 mx-auto text-gray-400 mb-2" />
-            <p className="font-semibold text-gray-700 dark:text-gray-300">Belum ada grup kohort yang dibuat.</p>
+            <p className="font-semibold text-gray-700 dark:text-gray-300">{t('emptyCohortsTitle')}</p>
             <p className="text-xs text-gray-500 mt-1">
-              Buat grup kelas/kohort untuk mengelompokkan siswa secara terstruktur.
+              {t('emptyCohortsDesc')}
             </p>
           </div>
         ) : (
@@ -787,10 +788,10 @@ export function CohortsClient({
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant="outline" className="text-xs">
-                    {cohort._count.enrollments} Course Sinkron
+                    {t('coursesSynced', { count: cohort._count.enrollments })}
                   </Badge>
                   <Badge className="bg-[#FF8928] text-white text-xs">
-                    {cohort._count.members} Siswa
+                    {t('studentsCount', { count: cohort._count.members })}
                   </Badge>
                 </div>
                 <CardTitle className="text-lg font-bold text-[#002446] dark:text-white mt-2 truncate">
@@ -803,7 +804,7 @@ export function CohortsClient({
                   {cohort.members.length > 0 ? (
                     cohort.members.map((m) => m.user.name).join(', ')
                   ) : (
-                    <span className="italic text-gray-400">Belum ada siswa di dalam grup ini.</span>
+                    <span className="italic text-gray-400">{t('noStudentsInGroup')}</span>
                   )}
                 </div>
 
@@ -814,7 +815,7 @@ export function CohortsClient({
                     className="flex-1 bg-[#002446] hover:bg-[#001b33] text-white text-xs flex items-center justify-center gap-1.5"
                   >
                     <UserPlus className="h-3.5 w-3.5" />
-                    Kelola Anggota
+                    {t('manageMembers')}
                   </Button>
 
                   <Button
@@ -822,7 +823,7 @@ export function CohortsClient({
                     variant="outline"
                     onClick={() => handleExportCohortExcel(cohort)}
                     className="text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs px-2.5"
-                    title="Ekspor Daftar Siswa ke Excel (.xlsx)"
+                    title={t('exportExcelTooltip')}
                   >
                     <Download className="h-3.5 w-3.5" />
                   </Button>
@@ -832,7 +833,7 @@ export function CohortsClient({
                       size="sm"
                       variant="outline"
                       className="text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 border-blue-200 dark:border-blue-900 text-xs px-2.5"
-                      title="Lihat Leger Nilai & Rekapitulasi Rombel"
+                      title={t('viewLegerTooltip')}
                     >
                       <FileSpreadsheet className="h-3.5 w-3.5" />
                     </Button>
@@ -850,23 +851,23 @@ export function CohortsClient({
           <form onSubmit={handleCreateCohort}>
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-[#002446] dark:text-white">
-                Buat Grup Kohort Baru
+                {t('createModalTitle')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-3">
               <div className="space-y-1.5">
                 <Label htmlFor="chName" className="font-medium">
-                  Nama Grup Kohort <span className="text-red-500">*</span>
+                  {t('cohortNameLabel')} <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="chName"
-                  placeholder="misal: Kohort-X-MIPA-1-2026"
+                  placeholder={t('cohortNamePlaceholder')}
                   value={cohortName}
                   onChange={(e) => setCohortName(e.target.value)}
                   required
                 />
                 <p className="text-xs text-gray-500">
-                  Format disarankan: Jenjang-Kelas-Jurusan-Tahun (contoh: X-MIPA-1-2026).
+                  {t('cohortNameHint')}
                 </p>
               </div>
             </div>
@@ -904,7 +905,7 @@ export function CohortsClient({
                   {selectedCohort?.name}
                 </DialogTitle>
                 <DialogDescription className="text-xs mt-0.5">
-                  Total {selectedCohort?.members.length || 0} siswa terdaftar di grup ini.
+                  {t('manageModalDesc', { count: selectedCohort?.members.length || 0 })}
                 </DialogDescription>
               </div>
               {selectedCohort && (
@@ -915,7 +916,7 @@ export function CohortsClient({
                   className="text-xs flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Ekspor Excel (.xlsx)
+                  {t('exportExcelBtn')}
                 </Button>
               )}
             </div>
@@ -931,7 +932,7 @@ export function CohortsClient({
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
                 }`}
               >
-                Anggota di Kelas Ini ({selectedCohort?.members.length || 0})
+                {t('tabCurrentMembers', { count: selectedCohort?.members.length || 0 })}
               </button>
               <button
                 type="button"
@@ -942,7 +943,7 @@ export function CohortsClient({
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
                 }`}
               >
-                + Tambah Siswa Baru Massal
+                {t('tabAddMembers')}
               </button>
             </div>
           </DialogHeader>
@@ -972,7 +973,7 @@ export function CohortsClient({
                       className="w-4 h-4 rounded accent-rose-600 cursor-pointer"
                     />
                     <Label htmlFor="selectAllRemove" className="font-semibold cursor-pointer">
-                      Pilih Semua Anggota ({selectedCohort.members.length})
+                      {t('selectAllMembers', { count: selectedCohort.members.length })}
                     </Label>
                   </div>
 
@@ -984,7 +985,7 @@ export function CohortsClient({
                       className="bg-rose-600 hover:bg-rose-700 text-white text-xs h-7 px-2.5 flex items-center gap-1"
                     >
                       <UserMinus className="w-3.5 h-3.5" />
-                      Keluarkan {selectedToRemoveStudentIds.size} Siswa Terpilih
+                      {t('btnRemoveSelected', { count: selectedToRemoveStudentIds.size })}
                     </Button>
                   )}
                 </div>
@@ -995,17 +996,17 @@ export function CohortsClient({
                   <TableHeader>
                     <TableRow className="bg-gray-50/70 dark:bg-gray-800/50">
                       <TableHead className="w-10"></TableHead>
-                      <TableHead>NIS</TableHead>
-                      <TableHead>Nama Siswa</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
+                      <TableHead>{t('colNis')}</TableHead>
+                      <TableHead>{t('colStudentName')}</TableHead>
+                      <TableHead>{t('colEmail')}</TableHead>
+                      <TableHead className="text-right">{t('colActions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {!selectedCohort?.members || selectedCohort.members.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-gray-500 text-xs">
-                          Belum ada siswa dalam grup ini. Klik tab &quot;+ Tambah Siswa Baru Massal&quot; untuk memasukkan siswa.
+                          {t('emptyCurrentMembers')}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -1045,7 +1046,7 @@ export function CohortsClient({
                                   handleBulkRemove();
                                 }}
                                 disabled={loading}
-                                title="Keluarkan siswa"
+                                title={t('removeStudentTooltip')}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
@@ -1069,7 +1070,7 @@ export function CohortsClient({
                   <Input
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
-                    placeholder="Cari siswa berdasarkan nama atau NIS..."
+                    placeholder={t('searchStudentPlaceholder')}
                     className="pl-8 h-8 text-xs bg-white dark:bg-gray-900"
                   />
                 </div>
@@ -1085,7 +1086,7 @@ export function CohortsClient({
                     }`}
                   >
                     <Filter className="w-3 h-3" />
-                    Hanya Siswa Tanpa Kelas
+                    {t('btnFilterUnassigned')}
                   </button>
 
                   <Button
@@ -1095,7 +1096,7 @@ export function CohortsClient({
                     className="bg-[#FF8928] hover:bg-[#ff7b10] text-white text-xs h-8 px-3 font-semibold flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    Tambahkan ({selectedToAddStudentIds.size}) Siswa
+                    {t('btnAddSelected', { count: selectedToAddStudentIds.size })}
                   </Button>
                 </div>
               </div>
@@ -1122,17 +1123,17 @@ export function CohortsClient({
                           className="w-4 h-4 rounded accent-[#002446] cursor-pointer"
                         />
                       </TableHead>
-                      <TableHead>NIS</TableHead>
-                      <TableHead>Nama Siswa</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Status Kelas Saat Ini</TableHead>
+                      <TableHead>{t('colNis')}</TableHead>
+                      <TableHead>{t('colStudentName')}</TableHead>
+                      <TableHead>{t('colEmail')}</TableHead>
+                      <TableHead>{t('colCurrentClassStatus')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {availableToAdd.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-gray-400 text-xs">
-                          Tidak ada siswa yang sesuai filter untuk ditambahkan.
+                          {t('emptyAvailableToAdd')}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -1170,7 +1171,7 @@ export function CohortsClient({
                                 </Badge>
                               ) : (
                                 <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px]">
-                                  Belum Ada Kelas
+                                  {t('noClassBadge')}
                                 </Badge>
                               )}
                             </TableCell>
@@ -1206,10 +1207,10 @@ export function CohortsClient({
               </div>
               <div>
                 <DialogTitle className="text-lg font-bold text-[#002446] dark:text-white">
-                  Siklus Kenaikan Kelas &amp; Pemetaan Angkatan
+                  {t('promoteModalTitle')}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
-                  Impor berkas pembagian kelas resmi dari TU (Excel/CSV) atau lakukan pemindahan rombel linier secara terpusat.
+                  {t('promoteModalDesc')}
                 </DialogDescription>
               </div>
             </div>
@@ -1226,9 +1227,9 @@ export function CohortsClient({
                 }`}
               >
                 <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                <span>1. Impor Pemetaan Berkas TU (Excel / CSV)</span>
+                <span>{t('tabImportTu')}</span>
                 <Badge className="bg-blue-600 text-white text-[10px] py-0 px-1.5 hidden sm:inline-flex">
-                  Metode Utama
+                  {t('mainMethodBadge')}
                 </Badge>
               </button>
 
@@ -1242,7 +1243,7 @@ export function CohortsClient({
                 }`}
               >
                 <Layers className="w-4 h-4 text-purple-600" />
-                <span>2. Kenaikan Linier (1 Rombel Tunggal)</span>
+                <span>{t('tabLinear')}</span>
               </button>
             </div>
           </DialogHeader>
@@ -1255,7 +1256,7 @@ export function CohortsClient({
                 <div className="flex items-center justify-between">
                   <Label className="font-bold text-sm text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
                     <Download className="w-4 h-4 text-blue-600" />
-                    Langkah 1: Unduh Template Pemetaan Angkatan (.xlsx)
+                    {t('step1DownloadTitle')}
                   </Label>
                   <Button
                     type="button"
@@ -1264,17 +1265,17 @@ export function CohortsClient({
                     className="h-8 text-xs font-semibold border-blue-300 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"
                   >
                     <Download className="w-3.5 h-3.5 mr-1" />
-                    Unduh Template Excel
+                    {t('exportExcelBtn')}
                   </Button>
                 </div>
                 <p className="text-[11px] text-gray-600 dark:text-gray-300">
-                  Template Excel akan otomatis berisi daftar nama &amp; NIS seluruh siswa dari kelas asal yang dipilih.
+                  {t('step1DownloadDesc')}
                 </p>
 
                 {/* Filter rombel yang diekspor */}
                 <div className="space-y-1 pt-1">
                   <Label className="text-[11px] text-gray-500 font-semibold">
-                    Pilih Rombel yang dimasukkan ke template (Kosongkan jika ingin mengekspor semua siswa):
+                    {t('selectCohortsToExport')}
                   </Label>
                   <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
                     {cohorts.map((c) => {
@@ -1304,25 +1305,13 @@ export function CohortsClient({
 
                 <div className="p-2.5 bg-white dark:bg-gray-900 rounded-lg border text-[11px] text-gray-600 dark:text-gray-400 space-y-1">
                   <p className="font-semibold text-gray-800 dark:text-gray-200">
-                    Petunjuk Pengisian Kolom &quot;Kelas Baru&quot;:
+                    {t('instructionsTitle')}
                   </p>
                   <ul className="list-disc list-inside space-y-0.5">
-                    <li>
-                      <strong>Naik Kelas:</strong> Tulis nama rombel tujuan baru (misal:{' '}
-                      <span className="font-mono text-emerald-600">XI-MIPA-1</span>).
-                    </li>
-                    <li>
-                      <strong>Tinggal Kelas:</strong> Ketik{' '}
-                      <span className="font-mono text-amber-600">TINGGAL</span> atau biarkan sama dengan kelas asal.
-                    </li>
-                    <li>
-                      <strong>Mutasi Keluar:</strong> Ketik{' '}
-                      <span className="font-mono text-red-600">MUTASI</span> atau{' '}
-                      <span className="font-mono text-red-600">KELUAR</span> (siswa dikeluarkan dan akun dinonaktifkan).
-                    </li>
-                    <li>
-                      <strong>Mutasi Masuk (Siswa Baru):</strong> Tambahkan baris baru di bawah dengan NIS, Nama, dan Kelas Baru tujuan (akun otomatis dibuat).
-                    </li>
+                    <li>{t('instructionPromote')}</li>
+                    <li>{t('instructionRetained')}</li>
+                    <li>{t('instructionTransferOut')}</li>
+                    <li>{t('instructionTransferIn')}</li>
                   </ul>
                 </div>
               </div>
@@ -1331,7 +1320,7 @@ export function CohortsClient({
               <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
                 <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
                   <FileUp className="w-4 h-4 text-blue-600" />
-                  Langkah 2: Unggah File Excel yang Telah Diisi
+                  {t('step2UploadTitle')}
                 </Label>
                 <div className="flex items-center gap-3">
                   <Input
@@ -1355,37 +1344,37 @@ export function CohortsClient({
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="p-2.5 rounded-xl border bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200">
                       <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold block">
-                        Naik Kelas
+                        {t('badgePromote')}
                       </span>
                       <span className="text-lg font-bold text-emerald-800 dark:text-emerald-200">
-                        {parsedExcelRows.filter((r) => r.status === 'promote').length} Siswa
+                        {t('studentsUnit', { count: parsedExcelRows.filter((r) => r.status === 'promote').length })}
                       </span>
                     </div>
 
                     <div className="p-2.5 rounded-xl border bg-blue-50 dark:bg-blue-950/30 border-blue-200">
                       <span className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold block">
-                        Mutasi Masuk (Baru)
+                        {t('badgeTransferIn')}
                       </span>
                       <span className="text-lg font-bold text-blue-800 dark:text-blue-200">
-                        {parsedExcelRows.filter((r) => r.status === 'transfer_in').length} Siswa
+                        {t('studentsUnit', { count: parsedExcelRows.filter((r) => r.status === 'transfer_in').length })}
                       </span>
                     </div>
 
                     <div className="p-2.5 rounded-xl border bg-amber-50 dark:bg-amber-950/30 border-amber-200">
                       <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold block">
-                        Tinggal Kelas
+                        {t('badgeRetained')}
                       </span>
                       <span className="text-lg font-bold text-amber-800 dark:text-amber-200">
-                        {parsedExcelRows.filter((r) => r.status === 'retained').length} Siswa
+                        {t('studentsUnit', { count: parsedExcelRows.filter((r) => r.status === 'retained').length })}
                       </span>
                     </div>
 
                     <div className="p-2.5 rounded-xl border bg-red-50 dark:bg-red-950/30 border-red-200">
                       <span className="text-[10px] text-red-700 dark:text-red-300 font-semibold block">
-                        Mutasi Keluar
+                        {t('badgeTransferOut')}
                       </span>
                       <span className="text-lg font-bold text-red-800 dark:text-red-200">
-                        {parsedExcelRows.filter((r) => r.status === 'transfer_out').length} Siswa
+                        {t('studentsUnit', { count: parsedExcelRows.filter((r) => r.status === 'transfer_out').length })}
                       </span>
                     </div>
                   </div>
@@ -1396,10 +1385,10 @@ export function CohortsClient({
                       <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <div className="text-xs space-y-1">
                         <p className="font-semibold text-amber-900 dark:text-amber-200">
-                          Perhatian: {unlistedStudents.length} Siswa dari Rombel Asal Tidak Tercantum di Berkas TU
+                          {t('unlistedWarningTitle', { count: unlistedStudents.length })}
                         </p>
                         <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                          Siswa-siswa di bawah ini tidak ditemukan di berkas Excel sehingga akan <strong>tetap dipertahankan di rombel asalnya</strong>:
+                          {t('unlistedWarningDesc')}
                         </p>
                         <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto pt-1">
                           {unlistedStudents.map((u) => (
@@ -1427,11 +1416,11 @@ export function CohortsClient({
                                 : 'bg-gray-100 text-gray-600 dark:bg-gray-800 hover:bg-gray-200'
                             }`}
                           >
-                            {st === 'all' && `Semua (${parsedExcelRows.length})`}
-                            {st === 'promote' && 'Naik Kelas'}
-                            {st === 'transfer_in' && 'Mutasi Masuk'}
-                            {st === 'retained' && 'Tinggal Kelas'}
-                            {st === 'transfer_out' && 'Mutasi Keluar'}
+                            {st === 'all' && t('filterAll', { count: parsedExcelRows.length })}
+                            {st === 'promote' && t('badgePromote')}
+                            {st === 'transfer_in' && t('badgeTransferIn')}
+                            {st === 'retained' && t('badgeRetained')}
+                            {st === 'transfer_out' && t('badgeTransferOut')}
                           </button>
                         )
                       )}
@@ -1440,7 +1429,7 @@ export function CohortsClient({
                     <Input
                       value={excelSearch}
                       onChange={(e) => setExcelSearch(e.target.value)}
-                      placeholder="Cari NIS atau nama..."
+                      placeholder={t('searchPreviewPlaceholder')}
                       className="h-8 w-44 text-xs"
                     />
                   </div>
@@ -1450,12 +1439,12 @@ export function CohortsClient({
                     <Table>
                       <TableHeader className="bg-gray-50 dark:bg-gray-800/60 sticky top-0">
                         <TableRow>
-                          <TableHead className="w-10 text-[11px]">No</TableHead>
-                          <TableHead className="text-[11px]">NIS</TableHead>
-                          <TableHead className="text-[11px]">Nama Siswa</TableHead>
-                          <TableHead className="text-[11px]">Kelas Asal</TableHead>
-                          <TableHead className="text-[11px]">Status &amp; Aksi</TableHead>
-                          <TableHead className="text-[11px]">Kelas Tujuan Baru</TableHead>
+                          <TableHead className="w-10 text-[11px]">{t('colNo')}</TableHead>
+                          <TableHead className="text-[11px]">{t('colNis')}</TableHead>
+                          <TableHead className="text-[11px]">{t('colStudentName')}</TableHead>
+                          <TableHead className="text-[11px]">{t('sheetGroupName')}</TableHead>
+                          <TableHead className="text-[11px]">{t('previewColStatus')}</TableHead>
+                          <TableHead className="text-[11px]">{t('previewColTarget')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1477,22 +1466,22 @@ export function CohortsClient({
                               <TableCell>
                                 {r.status === 'promote' && (
                                   <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px]">
-                                    Naik Kelas
+                                    {t('badgePromote')}
                                   </Badge>
                                 )}
                                 {r.status === 'transfer_in' && (
                                   <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 text-[10px]">
-                                    Mutasi Masuk (Akun Baru)
+                                    {t('badgeTransferInNewAccount')}
                                   </Badge>
                                 )}
                                 {r.status === 'retained' && (
                                   <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px]">
-                                    Tinggal Kelas
+                                    {t('badgeRetained')}
                                   </Badge>
                                 )}
                                 {r.status === 'transfer_out' && (
                                   <Badge className="bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 text-[10px]">
-                                    Mutasi Keluar (Nonaktif)
+                                    {t('badgeTransferOutDeactivated')}
                                   </Badge>
                                 )}
                               </TableCell>
@@ -1518,7 +1507,7 @@ export function CohortsClient({
                       htmlFor="removeSourceExcel"
                       className="text-xs font-semibold text-[#002446] dark:text-white cursor-pointer"
                     >
-                      Keluarkan siswa yang naik kelas dari rombel asal (siswa tinggal kelas tetap di kelas lamanya)
+                      {t('optRemoveSourceExcel')}
                     </Label>
                   </div>
                 </div>
@@ -1532,14 +1521,14 @@ export function CohortsClient({
               {/* Step 1: Pilih Kohort Asal */}
               <div className="space-y-1.5">
                 <Label className="font-semibold">
-                  1. Pilih Kelas / Kohort Asal <span className="text-red-500">*</span>
+                  {t('step1SourceCohort')} <span className="text-red-500">*</span>
                 </Label>
                 <select
                   value={sourceCohortId}
                   onChange={(e) => handleSelectSourceCohort(e.target.value)}
                   className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
                 >
-                  <option value="">-- Pilih Kohort Asal (misal: Kelas X-MIPA-1) --</option>
+                  <option value="">{t('selectSourcePlaceholder')}</option>
                   {cohorts.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.members.length} Siswa)
@@ -1552,7 +1541,7 @@ export function CohortsClient({
               {sourceCohortId && (
                 <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
                   <Label className="font-semibold">
-                    2. Tentukan Kelas / Kohort Tujuan <span className="text-red-500">*</span>
+                    {t('step2TargetCohort')} <span className="text-red-500">*</span>
                   </Label>
                   <div className="flex items-center gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -1563,7 +1552,7 @@ export function CohortsClient({
                         onChange={() => setTargetCohortMode('new')}
                         className="accent-emerald-600"
                       />
-                      <span>Buat Kohort Baru</span>
+                      <span>{t('optCreateNewCohort')}</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -1573,7 +1562,7 @@ export function CohortsClient({
                         onChange={() => setTargetCohortMode('existing')}
                         className="accent-emerald-600"
                       />
-                      <span>Gunakan Kohort yang Sudah Ada</span>
+                      <span>{t('optUseExistingCohort')}</span>
                     </label>
                   </div>
 
@@ -1582,11 +1571,11 @@ export function CohortsClient({
                       <Input
                         value={newTargetCohortName}
                         onChange={(e) => setNewTargetCohortName(e.target.value)}
-                        placeholder="Nama kelas tujuan baru (misal: Kohort-XI-MIPA-1-2027)"
+                        placeholder={t('newCohortPlaceholder')}
                         className="text-xs"
                       />
                       <p className="text-[11px] text-gray-500">
-                        Kohort baru ini akan otomatis dibuat dan diisi oleh siswa yang dipromosikan.
+                        {t('newCohortHint')}
                       </p>
                     </div>
                   ) : (
@@ -1595,7 +1584,7 @@ export function CohortsClient({
                       onChange={(e) => setExistingTargetCohortId(e.target.value)}
                       className="w-full h-9 px-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
                     >
-                      <option value="">-- Pilih Kohort Tujuan --</option>
+                      <option value="">{t('selectTargetPlaceholder')}</option>
                       {cohorts
                         .filter((c) => c.id !== sourceCohortId)
                         .map((c) => (
@@ -1613,7 +1602,7 @@ export function CohortsClient({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="font-semibold">
-                      3. Siswa yang Naik Kelas ({promotedStudentIds.size} Terpilih)
+                      {t('step3PromotedStudents', { count: promotedStudentIds.size })}
                     </Label>
                     <div className="flex items-center gap-2">
                       <button
@@ -1637,7 +1626,7 @@ export function CohortsClient({
                     </div>
                   </div>
                   <p className="text-[11px] text-gray-500">
-                    Hapus centang bagi siswa yang <strong>tinggal kelas</strong> agar tetap berada di kelas lama.
+                    {t('step3Hint')}
                   </p>
 
                   <div className="border rounded-lg max-h-48 overflow-y-auto divide-y bg-white dark:bg-gray-900">
@@ -1672,7 +1661,7 @@ export function CohortsClient({
                               </div>
                             </div>
                             <Badge variant={isSelected ? 'default' : 'secondary'} className="text-[10px]">
-                              {isSelected ? 'Naik Kelas' : 'Tinggal Kelas'}
+                              {isSelected ? t('badgePromote') : t('badgeRetained')}
                             </Badge>
                           </label>
                         );
@@ -1695,7 +1684,7 @@ export function CohortsClient({
                     htmlFor="removeSourceLinear"
                     className="text-xs font-semibold text-emerald-950 dark:text-emerald-200 cursor-pointer"
                   >
-                    Keluarkan siswa yang naik kelas dari kohort asal (disarankan)
+                    {t('optRemoveSourceLinear')}
                   </Label>
                 </div>
               )}
@@ -1722,9 +1711,7 @@ export function CohortsClient({
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
-                  {loading
-                    ? 'Menerapkan Pemetaan...'
-                    : `Terapkan Pemetaan Berkas TU (${parsedExcelRows.length} Baris)`}
+                  {loading ? t('applyingMapping') : t('btnApplyExcelMapping', { count: parsedExcelRows.length })}
                 </Button>
               )}
 
@@ -1735,9 +1722,7 @@ export function CohortsClient({
                   className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex items-center gap-1.5"
                 >
                   <TrendingUp className="w-4 h-4" />
-                  {loading
-                    ? 'Memproses...'
-                    : `Eksekusi Kenaikan Linier (${promotedStudentIds.size} Siswa)`}
+                  {loading ? t('processing') : t('btnExecuteLinear', { count: promotedStudentIds.size })}
                 </Button>
               )}
             </div>
@@ -1751,24 +1736,24 @@ export function CohortsClient({
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white flex items-center gap-2">
               <Award className="w-5 h-5 text-purple-600" />
-              Kelulusan Siswa (Tingkat Akhir)
+              {t('gradModalTitle')}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Lepaskan siswa tingkat akhir dari keanggotaan kohort aktif saat mereka telah menyelesaikan pendidikan.
+              {t('gradModalDesc')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2 text-xs">
             <div className="space-y-1.5">
               <Label className="font-semibold">
-                Pilih Kelas Tingkat Akhir (misal: Kelas XII) <span className="text-red-500">*</span>
+                {t('gradSelectLabel')} <span className="text-red-500">*</span>
               </Label>
               <select
                 value={gradCohortId}
                 onChange={(e) => handleSelectGradCohort(e.target.value)}
                 className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
               >
-                <option value="">-- Pilih Kohort Siswa Lulus --</option>
+                <option value="">{t('gradSelectPlaceholder')}</option>
                 {cohorts.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.members.length} Siswa)
@@ -1781,7 +1766,7 @@ export function CohortsClient({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="font-semibold">
-                    Daftar Siswa yang Lulus ({graduatedStudentIds.size} Siswa)
+                    {t('gradStudentsList', { count: graduatedStudentIds.size })}
                   </Label>
                 </div>
                 <div className="border rounded-lg max-h-44 overflow-y-auto divide-y bg-white dark:bg-gray-900">
@@ -1822,7 +1807,7 @@ export function CohortsClient({
                     className="w-4 h-4 rounded accent-purple-600 cursor-pointer"
                   />
                   <Label htmlFor="deact" className="text-xs font-semibold text-purple-950 dark:text-purple-200 cursor-pointer">
-                    Tandai akun sebagai alumni & nonaktifkan akses login
+                    {t('gradDeactivateOpt')}
                   </Label>
                 </div>
               </div>

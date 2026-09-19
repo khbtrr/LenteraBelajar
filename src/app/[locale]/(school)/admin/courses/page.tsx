@@ -2,8 +2,10 @@ import { getCourses, getTeachersInSchool } from '@/lib/actions/course';
 import { getAcademicYears } from '@/lib/actions/academic-year';
 import { getCategories } from '@/lib/actions/category';
 import { AdminCoursesClient } from './client';
+import { getTranslations } from 'next-intl/server';
 
 export default async function AdminCoursesPage() {
+  const t = await getTranslations('adminCourses');
   const [courses, academicYears, categories, teachers] = await Promise.all([
     getCourses(),
     getAcademicYears(),
@@ -14,9 +16,9 @@ export default async function AdminCoursesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#002446] dark:text-white">Manajemen Course</h1>
+        <h1 className="text-2xl font-bold text-[#002446] dark:text-white">{t('pageTitle')}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Daftar seluruh mata pelajaran / course yang diselenggarakan di sekolah.
+          {t('pageDesc')}
         </p>
       </div>
 

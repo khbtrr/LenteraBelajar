@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +61,7 @@ interface UserItem {
 }
 
 export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
+  const t = useTranslations('adminUsers');
   const { showAlert, showConfirm } = useDialog();
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
   const [search, setSearch] = useState('');
@@ -106,10 +108,10 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
       setEmail('');
       setNis('');
       setNip('');
-      await showAlert(`Pengguna ${created.name} berhasil ditambahkan!`, { type: 'success' });
+      await showAlert(t('userAddedAlert', { name: created.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal membuat pengguna', { type: 'error' });
+      await showAlert(err?.message || t('userAddFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -143,10 +145,10 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         prev.map((u) => (u.id === editUserId ? { ...u, ...updated } : u))
       );
       setIsEditOpen(false);
-      await showAlert(`Data pengguna ${updated.name} berhasil diperbarui!`, { type: 'success' });
+      await showAlert(t('userUpdatedAlert', { name: updated.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal memperbarui pengguna', { type: 'error' });
+      await showAlert(err?.message || t('userUpdateFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -154,11 +156,11 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
 
   const handleDelete = async (user: UserItem) => {
     const confirmed = await showConfirm(
-      `Apakah Anda yakin ingin menonaktifkan pengguna "${user.name}"?\n\nSiswa yang lulus atau guru yang pindah dapat dialihkan ke status Nonaktif agar riwayat akademik dan tugas tetap terjaga.`,
+      t('deactivateConfirmDesc', { name: user.name }),
       {
-        title: 'Konfirmasi Penonaktifan Pengguna',
-        confirmText: 'Ya, Nonaktifkan',
-        cancelText: 'Batal',
+        title: t('deactivateConfirmTitle'),
+        confirmText: t('confirmDeactivate'),
+        cancelText: t('cancelButton'),
       }
     );
     if (!confirmed) return;
@@ -170,12 +172,12 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         prev.map((u) => (u.id === user.id ? { ...u, isActive: false } : u))
       );
       await showAlert(
-        res.message || `Pengguna ${user.name} berhasil dinonaktifkan.`,
+        res.message || t('userDeactivatedAlert', { name: user.name }),
         { type: 'success' }
       );
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menonaktifkan pengguna', { type: 'error' });
+      await showAlert(err?.message || t('userDeactivateFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -206,7 +208,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         setPreviewData(parsed.filter((p) => p.email && p.name));
       } catch (err) {
         console.error(err);
-        showAlert('Format file tidak valid atau rusak. Gunakan file Excel (.xlsx / .xls).', { type: 'error' });
+        showAlert(t('invalidFileFormat'), { type: 'error' });
       }
     };
     reader.readAsBinaryString(file);
@@ -218,14 +220,14 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
     setImportStatus(null);
     try {
       const res = await bulkImportUsers(previewData);
-      setImportStatus(`Berhasil mengimpor ${res.count} pengguna!`);
-      await showAlert(`Berhasil mengimpor ${res.count} pengguna! Halaman akan disegarkan.`, { type: 'success' });
+      setImportStatus(t('importSuccess', { count: res.count }));
+      await showAlert(t('importSuccessAlert', { count: res.count }), { type: 'success' });
       setTimeout(() => {
         window.location.reload();
       }, 500);
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal mengimpor data', { type: 'error' });
+      await showAlert(err?.message || t('importFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -239,32 +241,32 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
       );
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal memperbarui status', { type: 'error' });
+      await showAlert(err?.message || t('statusUpdateFailedAlert'), { type: 'error' });
     }
   };
 
   const handleResetPassword = async (user: UserItem) => {
     const defaultText = user.role === Role.STUDENT && user.nis ? `NIS (${user.nis})` : 'Lentera123!';
     const confirmed = await showConfirm(
-      `Reset password ${user.name} ke default: ${defaultText}?\n\nPengguna akan diminta mengganti password saat login berikutnya.`,
-      { title: 'Konfirmasi Reset Password', confirmText: 'Ya, Reset Password' }
+      t('resetConfirmDesc', { name: user.name, defaultText }),
+      { title: t('resetConfirmTitle'), confirmText: t('confirmReset'), cancelText: t('cancelButton') }
     );
     if (!confirmed) {
       return;
     }
     try {
       await resetUserPassword(user.id);
-      await showAlert(`Password ${user.name} berhasil di-reset ke: ${defaultText}`, { type: 'success' });
+      await showAlert(t('resetSuccessAlert', { name: user.name, defaultText }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal me-reset password', { type: 'error' });
+      await showAlert(err?.message || t('resetFailedAlert'), { type: 'error' });
     }
   };
 
   const handleUnlockAccount = async (user: UserItem) => {
     const confirmed = await showConfirm(
-      `Buka kunci akun untuk ${user.name} (${user.email}) sekarang? Jumlah percobaan login gagal akan di-reset ke 0.`,
-      { title: 'Buka Kunci Akun', confirmText: 'Ya, Buka Kunci' }
+      t('unlockConfirmDesc', { name: user.name, email: user.email }),
+      { title: t('unlockConfirmTitle'), confirmText: t('confirmUnlock'), cancelText: t('cancelButton') }
     );
     if (!confirmed) return;
 
@@ -277,10 +279,10 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
             : u
         )
       );
-      await showAlert(`Akun ${user.name} berhasil dibuka kuncinya.`, { type: 'success' });
+      await showAlert(t('unlockSuccessAlert', { name: user.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal membuka kunci akun', { type: 'error' });
+      await showAlert(err?.message || t('unlockFailedAlert'), { type: 'error' });
     }
   };
 
@@ -307,7 +309,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
-              placeholder="Cari nama, email, NIS, NIP..."
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 bg-white dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
@@ -320,11 +322,11 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
             onChange={(e) => setRoleFilter(e.target.value)}
             className="h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
           >
-            <option value="ALL">Semua Role</option>
-            <option value="TEACHER">Guru</option>
-            <option value="STUDENT">Siswa</option>
-            <option value="SUPERVISOR">Kepsek/Wakasek</option>
-            <option value="ADMIN">Administrator</option>
+            <option value="ALL">{t('allRoles')}</option>
+            <option value="TEACHER">{t('roleTeacher')}</option>
+            <option value="STUDENT">{t('roleStudent')}</option>
+            <option value="SUPERVISOR">{t('roleSupervisor')}</option>
+            <option value="ADMIN">{t('roleAdmin')}</option>
           </select>
 
           {/* Status Filter (Active / Inactive / All) */}
@@ -333,9 +335,9 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
           >
-            <option value="ACTIVE">Status: Aktif</option>
-            <option value="INACTIVE">Status: Nonaktif (Alumni/Pindah)</option>
-            <option value="ALL">Status: Semua</option>
+            <option value="ACTIVE">{t('statusActive')}</option>
+            <option value="INACTIVE">{t('statusInactive')}</option>
+            <option value="ALL">{t('statusAll')}</option>
           </select>
         </div>
 
@@ -345,14 +347,14 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
             onClick={() => setIsImportOpen(true)}
             className="border-[#FF8928] text-[#FF8928] hover:bg-[#FF8928] hover:text-white dark:border-[#FF8928] dark:text-[#FF8928] dark:hover:bg-[#FF8928] dark:hover:text-white flex items-center gap-1.5"
           >
-            <Upload className="h-4 w-4" /> Impor CSV / Excel
+            <Upload className="h-4 w-4" /> {t('importButton')}
           </Button>
 
           <Button
             onClick={() => setIsCreateOpen(true)}
             className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white flex items-center gap-1.5"
           >
-            <UserPlus className="h-4 w-4" /> Tambah Pengguna
+            <UserPlus className="h-4 w-4" /> {t('addUserButton')}
           </Button>
         </div>
       </div>
@@ -362,19 +364,19 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nama Pengguna</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Identitas (NIS/NIP)</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead>{t('colName')}</TableHead>
+                <TableHead>{t('colEmail')}</TableHead>
+                <TableHead>{t('colRole')}</TableHead>
+                <TableHead>{t('colIdentity')}</TableHead>
+                <TableHead>{t('colStatus')}</TableHead>
+                <TableHead className="text-right">{t('colActions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
-                    Tidak ada pengguna ditemukan.
+                    {t('emptyUsers')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -408,21 +410,21 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                       <div className="flex flex-col gap-1 items-start">
                         <span
                           onClick={() => handleToggleActive(user)}
-                          title="Klik untuk ubah status"
+                          title={t('clickToToggleStatus')}
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
                             user.isActive
                               ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border dark:border-green-800'
                               : 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border dark:border-red-800'
                           }`}
                         >
-                          {user.isActive ? 'Aktif' : 'Nonaktif'}
+                          {user.isActive ? t('activeBadge') : t('inactiveBadge')}
                         </span>
                         {user.lockedUntil && new Date(user.lockedUntil) > new Date() && (
                           <span
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
-                            title={`Terkunci hingga ${new Date(user.lockedUntil).toLocaleTimeString()}`}
+                            title={t('lockedUntil', { time: new Date(user.lockedUntil).toLocaleTimeString() })}
                           >
-                            🔒 Terkunci
+                            {t('lockedBadge')}
                           </span>
                         )}
                       </div>
@@ -434,7 +436,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleUnlockAccount(user)}
-                            title="Buka Kunci Akun Pengguna"
+                            title={t('unlockAccountTitle')}
                             className="h-8 w-8 p-0 text-amber-600 hover:text-amber-800 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
                           >
                             <Unlock className="h-4 w-4" />
@@ -444,7 +446,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleOpenEdit(user)}
-                          title="Edit Pengguna"
+                          title={t('editUserTitle')}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:text-gray-400 dark:hover:text-blue-400"
                         >
                           <Pencil className="h-4 w-4" />
@@ -453,7 +455,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleResetPassword(user)}
-                          title="Reset Password"
+                          title={t('resetPasswordTitle')}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-[#002446] hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 dark:hover:text-white"
                         >
                           <KeyRound className="h-4 w-4" />
@@ -462,7 +464,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleDelete(user)}
-                          title={user.isActive ? 'Nonaktifkan Pengguna' : 'Pengguna Sudah Nonaktif'}
+                          title={user.isActive ? t('deactivateUserTitle') : t('alreadyInactiveTitle')}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -483,15 +485,15 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
           <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
-                Tambah Pengguna Baru
+                {t('addUserModalTitle')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="uName">Nama Lengkap</Label>
+                <Label htmlFor="uName">{t('fullNameLabel')}</Label>
                 <Input
                   id="uName"
-                  placeholder="Nama Lengkap"
+                  placeholder={t('fullNamePlaceholder')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -499,11 +501,11 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="uEmail">Email</Label>
+                <Label htmlFor="uEmail">{t('emailLabel')}</Label>
                 <Input
                   id="uEmail"
                   type="email"
-                  placeholder="user@sekolah.sch.id"
+                  placeholder={t('emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -511,40 +513,40 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="uRole">Role Pengguna</Label>
+                <Label htmlFor="uRole">{t('userRoleLabel')}</Label>
                 <select
                   id="uRole"
                   value={role}
                   onChange={(e) => setRole(e.target.value as Role)}
                   className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                 >
-                  <option value={Role.STUDENT}>Siswa</option>
-                  <option value={Role.TEACHER}>Guru</option>
-                  <option value={Role.SUPERVISOR}>Kepala Sekolah / Wakasek</option>
-                  <option value={Role.ADMIN}>Administrator</option>
+                  <option value={Role.STUDENT}>{t('roleStudent')}</option>
+                  <option value={Role.TEACHER}>{t('roleTeacher')}</option>
+                  <option value={Role.SUPERVISOR}>{t('roleSupervisor')}</option>
+                  <option value={Role.ADMIN}>{t('roleAdmin')}</option>
                 </select>
               </div>
 
               {role === Role.STUDENT ? (
                 <div className="space-y-2">
-                  <Label htmlFor="uNis">NIS (Nomor Induk Siswa)</Label>
+                  <Label htmlFor="uNis">{t('nisLabel')}</Label>
                   <Input
                     id="uNis"
-                    placeholder="misal: 20261001"
+                    placeholder={t('nisPlaceholder')}
                     value={nis}
                     onChange={(e) => setNis(e.target.value)}
                     required
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    NIS ini akan digunakan sebagai <strong>password default</strong> saat pertama kali login.
+                    {t('nisHint')}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="uNip">NIP (Nomor Induk Pegawai - Opsional)</Label>
+                  <Label htmlFor="uNip">{t('nipLabel')}</Label>
                   <Input
                     id="uNip"
-                    placeholder="misal: 198501012010011001"
+                    placeholder={t('nipPlaceholder')}
                     value={nip}
                     onChange={(e) => setNip(e.target.value)}
                   />
@@ -557,14 +559,14 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                 variant="outline"
                 onClick={() => setIsCreateOpen(false)}
               >
-                Batal
+                {t('cancelButton')}
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
                 className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
               >
-                {loading ? 'Menyimpan...' : 'Simpan Pengguna'}
+                {loading ? t('saving') : t('saveButton')}
               </Button>
             </DialogFooter>
           </form>
@@ -577,15 +579,15 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
           <form onSubmit={handleUpdate}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
-                Edit Data Pengguna
+                {t('editUserModalTitle')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="editName">Nama Lengkap</Label>
+                <Label htmlFor="editName">{t('fullNameLabel')}</Label>
                 <Input
                   id="editName"
-                  placeholder="Nama Lengkap"
+                  placeholder={t('fullNamePlaceholder')}
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   required
@@ -593,11 +595,11 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="editEmail">Email</Label>
+                <Label htmlFor="editEmail">{t('emailLabel')}</Label>
                 <Input
                   id="editEmail"
                   type="email"
-                  placeholder="user@sekolah.sch.id"
+                  placeholder={t('emailPlaceholder')}
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
                   required
@@ -605,36 +607,36 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="editRole">Role Pengguna</Label>
+                <Label htmlFor="editRole">{t('userRoleLabel')}</Label>
                 <select
                   id="editRole"
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value as Role)}
                   className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                 >
-                  <option value={Role.STUDENT}>Siswa</option>
-                  <option value={Role.TEACHER}>Guru</option>
-                  <option value={Role.SUPERVISOR}>Kepala Sekolah / Wakasek</option>
-                  <option value={Role.ADMIN}>Administrator</option>
+                  <option value={Role.STUDENT}>{t('roleStudent')}</option>
+                  <option value={Role.TEACHER}>{t('roleTeacher')}</option>
+                  <option value={Role.SUPERVISOR}>{t('roleSupervisor')}</option>
+                  <option value={Role.ADMIN}>{t('roleAdmin')}</option>
                 </select>
               </div>
 
               {editRole === Role.STUDENT ? (
                 <div className="space-y-2">
-                  <Label htmlFor="editNis">NIS (Nomor Induk Siswa)</Label>
+                  <Label htmlFor="editNis">{t('nisLabel')}</Label>
                   <Input
                     id="editNis"
-                    placeholder="misal: 20261001"
+                    placeholder={t('nisPlaceholder')}
                     value={editNis}
                     onChange={(e) => setEditNis(e.target.value)}
                   />
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="editNip">NIP (Nomor Induk Pegawai - Opsional)</Label>
+                  <Label htmlFor="editNip">{t('nipLabel')}</Label>
                   <Input
                     id="editNip"
-                    placeholder="misal: 198501012010011001"
+                    placeholder={t('nipPlaceholder')}
                     value={editNip}
                     onChange={(e) => setEditNip(e.target.value)}
                   />
@@ -642,15 +644,15 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="editStatus">Status Akun</Label>
+                <Label htmlFor="editStatus">{t('accountStatusLabel')}</Label>
                 <select
                   id="editStatus"
                   value={editIsActive ? 'ACTIVE' : 'INACTIVE'}
                   onChange={(e) => setEditIsActive(e.target.value === 'ACTIVE')}
                   className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                 >
-                  <option value="ACTIVE">Aktif</option>
-                  <option value="INACTIVE">Nonaktif (Lulus / Pindah)</option>
+                  <option value="ACTIVE">{t('statusActiveOption')}</option>
+                  <option value="INACTIVE">{t('statusInactiveOption')}</option>
                 </select>
               </div>
             </div>
@@ -660,14 +662,14 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                 variant="outline"
                 onClick={() => setIsEditOpen(false)}
               >
-                Batal
+                {t('cancelButton')}
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
                 className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
               >
-                {loading ? 'Menyimpan...' : 'Perbarui Pengguna'}
+                {loading ? t('saving') : t('updateButton')}
               </Button>
             </DialogFooter>
           </form>
@@ -679,16 +681,16 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white flex items-center gap-2">
-              <Upload className="h-5 w-5 text-[#FF8928]" /> Impor Pengguna Massal
+              <Upload className="h-5 w-5 text-[#FF8928]" /> {t('importModalTitle')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-3 flex-1 overflow-hidden flex flex-col">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg text-xs text-blue-900 dark:text-blue-200">
               <div className="space-y-1">
-                <p className="font-semibold">Format Kolom Spreadsheet (Excel / CSV):</p>
-                <p>Kolom: <strong>Nama</strong>, <strong>Email</strong>, <strong>Role</strong> (STUDENT / TEACHER), <strong>NIS</strong> (untuk Siswa), <strong>NIP</strong> (opsional).</p>
-                <p className="text-[#FF8928] dark:text-orange-400 font-medium">Siswa akan otomatis menggunakan NIS sebagai password awal dan wajib mengganti password saat login pertama kali.</p>
+                <p className="font-semibold">{t('importFormatTitle')}</p>
+                <p>{t('importFormatCols')}</p>
+                <p className="text-[#FF8928] dark:text-orange-400 font-medium">{t('importFormatHint')}</p>
               </div>
               <a
                 href="/templates/template-impor-pengguna.xlsx"
@@ -696,12 +698,12 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                 className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-md text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100/50 dark:hover:bg-gray-700 transition-colors shadow-sm"
               >
                 <Download className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                Unduh Template Excel
+                {t('downloadTemplate')}
               </a>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="fileInput">Pilih File Excel (.xlsx, .xls, .csv)</Label>
+              <Label htmlFor="fileInput">{t('chooseFile')}</Label>
               <Input
                 id="fileInput"
                 type="file"
@@ -716,10 +718,10 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>NIS / NIP</TableHead>
+                      <TableHead>{t('colName')}</TableHead>
+                      <TableHead>{t('colEmail')}</TableHead>
+                      <TableHead>{t('colRole')}</TableHead>
+                      <TableHead>{t('colIdentity')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -737,7 +739,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                 </Table>
                 {previewData.length > 15 && (
                   <div className="p-2 text-center text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 border-t border-gray-200 dark:border-gray-800">
-                    ...dan {previewData.length - 15} baris lainnya
+                    {t('andMoreRows', { count: previewData.length - 15 })}
                   </div>
                 )}
               </div>
@@ -761,7 +763,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                 setImportStatus(null);
               }}
             >
-              Tutup
+              {t('closeButton')}
             </Button>
             <Button
               type="button"
@@ -769,7 +771,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               onClick={handleConfirmImport}
               className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white"
             >
-              {loading ? 'Mengimpor...' : `Konfirmasi Impor (${previewData.length} Pengguna)`}
+              {loading ? t('importing') : t('confirmImport', { count: previewData.length })}
             </Button>
           </DialogFooter>
         </DialogContent>

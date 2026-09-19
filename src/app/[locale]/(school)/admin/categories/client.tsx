@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,7 @@ export function CategoriesClient({
   initialTree: CategoryNode[];
   flatCategories: CategoryNode[];
 }) {
+  const t = useTranslations('adminCategories');
   const { showAlert, showConfirm } = useDialog();
   const [tree, setTree] = useState<CategoryNode[]>(initialTree);
   const [categories, setCategories] = useState<CategoryNode[]>(flatCategories);
@@ -89,10 +91,10 @@ export function CategoriesClient({
       setIsCreateOpen(false);
       setName('');
       setParentId('');
-      await showAlert(`Kategori "${created.name}" berhasil dibuat!`, { type: 'success' });
+      await showAlert(t('categoryCreatedAlert', { name: created.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal membuat kategori', { type: 'error' });
+      await showAlert(err?.message || t('categoryCreateFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -100,8 +102,8 @@ export function CategoriesClient({
 
   const handleDelete = async (id: string, name: string) => {
     const confirmed = await showConfirm(
-      `Hapus kategori "${name}"?\n\nKategori dan sub-kategori di dalamnya juga akan terpengaruh.`,
-      { title: 'Hapus Kategori', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+      t('deleteCategoryConfirmDesc', { name }),
+      { title: t('deleteCategoryConfirmTitle'), confirmText: t('btnConfirmDelete'), confirmVariant: 'destructive' }
     );
     if (!confirmed) {
       return;
@@ -119,10 +121,10 @@ export function CategoriesClient({
       };
       setTree((prev) => removeNode(prev));
       setCategories((prev) => prev.filter((c) => c.id !== id));
-      await showAlert(`Kategori "${name}" berhasil dihapus.`, { type: 'success' });
+      await showAlert(t('categoryDeletedAlert', { name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menghapus kategori', { type: 'error' });
+      await showAlert(err?.message || t('categoryDeleteFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -152,9 +154,9 @@ export function CategoriesClient({
                   : 'text-amber-500 dark:text-amber-400'
               }`}
             />
-            <span className="text-base text-gray-900 dark:text-gray-100">{node.name || '(Tanpa Nama)'}</span>
+            <span className="text-base text-gray-900 dark:text-gray-100">{node.name || t('unnamed')}</span>
             <Badge variant="secondary" className="text-xs dark:bg-gray-700 dark:text-gray-300">
-              {node._count?.courses || 0} Course
+              {t('coursesCount', { count: node._count?.courses || 0 })}
             </Badge>
           </div>
 
@@ -168,7 +170,7 @@ export function CategoriesClient({
                 setIsCreateOpen(true);
               }}
             >
-              <Plus className="h-4 w-4 mr-1" /> Tambah Sub
+              <Plus className="h-4 w-4 mr-1" /> {t('btnAddSub')}
             </Button>
             <Button
               size="sm"
@@ -195,11 +197,7 @@ export function CategoriesClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg text-sm text-[#002446] dark:text-blue-200 flex items-center gap-2">
           <FolderTree className="h-5 w-5 text-[#FF8928] dark:text-orange-400 shrink-0" />
-          <span>
-            Hierarki: <strong className="text-[#002446] dark:text-white">Tahun Ajaran</strong> (Level 1) →{' '}
-            <strong className="text-[#002446] dark:text-white">Mata Pelajaran</strong> (Level 2) → <strong className="text-[#002446] dark:text-white">Course Guru Mapel</strong>{' '}
-            (Level 3)
-          </span>
+          <span>{t('hierarchyInfo')}</span>
         </div>
 
         <Button
@@ -209,7 +207,7 @@ export function CategoriesClient({
           }}
           className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white flex items-center gap-2 shrink-0"
         >
-          <Plus className="h-4 w-4" /> Tambah Tahun Ajaran (Kategori Utama)
+          <Plus className="h-4 w-4" /> {t('btnAddMainCategory')}
         </Button>
       </div>
 
@@ -218,7 +216,7 @@ export function CategoriesClient({
           {tree.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400 space-y-3">
               <FolderTree className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600" />
-              <p>Belum ada kategori yang dibuat.</p>
+              <p>{t('emptyTree')}</p>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -226,7 +224,7 @@ export function CategoriesClient({
                   setIsCreateOpen(true);
                 }}
               >
-                Buat Kategori Pertama
+                {t('btnCreateFirstCategory')}
               </Button>
             </div>
           ) : (
@@ -243,15 +241,15 @@ export function CategoriesClient({
           <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
-                Tambah Kategori Course
+                {t('modalTitle')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="catName">Nama Kategori</Label>
+                <Label htmlFor="catName">{t('categoryNameLabel')}</Label>
                 <Input
                   id="catName"
-                  placeholder="misal: TA 2026/2027 (Kategori Utama) atau Matematika (Mata Pelajaran)"
+                  placeholder={t('categoryNamePlaceholder')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -259,14 +257,14 @@ export function CategoriesClient({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="parentCat">Kategori Induk</Label>
+                <Label htmlFor="parentCat">{t('parentCategoryLabel')}</Label>
                 <select
                   id="parentCat"
                   value={parentId}
                   onChange={(e) => setParentId(e.target.value)}
                   className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
                 >
-                  <option value="">-- Kategori Utama (Tahun Ajaran) --</option>
+                  <option value="">{t('mainCategoryOption')}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -274,7 +272,7 @@ export function CategoriesClient({
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Pilih induk jika ini adalah sub-kategori (misal: Mata Pelajaran di dalam Tahun Ajaran).
+                  {t('parentCategoryHint')}
                 </p>
               </div>
             </div>
@@ -284,14 +282,14 @@ export function CategoriesClient({
                 variant="outline"
                 onClick={() => setIsCreateOpen(false)}
               >
-                Batal
+                {t('cancelButton')}
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
                 className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
               >
-                {loading ? 'Menyimpan...' : 'Simpan'}
+                {loading ? t('saving') : t('saveButton')}
               </Button>
             </DialogFooter>
           </form>
