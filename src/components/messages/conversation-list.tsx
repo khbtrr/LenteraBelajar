@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { ConversationSummary } from '@/lib/actions/message';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,11 @@ export function ConversationList({
   onSelectConversation,
   onOpenNewMessage,
 }: ConversationListProps) {
+  const t = useTranslations('messages');
+  const tRoles = useTranslations('roles');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [filterQuery, setFilterQuery] = useState('');
 
   const filteredConversations = conversations.filter((c) => {
@@ -41,15 +47,15 @@ export function ConversationList({
       d.getFullYear() === now.getFullYear();
 
     if (isToday) {
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' });
     }
 
     const isThisYear = d.getFullYear() === now.getFullYear();
     if (isThisYear) {
-      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return d.toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' });
     }
 
-    return d.toLocaleDateString([], { year: '2-digit', month: 'numeric', day: 'numeric' });
+    return d.toLocaleDateString(dateLocale, { year: '2-digit', month: 'numeric', day: 'numeric' });
   };
 
   const getInitials = (name: string) => {
@@ -62,19 +68,11 @@ export function ConversationList({
   };
 
   const getRoleLabel = (role?: string) => {
-    switch (role) {
-      case 'TEACHER':
-        return 'Guru';
-      case 'STUDENT':
-        return 'Siswa';
-      case 'ADMIN':
-        return 'Admin';
-      case 'SUPERVISOR':
-        return 'Pengawas';
-      case 'SUPER_ADMIN':
-        return 'Super Admin';
-      default:
-        return '';
+    if (!role) return '';
+    try {
+      return tRoles(role);
+    } catch {
+      return role;
     }
   };
 
@@ -85,7 +83,7 @@ export function ConversationList({
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-brand-500" />
-            <span>Pesan</span>
+            <span>{t('title')}</span>
           </h2>
           <Button
             size="sm"
@@ -93,7 +91,7 @@ export function ConversationList({
             className="h-8 gap-1.5 text-xs bg-brand-500 hover:bg-brand-600 text-white shadow-xs rounded-lg"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Baru</span>
+            <span>{t('newMessage')}</span>
           </Button>
         </div>
 
@@ -102,7 +100,7 @@ export function ConversationList({
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             type="text"
-            placeholder="Cari obrolan..."
+            placeholder={t('searchPlaceholder')}
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             className="pl-9 h-9 text-xs bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 rounded-lg focus-visible:ring-brand-500"
@@ -118,18 +116,18 @@ export function ConversationList({
               <MessageSquare className="w-6 h-6" />
             </div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {filterQuery ? 'Obrolan tidak ditemukan' : 'Belum ada obrolan'}
+              {filterQuery ? t('chatNotFound') : t('noChatsYet')}
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-[200px] mx-auto">
               {filterQuery
-                ? 'Coba kata kunci pencarian yang lain'
-                : 'Mulai kirim pesan ke rekan guru atau siswa dengan tombol Baru di atas.'}
+                ? t('searchAnotherKeyword')
+                : t('startChatPrompt')}
             </p>
           </div>
         ) : (
           filteredConversations.map((conv) => {
             const isSelected = conv.id === selectedId;
-            const otherName = conv.otherUser?.name || 'Pengguna Tidak Dikenal';
+            const otherName = conv.otherUser?.name || t('unknownUser');
 
             return (
               <button
@@ -193,8 +191,10 @@ export function ConversationList({
                       )}
                     >
                       {conv.lastMessage
-                        ? conv.lastMessage.content
-                        : 'Belum ada pesan'}
+                        ? conv.lastMessage.isDeleted
+                          ? t('deletedMessage')
+                          : conv.lastMessage.content
+                        : t('noMessagesYet')}
                     </p>
 
                     {conv.unreadCount > 0 && (

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { UserProfileData } from '@/lib/actions/profile';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -20,6 +21,10 @@ interface AcademicTabProps {
 }
 
 export function AcademicTab({ profile }: AcademicTabProps) {
+  const t = useTranslations('profile');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const isStudent = profile.role === 'STUDENT';
   const isTeacher = profile.role === 'TEACHER';
   const isAdminOrSupervisor = ['ADMIN', 'SUPERVISOR', 'SUPER_ADMIN'].includes(profile.role);
@@ -37,12 +42,14 @@ export function AcademicTab({ profile }: AcademicTabProps) {
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Level Belajar</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  {t('levelCardTitle')}
+                </p>
                 <h4 className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">
-                  Level {profile.level}
+                  {t('level', { level: profile.level })}
                 </h4>
                 <span className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
-                  {profile.xp} Total XP
+                  {t('totalXp', { count: profile.xp })}
                 </span>
               </div>
             </div>
@@ -53,12 +60,14 @@ export function AcademicTab({ profile }: AcademicTabProps) {
                 <Flame className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Streak Belajar</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  {t('streakCardTitle')}
+                </p>
                 <h4 className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">
-                  {profile.streakDays} Hari
+                  {t('streakDays', { count: profile.streakDays })}
                 </h4>
                 <span className="text-[11px] text-orange-600 dark:text-orange-400 font-medium">
-                  Berturut-turut aktif
+                  {t('streakCardSubtitle')}
                 </span>
               </div>
             </div>
@@ -69,12 +78,14 @@ export function AcademicTab({ profile }: AcademicTabProps) {
                 <Award className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Lencana Diraih</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  {t('badgesCardTitle')}
+                </p>
                 <h4 className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">
-                  {profile.achievements.length} Lencana
+                  {t('badgesCount', { count: profile.achievements.length })}
                 </h4>
                 <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                  Prestasi belajar
+                  {t('badgesCardSubtitle')}
                 </span>
               </div>
             </div>
@@ -84,12 +95,12 @@ export function AcademicTab({ profile }: AcademicTabProps) {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
               <Award className="w-5 h-5 text-amber-500" />
-              <span>Koleksi Lencana & Prestasi</span>
+              <span>{t('badgeCollectionTitle')}</span>
             </h3>
 
             {profile.achievements.length === 0 ? (
               <div className="text-center py-8 text-xs text-gray-400">
-                Belum ada lencana yang diraih. Kerjakan kuis, tugas, dan materi untuk membuka lencana pertama Anda!
+                {t('noBadges')}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -106,7 +117,7 @@ export function AcademicTab({ profile }: AcademicTabProps) {
                         {ach.badgeName}
                       </p>
                       <p className="text-[10px] text-gray-400 truncate">
-                        {new Date(ach.unlockedAt).toLocaleDateString('id-ID', {
+                        {new Date(ach.unlockedAt).toLocaleDateString(dateLocale, {
                           day: 'numeric',
                           month: 'short',
                         })}
@@ -122,12 +133,12 @@ export function AcademicTab({ profile }: AcademicTabProps) {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
               <BookOpen className="w-5 h-5 text-brand-500" />
-              <span>Mata Pelajaran yang Diikuti</span>
+              <span>{t('enrolledCoursesTitle')}</span>
             </h3>
 
             {profile.enrolledCourses.length === 0 ? (
               <div className="text-center py-8 text-xs text-gray-400">
-                Belum terdaftar di mata pelajaran manapun.
+                {t('noEnrolledCourses')}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -144,7 +155,7 @@ export function AcademicTab({ profile }: AcademicTabProps) {
                         {c.title}
                       </h4>
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                        Guru Pengampu: {c.teacherName}
+                        {t('teacherLabel', { name: c.teacherName })}
                       </p>
                     </div>
                   </div>
@@ -165,12 +176,14 @@ export function AcademicTab({ profile }: AcademicTabProps) {
                 <BookOpen className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Mata Pelajaran Aktif</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  {t('activeCoursesTitle')}
+                </p>
                 <h4 className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">
-                  {profile.taughtCourses.length} Kelas Kursus
+                  {t('coursesCount', { count: profile.taughtCourses.length })}
                 </h4>
                 <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
-                  Semester Berjalan
+                  {t('runningSemester')}
                 </span>
               </div>
             </div>
@@ -180,12 +193,14 @@ export function AcademicTab({ profile }: AcademicTabProps) {
                 <Users className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Siswa Dibimbing</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  {t('guidedStudentsTitle')}
+                </p>
                 <h4 className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">
-                  {profile.totalStudentsTaught} Siswa
+                  {t('studentsCount', { count: profile.totalStudentsTaught })}
                 </h4>
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  Total enrollment rombel
+                  {t('guidedStudentsSubtitle')}
                 </span>
               </div>
             </div>
@@ -195,12 +210,12 @@ export function AcademicTab({ profile }: AcademicTabProps) {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
               <GraduationCap className="w-5 h-5 text-brand-500" />
-              <span>Mata Pelajaran yang Diampu</span>
+              <span>{t('coursesTaughtTitle')}</span>
             </h3>
 
             {profile.taughtCourses.length === 0 ? (
               <div className="text-center py-8 text-xs text-gray-400">
-                Belum ada mata pelajaran yang diampu.
+                {t('noCoursesTaught')}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -218,10 +233,10 @@ export function AcademicTab({ profile }: AcademicTabProps) {
                       </h4>
                       <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
                         <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3" /> {c.studentCount} Siswa
+                          <Users className="w-3 h-3" /> {t('studentsCount', { count: c.studentCount })}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Layers className="w-3 h-3" /> {c.moduleCount} Modul
+                          <Layers className="w-3 h-3" /> {t('modulesCount', { count: c.moduleCount })}
                         </span>
                       </div>
                     </div>
@@ -238,7 +253,7 @@ export function AcademicTab({ profile }: AcademicTabProps) {
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
           <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
             <Shield className="w-5 h-5 text-brand-500" />
-            <span>Informasi Otoritas & Kepegawaian</span>
+            <span>{t('authorityInfoTitle')}</span>
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -246,15 +261,15 @@ export function AcademicTab({ profile }: AcademicTabProps) {
               <div className="flex items-center gap-2">
                 <School className="w-4 h-4 text-brand-500" />
                 <span className="text-xs font-bold text-gray-900 dark:text-white">
-                  Instansi Sekolah
+                  {t('school')}
                 </span>
               </div>
               <p className="text-xs text-gray-600 dark:text-gray-300">
-                {profile.school?.name || 'Seluruh Platform (Super Admin)'}
+                {profile.school?.name || t('allPlatform')}
               </p>
               {profile.school?.code && (
                 <Badge variant="outline" className="text-[10px]">
-                  Kode NPSN/Sekolah: {profile.school.code}
+                  {t('schoolCode', { code: profile.school.code })}
                 </Badge>
               )}
             </div>
@@ -263,15 +278,15 @@ export function AcademicTab({ profile }: AcademicTabProps) {
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-brand-500" />
                 <span className="text-xs font-bold text-gray-900 dark:text-white">
-                  Tingkat Akses
+                  {t('accessLevel')}
                 </span>
               </div>
               <p className="text-xs text-gray-600 dark:text-gray-300">
                 {profile.role === 'ADMIN'
-                  ? 'Akses Penuh Manajemen Data Sekolah, Guru, Siswa, Rombel, dan Leger Nilai.'
+                  ? t('adminAccess')
                   : profile.role === 'SUPERVISOR'
-                    ? 'Akses Pemantauan Aktivitas Pembelajaran, Kehadiran, dan Laporan Supervisi.'
-                    : 'Akses Pengelolaan Multi-Sekolah dan Konfigurasi Platform Global.'}
+                    ? t('supervisorAccess')
+                    : t('superAdminAccess')}
               </p>
             </div>
           </div>

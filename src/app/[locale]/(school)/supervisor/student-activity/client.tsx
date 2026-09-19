@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { exportToExcel, exportToCsv } from '@/lib/export';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +20,7 @@ interface StudentItem {
 }
 
 export function StudentActivityClient({ students }: { students: StudentItem[] }) {
+  const t = useTranslations('supervisorStudentActivity');
   const [search, setSearch] = useState('');
 
   const filteredStudents = students.filter(
@@ -33,30 +35,30 @@ export function StudentActivityClient({ students }: { students: StudentItem[] })
 
   const handleExportExcel = () => {
     const rows = filteredStudents.map((s, idx) => ({
-      No: idx + 1,
-      NIS: s.nis,
-      'Nama Siswa': s.name,
-      'Grup Kohort / Kelas': s.cohort,
+      [t('colNo')]: idx + 1,
+      [t('colNis')]: s.nis,
+      [t('colName')]: s.name,
+      [t('colCohort')]: s.cohort,
       Email: s.email,
-      'Course Diikuti': s.enrolledCourses,
-      'Kuis Dikerjakan': s.quizzesCompleted,
-      'Tugas Dikumpulkan': s.assignmentsSubmitted,
+      [t('colCoursesEnrolled')]: s.enrolledCourses,
+      [t('colQuizzesDone')]: s.quizzesCompleted,
+      [t('colAssignmentsSubmitted')]: s.assignmentsSubmitted,
     }));
-    exportToExcel(rows, 'Monitoring_Keaktifan_Siswa');
+    exportToExcel(rows, t('excelFilename'));
   };
 
   const handleExportCsv = () => {
     const rows = filteredStudents.map((s, idx) => ({
-      No: idx + 1,
-      NIS: s.nis,
-      'Nama Siswa': s.name,
-      'Grup Kohort / Kelas': s.cohort,
+      [t('colNo')]: idx + 1,
+      [t('colNis')]: s.nis,
+      [t('colName')]: s.name,
+      [t('colCohort')]: s.cohort,
       Email: s.email,
-      'Course Diikuti': s.enrolledCourses,
-      'Kuis Dikerjakan': s.quizzesCompleted,
-      'Tugas Dikumpulkan': s.assignmentsSubmitted,
+      [t('colCoursesEnrolled')]: s.enrolledCourses,
+      [t('colQuizzesDone')]: s.quizzesCompleted,
+      [t('colAssignmentsSubmitted')]: s.assignmentsSubmitted,
     }));
-    exportToCsv(rows, 'Monitoring_Keaktifan_Siswa');
+    exportToCsv(rows, t('excelFilename'));
   };
 
   return (
@@ -66,46 +68,46 @@ export function StudentActivityClient({ students }: { students: StudentItem[] })
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Total Siswa
+              {t('totalStudents')}
             </CardTitle>
             <GraduationCap className="h-4 w-4 text-[#002446]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[#002446]">{students.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Siswa aktif terdaftar</p>
+            <p className="text-xs text-gray-500 mt-1">{t('totalStudentsDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Kuis Diselesaikan
+              {t('quizzesCompleted')}
             </CardTitle>
             <CheckCircle2 className="h-4 w-4 text-[#FF8928]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[#FF8928]">{totalQuizzesDone}</div>
-            <p className="text-xs text-gray-500 mt-1">Akumulasi pengerjaan kuis</p>
+            <p className="text-xs text-gray-500 mt-1">{t('quizzesCompletedDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Tugas Dikumpulkan
+              {t('assignmentsSubmitted')}
             </CardTitle>
             <Clock className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">{totalAssignDone}</div>
-            <p className="text-xs text-gray-500 mt-1">Pengumpulan submission berkas</p>
+            <p className="text-xs text-gray-500 mt-1">{t('assignmentsSubmittedDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Rata-rata Partisipasi
+              {t('avgParticipation')}
             </CardTitle>
             <BookOpen className="h-4 w-4 text-emerald-600" />
           </CardHeader>
@@ -115,7 +117,7 @@ export function StudentActivityClient({ students }: { students: StudentItem[] })
                 ? Math.round(((totalQuizzesDone + totalAssignDone) / students.length) * 10) / 10
                 : 0}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Aktivitas per siswa</p>
+            <p className="text-xs text-gray-500 mt-1">{t('avgParticipationDesc')}</p>
           </CardContent>
         </Card>
       </div>
@@ -126,7 +128,7 @@ export function StudentActivityClient({ students }: { students: StudentItem[] })
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Cari nama, NIS, kohort..."
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-9 text-sm"
@@ -139,7 +141,7 @@ export function StudentActivityClient({ students }: { students: StudentItem[] })
               className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-1.5 text-xs h-9"
             >
               <FileSpreadsheet className="h-4 w-4 text-[#FF8928]" />
-              Ekspor Excel
+              {t('exportExcel')}
             </Button>
             <Button
               onClick={handleExportCsv}
@@ -147,7 +149,7 @@ export function StudentActivityClient({ students }: { students: StudentItem[] })
               className="border-gray-300 flex items-center gap-1.5 text-xs h-9"
             >
               <Download className="h-4 w-4" />
-              CSV
+              {t('exportCsv')}
             </Button>
           </div>
         </CardHeader>
@@ -157,13 +159,13 @@ export function StudentActivityClient({ students }: { students: StudentItem[] })
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wider">
-                  <th className="py-3 px-4 w-12 text-center">No</th>
-                  <th className="py-3 px-4">Nama Siswa</th>
-                  <th className="py-3 px-4 text-center">NIS</th>
-                  <th className="py-3 px-4">Grup Kohort / Kelas</th>
-                  <th className="py-3 px-4 text-center">Course Diikuti</th>
-                  <th className="py-3 px-4 text-center">Kuis Selesai</th>
-                  <th className="py-3 px-4 text-center">Tugas Dikumpulkan</th>
+                  <th className="py-3 px-4 w-12 text-center">{t('colNo')}</th>
+                  <th className="py-3 px-4">{t('colName')}</th>
+                  <th className="py-3 px-4 text-center">{t('colNis')}</th>
+                  <th className="py-3 px-4">{t('colCohort')}</th>
+                  <th className="py-3 px-4 text-center">{t('colCoursesEnrolled')}</th>
+                  <th className="py-3 px-4 text-center">{t('colQuizzesDone')}</th>
+                  <th className="py-3 px-4 text-center">{t('colAssignmentsSubmitted')}</th>
                 </tr>
               </thead>
 
@@ -171,7 +173,7 @@ export function StudentActivityClient({ students }: { students: StudentItem[] })
                 {filteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-gray-400">
-                      Tidak ada data siswa
+                      {t('noStudentsFound')}
                     </td>
                   </tr>
                 ) : (

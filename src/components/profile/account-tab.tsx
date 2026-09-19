@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { UserProfileData, updateUserProfile } from '@/lib/actions/profile';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,11 @@ interface AccountTabProps {
 }
 
 export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
+  const t = useTranslations('profile');
+  const tRoles = useTranslations('roles');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [name, setName] = useState(profile.name);
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<{
@@ -44,32 +50,23 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
         await updateUserProfile({ name });
         setStatus({
           type: 'success',
-          message: 'Nama profil berhasil diperbarui',
+          message: t('updateSuccess'),
         });
         onProfileUpdated?.(name);
       } catch (err: any) {
         setStatus({
           type: 'error',
-          message: err?.message || 'Gagal memperbarui profil',
+          message: err?.message || t('updateFailed'),
         });
       }
     });
   };
 
   const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'STUDENT':
-        return 'Siswa';
-      case 'TEACHER':
-        return 'Guru';
-      case 'ADMIN':
-        return 'Administrator';
-      case 'SUPERVISOR':
-        return 'Pengawas / Kepala Sekolah';
-      case 'SUPER_ADMIN':
-        return 'Super Admin';
-      default:
-        return role;
+    try {
+      return tRoles(role);
+    } catch {
+      return role;
     }
   };
 
@@ -77,10 +74,10 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
       <div className="mb-6">
         <h3 className="text-base font-bold text-gray-900 dark:text-white">
-          Informasi Akun
+          {t('accountInfo')}
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Perbarui informasi nama tampilan Anda. Kolom identitas resmi dikelola oleh administrator sekolah.
+          {t('accountInfoSubtitle')}
         </p>
       </div>
 
@@ -106,7 +103,7 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
         <div className="space-y-2">
           <Label htmlFor="name" className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-brand-500" />
-            <span>Nama Lengkap</span>
+            <span>{t('fullName')}</span>
             <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -115,13 +112,13 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="text-sm bg-gray-50/50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 focus-visible:ring-brand-500"
-            placeholder="Masukkan nama lengkap Anda"
+            placeholder={t('fullNamePlaceholder')}
             required
             minLength={2}
             maxLength={100}
           />
           <p className="text-[11px] text-gray-400">
-            Nama ini akan ditampilkan pada sertifikat, forum diskusi, pesan, dan aktivitas belajar.
+            {t('fullNameDesc')}
           </p>
         </div>
 
@@ -132,10 +129,10 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-gray-400" />
-                <span>Alamat Email</span>
+                <span>{t('email')}</span>
               </Label>
               <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5" /> Terkunci
+                <Lock className="w-2.5 h-2.5" /> {t('locked')}
               </span>
             </div>
             <Input
@@ -151,10 +148,10 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-gray-400" />
-                <span>Peran Akun</span>
+                <span>{t('role')}</span>
               </Label>
               <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5" /> Terkunci
+                <Lock className="w-2.5 h-2.5" /> {t('locked')}
               </span>
             </div>
             <Input
@@ -171,14 +168,14 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
                   <Hash className="w-3.5 h-3.5 text-gray-400" />
-                  <span>{profile.role === 'STUDENT' ? 'NIS (Nomor Induk Siswa)' : 'NIP (Nomor Induk Pegawai)'}</span>
+                  <span>{profile.role === 'STUDENT' ? t('nisLabel') : t('nipLabel')}</span>
                 </Label>
                 <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                  <Lock className="w-2.5 h-2.5" /> Terkunci
+                  <Lock className="w-2.5 h-2.5" /> {t('locked')}
                 </span>
               </div>
               <Input
-                value={profile.nis || profile.nip || '- Belum diatur -'}
+                value={profile.nis || profile.nip || t('notSet')}
                 readOnly
                 disabled
                 className="text-xs bg-gray-100/70 dark:bg-gray-800/40 text-gray-600 dark:text-gray-400 border-dashed cursor-not-allowed"
@@ -191,14 +188,14 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
                 <Building className="w-3.5 h-3.5 text-gray-400" />
-                <span>Instansi Sekolah</span>
+                <span>{t('school')}</span>
               </Label>
               <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5" /> Terkunci
+                <Lock className="w-2.5 h-2.5" /> {t('locked')}
               </span>
             </div>
             <Input
-              value={profile.school?.name || '- Belum terdaftar -'}
+              value={profile.school?.name || t('notRegistered')}
               readOnly
               disabled
               className="text-xs bg-gray-100/70 dark:bg-gray-800/40 text-gray-600 dark:text-gray-400 border-dashed cursor-not-allowed"
@@ -209,10 +206,10 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span>Bergabung Sejak</span>
+              <span>{t('joinedSince')}</span>
             </Label>
             <Input
-              value={new Date(profile.createdAt).toLocaleDateString('id-ID', {
+              value={new Date(profile.createdAt).toLocaleDateString(dateLocale, {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',
@@ -236,7 +233,7 @@ export function AccountTab({ profile, onProfileUpdated }: AccountTabProps) {
             ) : (
               <Save className="w-4 h-4" />
             )}
-            <span>Simpan Perubahan</span>
+            <span>{t('saveChanges')}</span>
           </Button>
         </div>
       </form>

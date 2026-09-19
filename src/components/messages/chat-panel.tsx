@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useTransition } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   FormattedMessage,
   getMessages,
@@ -33,6 +34,11 @@ export function ChatPanel({
   onBack,
   onMessageSent,
 }: ChatPanelProps) {
+  const t = useTranslations('messages');
+  const tRoles = useTranslations('roles');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [messages, setMessages] = useState<FormattedMessage[]>([]);
   const [otherUser, setOtherUser] = useState<{
     id: string;
@@ -83,7 +89,7 @@ export function ChatPanel({
         await markConversationAsRead(conversationId);
       } catch (err: any) {
         if (isMounted) {
-          setError(err?.message || 'Gagal memuat pesan');
+          setError(err?.message || t('failedLoadChat'));
         }
       } finally {
         if (isMounted) {
@@ -98,7 +104,7 @@ export function ChatPanel({
     return () => {
       isMounted = false;
     };
-  }, [conversationId]);
+  }, [conversationId, t]);
 
   // Polling for new messages every 5 seconds
   useEffect(() => {
@@ -152,7 +158,7 @@ export function ChatPanel({
       setTimeout(() => scrollToBottom(true), 50);
       onMessageSent?.();
     } catch (err: any) {
-      setError(err?.message || 'Gagal mengirim pesan');
+      setError(err?.message || t('failedLoadChat'));
     } finally {
       setIsSending(false);
       setTimeout(() => textareaRef.current?.focus(), 50);
@@ -171,7 +177,7 @@ export function ChatPanel({
     setMessages((prev) =>
       prev.map((m) =>
         m.id === messageId
-          ? { ...m, isDeleted: true, content: 'Pesan telah dihapus' }
+          ? { ...m, isDeleted: true, content: t('deletedMessage') }
           : m
       )
     );
@@ -187,19 +193,11 @@ export function ChatPanel({
   };
 
   const getRoleLabel = (role?: string) => {
-    switch (role) {
-      case 'TEACHER':
-        return 'Guru';
-      case 'STUDENT':
-        return 'Siswa';
-      case 'ADMIN':
-        return 'Admin';
-      case 'SUPERVISOR':
-        return 'Pengawas';
-      case 'SUPER_ADMIN':
-        return 'Super Admin';
-      default:
-        return '';
+    if (!role) return '';
+    try {
+      return tRoles(role);
+    } catch {
+      return role;
     }
   };
 
@@ -211,7 +209,7 @@ export function ChatPanel({
       d.getMonth() === today.getMonth() &&
       d.getFullYear() === today.getFullYear();
 
-    if (isToday) return 'Hari ini';
+    if (isToday) return t('today');
 
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -220,9 +218,9 @@ export function ChatPanel({
       d.getMonth() === yesterday.getMonth() &&
       d.getFullYear() === yesterday.getFullYear();
 
-    if (isYesterday) return 'Kemarin';
+    if (isYesterday) return t('yesterday');
 
-    return d.toLocaleDateString('id-ID', {
+    return d.toLocaleDateString(dateLocale, {
       weekday: 'long',
       day: 'numeric',
       month: 'short',
@@ -234,7 +232,7 @@ export function ChatPanel({
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-gray-50/50 dark:bg-gray-900/50 p-6">
         <Loader2 className="w-8 h-8 animate-spin text-brand-500 mb-2" />
-        <span className="text-xs text-gray-400">Memuat percakapan...</span>
+        <span className="text-xs text-gray-400">{t('loadingChat')}</span>
       </div>
     );
   }
@@ -246,7 +244,7 @@ export function ChatPanel({
         <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{error}</p>
         {onBack && (
           <Button variant="outline" size="sm" onClick={onBack} className="mt-4 text-xs">
-            Kembali ke Daftar Pesan
+            {t('backToList')}
           </Button>
         )}
       </div>
@@ -262,7 +260,7 @@ export function ChatPanel({
             <button
               onClick={onBack}
               className="md:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              title="Kembali"
+              title={t('backToList')}
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -281,7 +279,7 @@ export function ChatPanel({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                {otherUser?.name || 'Obrolan'}
+                {otherUser?.name || t('title')}
               </h3>
               {otherUser?.role && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
@@ -304,10 +302,10 @@ export function ChatPanel({
               <MessageSquare className="w-6 h-6" />
             </div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Mulai Percakapan
+              {t('startConversation')}
             </p>
             <p className="text-xs text-gray-400 max-w-xs mt-1">
-              Kirim pesan pertama Anda kepada {otherUser?.name || 'rekan Anda'}.
+              {t('startConversationDesc', { name: otherUser?.name || '...' })}
             </p>
           </div>
         ) : (
@@ -362,7 +360,7 @@ export function ChatPanel({
               value={inputContent}
               onChange={(e) => setInputContent(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`Ketik pesan ke ${otherUser?.name || '...'}`}
+              placeholder={t('inputPlaceholder', { name: otherUser?.name || '...' })}
               className="border-0 focus-visible:ring-0 shadow-none resize-none p-0 text-xs sm:text-sm max-h-32 min-h-[24px] bg-transparent"
             />
           </div>
@@ -380,7 +378,7 @@ export function ChatPanel({
           </Button>
         </div>
         <p className="text-[10px] text-gray-400 mt-1.5 px-1">
-          Tekan <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">Enter</kbd> untuk mengirim, <kbd className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">Shift + Enter</kbd> untuk baris baru
+          {t('pressEnterHint')}
         </p>
       </div>
     </div>

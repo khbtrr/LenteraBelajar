@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   ConversationSummary,
@@ -17,6 +18,7 @@ interface MessagesClientProps {
 }
 
 export function MessagesClient({ initialConversations }: MessagesClientProps) {
+  const t = useTranslations('messages');
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -102,10 +104,10 @@ export function MessagesClient({ initialConversations }: MessagesClientProps) {
                 <MessageSquare className="w-8 h-8" />
               </div>
               <h3 className="text-base font-bold text-gray-800 dark:text-white">
-                Pilih Obrolan
+                {t('selectChat')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mt-1">
-                Pilih salah satu kontak dari panel sebelah kiri atau klik tombol &quot;Baru&quot; untuk memulai pesan langsung dengan guru atau siswa.
+                {t('selectChatDesc')}
               </p>
             </div>
           )}

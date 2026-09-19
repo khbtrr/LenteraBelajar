@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,10 @@ export function CalendarView({
   courses,
   initialEvents = [],
 }: CalendarViewProps) {
+  const t = useTranslations('calendar');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'MONTH' | 'WEEK' | 'AGENDA'>('MONTH');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -61,13 +66,16 @@ export function CalendarView({
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
   const [clickedDate, setClickedDate] = useState<Date | null>(null);
 
-  const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
+  // Dynamic day names Mon -> Sun
+  const dayNames = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(2026, 0, 5 + i);
+    return d.toLocaleDateString(dateLocale, { weekday: 'long' });
+  });
 
-  const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-  const shortDayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+  const shortDayNames = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(2026, 0, 5 + i);
+    return d.toLocaleDateString(dateLocale, { weekday: 'short' });
+  });
 
   const loadEvents = async () => {
     setLoading(true);
@@ -234,11 +242,11 @@ export function CalendarView({
             onClick={goToToday}
             className="text-xs h-8"
           >
-            Hari Ini
+            {t('today')}
           </Button>
 
           <h2 className="text-base sm:text-lg font-bold text-[#002446] dark:text-white ml-2">
-            {monthNames[month]} {year}
+            {new Date(year, month, 1).toLocaleDateString(dateLocale, { month: 'long' })} {year}
           </h2>
           {loading && <Loader2 className="h-4 w-4 animate-spin text-[#FF8928]" />}
         </div>
@@ -256,7 +264,7 @@ export function CalendarView({
                   : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              Bulan
+              {t('month')}
             </button>
             <button
               type="button"
@@ -267,7 +275,7 @@ export function CalendarView({
                   : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              Minggu
+              {t('week')}
             </button>
             <button
               type="button"
@@ -278,7 +286,7 @@ export function CalendarView({
                   : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              Daftar Agenda
+              {t('agenda')}
             </button>
           </div>
 
@@ -289,10 +297,10 @@ export function CalendarView({
             size="sm"
             onClick={handleExportIcs}
             className="text-xs h-8 border-gray-300 text-gray-700 dark:text-gray-200 flex items-center gap-1.5"
-            title="Unduh file .ics untuk Google Calendar / HP"
+            title={t('exportIcalTooltip')}
           >
             <Download className="h-3.5 w-3.5 text-gray-500" />
-            <span className="hidden sm:inline">Ekspor iCal</span>
+            <span className="hidden sm:inline">{t('exportIcal')}</span>
           </Button>
 
           {/* Add Custom Event */}
@@ -307,7 +315,7 @@ export function CalendarView({
             className="bg-[#FF8928] hover:bg-[#ff7b10] text-white font-bold text-xs h-8 flex items-center gap-1.5 shadow-xs"
           >
             <Plus className="h-4 w-4" />
-            Tambah Agenda
+            {t('addEvent')}
           </Button>
         </div>
       </div>
@@ -320,13 +328,13 @@ export function CalendarView({
             <Filter className="h-3.5 w-3.5 text-gray-400" /> Filter:
           </span>
           {[
-            { id: 'ALL', label: 'Semua Kategori' },
-            { id: 'KUIS', label: '🎯 Kuis CBT' },
-            { id: 'TUGAS', label: '📝 Tugas' },
-            { id: 'PRESENSI', label: '⏱️ Presensi' },
-            { id: 'SEKOLAH', label: '🏛️ Sekolah' },
-            { id: 'KELAS', label: '📚 Kelas' },
-            { id: 'PRIBADI', label: '👤 Catatan' },
+            { id: 'ALL', label: t('allCategories') },
+            { id: 'KUIS', label: t('catQuiz') },
+            { id: 'TUGAS', label: t('catAssignment') },
+            { id: 'PRESENSI', label: t('catAttendance') },
+            { id: 'SEKOLAH', label: t('catSchool') },
+            { id: 'KELAS', label: t('catClass') },
+            { id: 'PRIBADI', label: t('catPersonal') },
           ].map((cat) => (
             <button
               type="button"
@@ -348,10 +356,10 @@ export function CalendarView({
           <div className="w-full sm:w-auto min-w-[200px]">
             <Select value={courseFilter} onValueChange={setCourseFilter}>
               <SelectTrigger className="text-xs h-8">
-                <SelectValue placeholder="Semua Mata Pelajaran" />
+                <SelectValue placeholder={t('allCourses')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">Semua Mata Pelajaran</SelectItem>
+                <SelectItem value="ALL">{t('allCourses')}</SelectItem>
                 {courses.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.title}
@@ -432,7 +440,7 @@ export function CalendarView({
                         setEventDialogOpen(true);
                       }}
                       className="opacity-0 hover:opacity-100 p-0.5 text-gray-400 hover:text-blue-600 rounded"
-                      title="Tambah agenda pada tanggal ini"
+                      title={t('quickAddTitle')}
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
@@ -466,7 +474,7 @@ export function CalendarView({
                         }}
                         className="text-[10px] font-bold text-gray-500 hover:text-blue-600 cursor-pointer block pl-1"
                       >
-                        +{dayEvents.length - 3} agenda lagi
+                        {t('moreEvents', { count: dayEvents.length - 3 })}
                       </span>
                     )}
                   </div>
@@ -517,7 +525,7 @@ export function CalendarView({
                   <div className="p-2 space-y-2 flex-1">
                     {dayEvents.length === 0 ? (
                       <p className="text-[11px] text-gray-300 dark:text-gray-600 text-center pt-8">
-                        Kosong
+                        {t('emptyDay')}
                       </p>
                     ) : (
                       dayEvents.map((ev) => (
@@ -544,8 +552,8 @@ export function CalendarView({
                           <div className="text-[10px] text-gray-400 flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {ev.isAllDay
-                              ? 'Sepanjang Hari'
-                              : new Date(ev.startDate).toLocaleTimeString('id-ID', {
+                              ? t('allDay')
+                              : new Date(ev.startDate).toLocaleTimeString(dateLocale, {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
@@ -566,7 +574,7 @@ export function CalendarView({
         <div className="space-y-4">
           {sortedAgendaDates.length === 0 ? (
             <Card className="p-8 text-center text-gray-400 text-xs">
-              Tidak ada agenda yang ditemukan sesuai filter yang dipilih.
+              {t('noEventsFound')}
             </Card>
           ) : (
             sortedAgendaDates.map((dateStr) => {
@@ -585,7 +593,7 @@ export function CalendarView({
                           : 'bg-[#002446] text-white'
                       }`}
                     >
-                      {dateObj.toLocaleDateString('id-ID', {
+                      {dateObj.toLocaleDateString(dateLocale, {
                         weekday: 'long',
                         day: 'numeric',
                         month: 'long',
@@ -593,7 +601,7 @@ export function CalendarView({
                       })}
                     </span>
                     <span className="text-xs text-gray-400">
-                      ({dayEvents.length} Kegiatan)
+                      {t('eventsCount', { count: dayEvents.length })}
                     </span>
                   </div>
 
@@ -623,8 +631,8 @@ export function CalendarView({
                             <span className="flex items-center gap-1">
                               <Clock className="h-3.5 w-3.5 text-amber-500" />
                               {ev.isAllDay
-                                ? 'Sepanjang Hari'
-                                : new Date(ev.startDate).toLocaleTimeString('id-ID', {
+                                ? t('allDay')
+                                : new Date(ev.startDate).toLocaleTimeString(dateLocale, {
                                     hour: '2-digit',
                                     minute: '2-digit',
                                   })}

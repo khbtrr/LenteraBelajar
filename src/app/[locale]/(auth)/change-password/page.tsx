@@ -39,14 +39,14 @@ export default function ChangePasswordPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'An error occurred');
+        setError(data.error || t('errorOccurred'));
         return;
       }
 
       await update({ mustChangePassword: false });
       window.location.href = '/';
     } catch {
-      setError('An error occurred');
+      setError(t('errorOccurred'));
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ export default function ChangePasswordPage() {
                 className="bg-white dark:bg-gray-800/60 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500"
               />
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                Minimal 8 karakter, harus mengandung huruf besar (A-Z), huruf kecil (a-z), dan angka (0-9).
+                {t('passwordPolicyHint')}
               </p>
             </div>
             <div className="space-y-2">

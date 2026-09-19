@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { UserProfileData, updateUserProfile, removeUserAvatar } from '@/lib/actions/profile';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,8 @@ export function ProfileHeaderCard({
   profile,
   onAvatarUpdated,
 }: ProfileHeaderCardProps) {
+  const t = useTranslations('profile');
+  const tRoles = useTranslations('roles');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -42,19 +45,10 @@ export function ProfileHeaderCard({
   };
 
   const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'STUDENT':
-        return 'Siswa';
-      case 'TEACHER':
-        return 'Guru';
-      case 'ADMIN':
-        return 'Administrator';
-      case 'SUPERVISOR':
-        return 'Pengawas / Kepala Sekolah';
-      case 'SUPER_ADMIN':
-        return 'Super Admin';
-      default:
-        return role;
+    try {
+      return tRoles(role);
+    } catch {
+      return role;
     }
   };
 
@@ -78,13 +72,13 @@ export function ProfileHeaderCard({
 
     // Validate type
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setErrorMessage('Format file harus berupa JPG, PNG, atau WebP');
+      setErrorMessage(t('formatError'));
       return;
     }
 
     // Validate size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      setErrorMessage('Ukuran foto maksimal 2MB');
+      setErrorMessage(t('sizeError'));
       return;
     }
 
@@ -102,7 +96,7 @@ export function ProfileHeaderCard({
 
       if (!res.ok) {
         const json = await res.json();
-        throw new Error(json.error || 'Gagal mengunggah foto');
+        throw new Error(json.error || t('uploadFailed'));
       }
 
       const uploadResult = await res.json();
@@ -113,7 +107,7 @@ export function ProfileHeaderCard({
       setAvatarUrl(newUrl);
       onAvatarUpdated?.(newUrl);
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Terjadi kesalahan saat mengunggah foto');
+      setErrorMessage(err?.message || t('uploadErrorGeneric'));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -130,7 +124,7 @@ export function ProfileHeaderCard({
         setAvatarUrl(null);
         onAvatarUpdated?.(null);
       } catch (err: any) {
-        setErrorMessage(err?.message || 'Gagal menghapus foto profil');
+        setErrorMessage(err?.message || t('removeFailed'));
       }
     });
   };
@@ -158,7 +152,7 @@ export function ProfileHeaderCard({
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || isPending}
             className="absolute bottom-0 right-0 p-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white shadow-md border-2 border-white dark:border-gray-900 transition-transform active:scale-95 cursor-pointer"
-            title="Ubah Foto Profil"
+            title={t('changeAvatar')}
           >
             {isUploading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -190,10 +184,10 @@ export function ProfileHeaderCard({
             {profile.role === 'STUDENT' && (
               <div className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Level {profile.level}</span>
+                <span>{t('level', { level: profile.level })}</span>
                 <span className="text-amber-400">•</span>
                 <Flame className="w-3.5 h-3.5 text-orange-500 inline" />
-                <span>{profile.streakDays} Hari</span>
+                <span>{t('streakDays', { count: profile.streakDays })}</span>
               </div>
             )}
           </div>
@@ -214,7 +208,7 @@ export function ProfileHeaderCard({
             {profile.cohort && (
               <span className="flex items-center gap-1.5">
                 <GraduationCap className="w-3.5 h-3.5 text-gray-400" />
-                Kelas {profile.cohort}
+                {t('cohortClass', { cohort: profile.cohort })}
               </span>
             )}
           </div>
@@ -235,7 +229,7 @@ export function ProfileHeaderCard({
               ) : (
                 <Trash2 className="w-3.5 h-3.5" />
               )}
-              <span>Hapus Foto</span>
+              <span>{t('removeAvatar')}</span>
             </Button>
           </div>
         )}

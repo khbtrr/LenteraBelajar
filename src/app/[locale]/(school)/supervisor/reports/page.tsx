@@ -1,4 +1,5 @@
-﻿import { auth } from '@/lib/auth';
+import { getTranslations } from 'next-intl/server';
+import { auth } from '@/lib/auth';
 import { getSchoolReportsOverview } from '@/lib/actions/monitoring';
 import { getAcademicYears } from '@/lib/actions/academic-year';
 import { SupervisorReportsClient } from './client';
@@ -7,6 +8,7 @@ export default async function SupervisorReportsPage() {
   const session = await auth();
   if (!session?.user?.schoolId) return null;
 
+  const t = await getTranslations('supervisorReports');
   const [reports, academicYears] = await Promise.all([
     getSchoolReportsOverview(session.user.schoolId),
     getAcademicYears(),
@@ -15,9 +17,9 @@ export default async function SupervisorReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#002446]">Laporan & Rekapitulasi Nilai Sekolah</h1>
+        <h1 className="text-2xl font-bold text-[#002446]">{t('title')}</h1>
         <p className="text-sm text-gray-500">
-          Ringkasan ketercapaian nilai seluruh mata pelajaran untuk evaluasi kepala sekolah dan kurikulum.
+          {t('subtitle')}
         </p>
       </div>
 

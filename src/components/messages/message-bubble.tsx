@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { FormattedMessage } from '@/lib/actions/message';
 import { cn } from '@/lib/utils';
 import { Trash2, Check, CheckCheck, Ban } from 'lucide-react';
@@ -19,11 +20,15 @@ export function MessageBubble({
   onDelete,
   showAvatar = true,
 }: MessageBubbleProps) {
+  const t = useTranslations('messages');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString([], {
+    return new Date(date).toLocaleTimeString(dateLocale, {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -60,25 +65,25 @@ export function MessageBubble({
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
               {showConfirm ? (
                 <div className="flex items-center gap-1 bg-white dark:bg-gray-800 shadow-md rounded-lg p-1 text-xs border border-gray-200 dark:border-gray-700">
-                  <span className="text-gray-600 dark:text-gray-300 text-[11px] px-1">Hapus?</span>
+                  <span className="text-gray-600 dark:text-gray-300 text-[11px] px-1">{t('deletePrompt')}</span>
                   <button
                     onClick={handleDelete}
                     disabled={isDeleting}
                     className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 p-1 rounded font-medium"
                   >
-                    Ya
+                    {t('deleteYes')}
                   </button>
                   <button
                     onClick={() => setShowConfirm(false)}
                     className="text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
                   >
-                    Batal
+                    {t('deleteCancel')}
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setShowConfirm(true)}
-                  title="Hapus pesan"
+                  title={t('deleteTooltip')}
                   className="text-gray-400 hover:text-red-500 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -99,7 +104,7 @@ export function MessageBubble({
             {message.isDeleted ? (
               <>
                 <Ban className="w-3.5 h-3.5 shrink-0" />
-                <span>Pesan telah dihapus</span>
+                <span>{t('deletedMessage')}</span>
               </>
             ) : (
               <span className="whitespace-pre-wrap">{message.content}</span>
@@ -112,11 +117,11 @@ export function MessageBubble({
           <span>{formatTime(message.createdAt)}</span>
           {!message.isDeleted && (
             isReadByOther ? (
-              <span title="Dibaca">
+              <span title={t('readReceipt')}>
                 <CheckCheck className="w-3.5 h-3.5 text-brand-500 inline" />
               </span>
             ) : (
-              <span title="Terkirim">
+              <span title={t('sentReceipt')}>
                 <Check className="w-3.5 h-3.5 text-gray-400 inline" />
               </span>
             )
@@ -153,7 +158,7 @@ export function MessageBubble({
           {message.isDeleted ? (
             <>
               <Ban className="w-3.5 h-3.5 shrink-0" />
-              <span>Pesan telah dihapus</span>
+              <span>{t('deletedMessage')}</span>
             </>
           ) : (
             <span className="whitespace-pre-wrap">{message.content}</span>

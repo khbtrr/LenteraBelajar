@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { changeUserPassword } from '@/lib/actions/profile';
 import { validatePassword } from '@/lib/password-policy';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export function SecurityTab() {
+  const t = useTranslations('profile');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -39,7 +41,7 @@ export function SecurityTab() {
     if (!currentPassword || !newPassword || !confirmPassword) {
       setStatus({
         type: 'error',
-        message: 'Seluruh kolom kata sandi wajib diisi.',
+        message: t('allPasswordFieldsRequired'),
       });
       return;
     }
@@ -48,7 +50,7 @@ export function SecurityTab() {
     if (!validation.isValid) {
       setStatus({
         type: 'error',
-        message: validation.error || 'Kata sandi baru tidak memenuhi kebijakan keamanan.',
+        message: validation.error || t('passwordPolicyInvalid'),
       });
       return;
     }
@@ -56,7 +58,7 @@ export function SecurityTab() {
     if (newPassword !== confirmPassword) {
       setStatus({
         type: 'error',
-        message: 'Konfirmasi kata sandi baru tidak cocok.',
+        message: t('passwordMismatch'),
       });
       return;
     }
@@ -66,7 +68,7 @@ export function SecurityTab() {
         await changeUserPassword({ currentPassword, newPassword });
         setStatus({
           type: 'success',
-          message: 'Kata sandi berhasil diperbarui. Silakan gunakan kata sandi baru untuk login berikutnya.',
+          message: t('passwordChangedSuccess'),
         });
         setCurrentPassword('');
         setNewPassword('');
@@ -74,7 +76,7 @@ export function SecurityTab() {
       } catch (err: any) {
         setStatus({
           type: 'error',
-          message: err?.message || 'Gagal mengubah kata sandi',
+          message: err?.message || t('passwordChangeFailed'),
         });
       }
     });
@@ -85,10 +87,10 @@ export function SecurityTab() {
       <div className="mb-6">
         <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-brand-500" />
-          <span>Keamanan & Kata Sandi</span>
+          <span>{t('securityTitle')}</span>
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Kelola kata sandi akun Anda untuk menjaga keamanan akses sistem pembelajaran.
+          {t('securitySubtitle')}
         </p>
       </div>
 
@@ -116,7 +118,7 @@ export function SecurityTab() {
             htmlFor="currentPassword"
             className="text-xs font-semibold text-gray-700 dark:text-gray-300"
           >
-            Kata Sandi Saat Ini
+            {t('currentPassword')}
           </Label>
           <div className="relative">
             <Input
@@ -124,7 +126,7 @@ export function SecurityTab() {
               type={showCurrent ? 'text' : 'password'}
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Masukkan kata sandi saat ini"
+              placeholder={t('currentPasswordPlaceholder')}
               required
               className="pr-10 text-sm bg-gray-50/50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"
             />
@@ -144,7 +146,7 @@ export function SecurityTab() {
             htmlFor="newPassword"
             className="text-xs font-semibold text-gray-700 dark:text-gray-300"
           >
-            Kata Sandi Baru
+            {t('newPassword')}
           </Label>
           <div className="relative">
             <Input
@@ -152,7 +154,7 @@ export function SecurityTab() {
               type={showNew ? 'text' : 'password'}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Minimal 8 karakter"
+              placeholder={t('newPasswordPlaceholder')}
               required
               minLength={8}
               className="pr-10 text-sm bg-gray-50/50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"
@@ -166,7 +168,7 @@ export function SecurityTab() {
             </button>
           </div>
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Minimal 8 karakter, harus mengandung huruf besar (A-Z), huruf kecil (a-z), dan angka (0-9).
+            {t('passwordPolicyHint')}
           </p>
         </div>
 
@@ -176,7 +178,7 @@ export function SecurityTab() {
             htmlFor="confirmPassword"
             className="text-xs font-semibold text-gray-700 dark:text-gray-300"
           >
-            Konfirmasi Kata Sandi Baru
+            {t('confirmNewPassword')}
           </Label>
           <div className="relative">
             <Input
@@ -184,7 +186,7 @@ export function SecurityTab() {
               type={showConfirm ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Ulangi kata sandi baru"
+              placeholder={t('confirmNewPasswordPlaceholder')}
               required
               minLength={8}
               className="pr-10 text-sm bg-gray-50/50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"
@@ -203,12 +205,12 @@ export function SecurityTab() {
         <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400 space-y-1">
           <p className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1">
             <Lock className="w-3 h-3 text-brand-500" />
-            Petunjuk Keamanan:
+            {t('passwordTipsTitle')}
           </p>
           <ul className="list-disc list-inside space-y-0.5 pl-1">
-            <li>Gunakan kombinasi huruf besar, huruf kecil, dan angka.</li>
-            <li>Minimal panjang kata sandi adalah 8 karakter.</li>
-            <li>Hindari menggunakan tanggal lahir atau nomor HP pribadi.</li>
+            <li>{t('passwordTip1')}</li>
+            <li>{t('passwordTip2')}</li>
+            <li>{t('passwordTip3')}</li>
           </ul>
         </div>
 
@@ -224,7 +226,7 @@ export function SecurityTab() {
             ) : (
               <KeyRound className="w-4 h-4" />
             )}
-            <span>Perbarui Kata Sandi</span>
+            <span>{t('updatePassword')}</span>
           </Button>
         </div>
       </form>

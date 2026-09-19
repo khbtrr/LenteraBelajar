@@ -20,6 +20,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { CalendarItem } from '@/lib/actions/calendar';
 import { useDialog } from '@/context/DialogContext';
 
@@ -38,6 +39,10 @@ export function EventDetailDialog({
   onEdit,
   onDelete,
 }: EventDetailDialogProps) {
+  const t = useTranslations('calendar');
+  const tCommon = useTranslations('common');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
   const { showConfirm } = useDialog();
 
   if (!item) return null;
@@ -56,11 +61,11 @@ export function EventDetailDialog({
     };
 
     if (isAllDay) {
-      return `${start.toLocaleDateString('id-ID', dateOptions)} (Sepanjang Hari)`;
+      return `${start.toLocaleDateString(dateLocale, dateOptions)} (${t('allDay')})`;
     }
 
     if (!endStr) {
-      return `${start.toLocaleDateString('id-ID', dateOptions)}, ${start.toLocaleTimeString('id-ID', timeOptions)} WIB`;
+      return `${start.toLocaleDateString(dateLocale, dateOptions)}, ${start.toLocaleTimeString(dateLocale, timeOptions)}`;
     }
 
     const end = new Date(endStr);
@@ -70,36 +75,36 @@ export function EventDetailDialog({
       start.getDate() === end.getDate();
 
     if (isSameDay) {
-      return `${start.toLocaleDateString('id-ID', dateOptions)}, ${start.toLocaleTimeString('id-ID', timeOptions)} - ${end.toLocaleTimeString('id-ID', timeOptions)} WIB`;
+      return `${start.toLocaleDateString(dateLocale, dateOptions)}, ${start.toLocaleTimeString(dateLocale, timeOptions)} - ${end.toLocaleTimeString(dateLocale, timeOptions)}`;
     }
 
-    return `${start.toLocaleDateString('id-ID', dateOptions)} ${start.toLocaleTimeString('id-ID', timeOptions)} s.d. ${end.toLocaleDateString('id-ID', dateOptions)} ${end.toLocaleTimeString('id-ID', timeOptions)} WIB`;
+    return `${start.toLocaleDateString(dateLocale, dateOptions)} ${start.toLocaleTimeString(dateLocale, timeOptions)} - ${end.toLocaleDateString(dateLocale, dateOptions)} ${end.toLocaleTimeString(dateLocale, timeOptions)}`;
   };
 
   const getCategoryBadge = (cat: string) => {
     switch (cat) {
       case 'TUGAS':
-        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 border-purple-300">Tugas</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 border-purple-300">{t('catBadgeAssignment')}</Badge>;
       case 'KUIS':
-        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300">Kuis CBT</Badge>;
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300">{t('catBadgeQuiz')}</Badge>;
       case 'PRESENSI':
-        return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300">Presensi</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300">{t('catBadgeAttendance')}</Badge>;
       case 'SEKOLAH':
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300 border-red-300">Agenda Sekolah</Badge>;
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300 border-red-300">{t('catBadgeSchool')}</Badge>;
       case 'KELAS':
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-blue-300">Agenda Kelas</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-blue-300">{t('catBadgeClass')}</Badge>;
       default:
-        return <Badge variant="outline">Catatan Pribadi</Badge>;
+        return <Badge variant="outline">{t('catBadgePersonal')}</Badge>;
     }
   };
 
   const handleDelete = async () => {
     const isConfirmed = await showConfirm(
-      `Apakah Anda yakin ingin menghapus agenda "${item.title}"?`,
+      t('deleteConfirm', { title: item.title }),
       {
-        title: 'Hapus Agenda',
-        confirmText: 'Ya, Hapus',
-        cancelText: 'Batal',
+        title: t('deleteTitle'),
+        confirmText: t('deleteConfirmButton'),
+        cancelText: tCommon('cancel'),
         confirmVariant: 'destructive',
       }
     );
@@ -149,7 +154,7 @@ export function EventDetailDialog({
                   rel="noreferrer"
                   className="font-medium text-blue-600 hover:underline flex items-center gap-1"
                 >
-                  Tautan Pertemuan Online <ExternalLink className="h-3 w-3" />
+                  {t('onlineMeetingLink')} <ExternalLink className="h-3 w-3" />
                 </a>
               ) : (
                 <p className="font-medium">{item.location}</p>
@@ -180,7 +185,7 @@ export function EventDetailDialog({
                 }}
                 className="text-xs h-8 px-2.5"
               >
-                <Edit2 className="h-3.5 w-3.5 mr-1 text-gray-500" /> Edit
+                <Edit2 className="h-3.5 w-3.5 mr-1 text-gray-500" /> {tCommon('edit')}
               </Button>
             )}
             {item.canEdit && onDelete && (
@@ -191,7 +196,7 @@ export function EventDetailDialog({
                 onClick={handleDelete}
                 className="text-xs h-8 px-2.5 text-rose-600 border-rose-200 hover:bg-rose-50"
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1 text-rose-600" /> Hapus
+                <Trash2 className="h-3.5 w-3.5 mr-1 text-rose-600" /> {tCommon('delete')}
               </Button>
             )}
           </div>
@@ -203,7 +208,7 @@ export function EventDetailDialog({
                   size="sm"
                   className="bg-[#002446] hover:bg-[#002446]/90 text-white text-xs font-bold flex items-center gap-1.5 h-8"
                 >
-                  Buka Kegiatan <ArrowRight className="h-3.5 w-3.5" />
+                  {t('openActivity')} <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>
             ) : (
@@ -214,7 +219,7 @@ export function EventDetailDialog({
                 onClick={() => onOpenChange(false)}
                 className="text-xs h-8"
               >
-                Tutup
+                {t('close')}
               </Button>
             )}
           </div>

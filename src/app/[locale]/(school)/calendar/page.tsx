@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { getCalendarEvents, getUserCoursesForCalendar } from '@/lib/actions/calendar';
 import { CalendarView } from '@/components/calendar/calendar-view';
 
@@ -8,6 +9,8 @@ export default async function CalendarPage() {
   if (!session?.user) {
     redirect('/login');
   }
+
+  const t = await getTranslations('calendar');
 
   const [initialEvents, courses] = await Promise.all([
     getCalendarEvents(),
@@ -18,13 +21,13 @@ export default async function CalendarPage() {
     <div className="space-y-4">
       <div>
         <div className="text-xs font-semibold text-[#FF8928] uppercase tracking-wider">
-          Jadwal & Agenda
+          {t('badge')}
         </div>
         <h1 className="text-2xl font-bold text-[#002446] dark:text-white">
-          Kalender Akademik Terpadu
+          {t('title')}
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Pantau tenggat pengumpulan tugas, jadwal ujian CBT, sesi presensi kelas, dan agenda kegiatan sekolah dalam satu kalender interaktif.
+          {t('subtitle')}
         </p>
       </div>
 

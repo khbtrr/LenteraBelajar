@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -43,14 +44,6 @@ interface EventDialogProps {
   onSuccess: () => void;
 }
 
-const COLOR_PRESETS = [
-  { name: 'Biru', value: '#3b82f6', bgClass: 'bg-blue-500' },
-  { name: 'Hijau', value: '#10b981', bgClass: 'bg-emerald-500' },
-  { name: 'Oranye', value: '#f59e0b', bgClass: 'bg-amber-500' },
-  { name: 'Merah', value: '#ef4444', bgClass: 'bg-rose-500' },
-  { name: 'Ungu', value: '#8b5cf6', bgClass: 'bg-purple-500' },
-];
-
 export function EventDialog({
   open,
   onOpenChange,
@@ -60,7 +53,17 @@ export function EventDialog({
   editItem,
   onSuccess,
 }: EventDialogProps) {
+  const t = useTranslations('calendar');
+  const tCommon = useTranslations('common');
   const isEditing = !!editItem;
+
+  const COLOR_PRESETS = [
+    { name: t('colorBlue'), value: '#3b82f6', bgClass: 'bg-blue-500' },
+    { name: t('colorGreen'), value: '#10b981', bgClass: 'bg-emerald-500' },
+    { name: t('colorOrange'), value: '#f59e0b', bgClass: 'bg-amber-500' },
+    { name: t('colorRed'), value: '#ef4444', bgClass: 'bg-rose-500' },
+    { name: t('colorPurple'), value: '#8b5cf6', bgClass: 'bg-purple-500' },
+  ];
 
   const getInitialStartDate = () => {
     if (editItem?.startDate) {
@@ -105,7 +108,7 @@ export function EventDialog({
     setError(null);
 
     if (!title.trim()) {
-      setError('Judul agenda tidak boleh kosong');
+      setError(t('titleRequired'));
       return;
     }
 
@@ -141,7 +144,7 @@ export function EventDialog({
       onOpenChange(false);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan agenda');
+      setError(err.message || t('failedSave'));
     } finally {
       setLoading(false);
     }
@@ -152,7 +155,7 @@ export function EventDialog({
       <DialogContent className="max-w-md sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-[#002446] dark:text-white">
-            {isEditing ? 'Edit Agenda Kalender' : 'Tambah Agenda Baru'}
+            {isEditing ? t('editEvent') : t('newEvent')}
           </DialogTitle>
         </DialogHeader>
 
@@ -166,13 +169,13 @@ export function EventDialog({
           {/* Title */}
           <div className="space-y-1.5">
             <Label htmlFor="title" className="text-xs font-semibold">
-              Judul Agenda <span className="text-rose-500">*</span>
+              {t('eventTitle')} <span className="text-rose-500">*</span>
             </Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Contoh: Ujian Tengah Semester, Pengayaan Daring"
+              placeholder={t('eventTitlePlaceholder')}
               className="text-sm"
               required
             />
@@ -181,27 +184,27 @@ export function EventDialog({
           {/* Scope selection (only for new events) */}
           {!isEditing && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Lingkup Kegiatan</Label>
+              <Label className="text-xs font-semibold">{t('eventScope')}</Label>
               <Select
                 value={scope}
                 onValueChange={(val) => setScope(val as CalendarEventScope)}
               >
                 <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Pilih lingkup kegiatan" />
+                  <SelectValue placeholder={t('selectScope')} />
                 </SelectTrigger>
                 <SelectContent>
                   {(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && (
                     <SelectItem value={CalendarEventScope.SCHOOL}>
-                      🏛️ Agenda Sekolah (Seluruh Siswa & Guru)
+                      {t('scopeSchool')}
                     </SelectItem>
                   )}
                   {(userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && (
                     <SelectItem value={CalendarEventScope.COURSE}>
-                      📚 Agenda Kelas / Mata Pelajaran
+                      {t('scopeCourse')}
                     </SelectItem>
                   )}
                   <SelectItem value={CalendarEventScope.PERSONAL}>
-                    👤 Catatan Pribadi (Hanya Anda)
+                    {t('scopePersonal')}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -211,10 +214,10 @@ export function EventDialog({
           {/* Course select if scope is COURSE */}
           {!isEditing && scope === CalendarEventScope.COURSE && courses.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Mata Pelajaran</Label>
+              <Label className="text-xs font-semibold">{t('course')}</Label>
               <Select value={courseId} onValueChange={setCourseId}>
                 <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Pilih mata pelajaran" />
+                  <SelectValue placeholder={t('selectCourse')} />
                 </SelectTrigger>
                 <SelectContent>
                   {courses.map((c) => (
@@ -231,7 +234,7 @@ export function EventDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="startDate" className="text-xs font-semibold">
-                Mulai
+                {t('startDate')}
               </Label>
               <Input
                 id="startDate"
@@ -245,7 +248,7 @@ export function EventDialog({
 
             <div className="space-y-1.5">
               <Label htmlFor="endDate" className="text-xs font-semibold">
-                Selesai (Opsional)
+                {t('endDate')}
               </Label>
               <Input
                 id="endDate"
@@ -267,27 +270,27 @@ export function EventDialog({
               className="rounded border-gray-300 text-[#002446] focus:ring-blue-500"
             />
             <Label htmlFor="isAllDay" className="text-xs cursor-pointer">
-              Sepanjang Hari (All Day)
+              {t('allDay')}
             </Label>
           </div>
 
           {/* Location / Link */}
           <div className="space-y-1.5">
             <Label htmlFor="location" className="text-xs font-semibold">
-              Lokasi / Ruang / Tautan Daring (Opsional)
+              {t('location')}
             </Label>
             <Input
               id="location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Contoh: Lab Komputer 2 atau https://meet.google.com/..."
+              placeholder={t('locationPlaceholder')}
               className="text-xs"
             />
           </div>
 
           {/* Color Presets */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Warna Label</Label>
+            <Label className="text-xs font-semibold">{t('labelColor')}</Label>
             <div className="flex items-center gap-2.5 pt-1">
               {COLOR_PRESETS.map((preset) => (
                 <button
@@ -308,13 +311,13 @@ export function EventDialog({
           {/* Description */}
           <div className="space-y-1.5">
             <Label htmlFor="description" className="text-xs font-semibold">
-              Deskripsi Agenda (Opsional)
+              {t('description')}
             </Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Tambahkan catatan atau detail instruksi..."
+              placeholder={t('descriptionPlaceholder')}
               rows={2}
               className="text-xs"
             />
@@ -329,7 +332,7 @@ export function EventDialog({
               disabled={loading}
               className="text-xs"
             >
-              Batal
+              {tCommon('cancel')}
             </Button>
             <Button
               type="submit"
@@ -338,7 +341,7 @@ export function EventDialog({
               className="bg-[#002446] hover:bg-[#002446]/90 text-white text-xs font-bold"
             >
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-              {isEditing ? 'Simpan Perubahan' : 'Buat Agenda'}
+              {isEditing ? t('saveChanges') : t('createEvent')}
             </Button>
           </DialogFooter>
         </form>

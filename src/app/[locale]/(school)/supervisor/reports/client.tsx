@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { exportToExcel, exportToCsv } from '@/lib/export';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,7 @@ interface ReportsClientProps {
 }
 
 export function SupervisorReportsClient({ initialReports, academicYears }: ReportsClientProps) {
+  const t = useTranslations('supervisorReports');
   const [reports] = useState(initialReports);
   const [search, setSearch] = useState('');
   const [selectedAY, setSelectedAY] = useState<string>('ALL');
@@ -50,32 +52,32 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
 
   const handleExportExcel = () => {
     const rows = filteredReports.map((r, idx) => ({
-      No: idx + 1,
-      'Mata Pelajaran': r.title,
-      'Guru Pengampu': r.teacher,
-      'Tahun Ajaran': r.academicYear,
+      [t('colNo')]: idx + 1,
+      [t('colCourse')]: r.title,
+      [t('colTeacher')]: r.teacher,
+      [t('colAcademicYear')]: r.academicYear,
       Kategori: r.category,
-      'Jumlah Siswa': r.studentsCount,
-      'Jumlah Bab Modul': r.modulesCount,
-      'Nilai Tercatat': r.gradesRecorded,
-      'Rata-rata Nilai': r.averageScore !== null ? r.averageScore : '-',
+      [t('colStudents')]: r.studentsCount,
+      [t('colMaterials')]: r.modulesCount,
+      [t('colRecordedGrades')]: r.gradesRecorded,
+      [t('colAverageGrade')]: r.averageScore !== null ? r.averageScore : '-',
     }));
-    exportToExcel(rows, 'Laporan_Rekap_Nilai_Sekolah');
+    exportToExcel(rows, t('excelFilename'));
   };
 
   const handleExportCsv = () => {
     const rows = filteredReports.map((r, idx) => ({
-      No: idx + 1,
-      'Mata Pelajaran': r.title,
-      'Guru Pengampu': r.teacher,
-      'Tahun Ajaran': r.academicYear,
+      [t('colNo')]: idx + 1,
+      [t('colCourse')]: r.title,
+      [t('colTeacher')]: r.teacher,
+      [t('colAcademicYear')]: r.academicYear,
       Kategori: r.category,
-      'Jumlah Siswa': r.studentsCount,
-      'Jumlah Bab Modul': r.modulesCount,
-      'Nilai Tercatat': r.gradesRecorded,
-      'Rata-rata Nilai': r.averageScore !== null ? r.averageScore : '-',
+      [t('colStudents')]: r.studentsCount,
+      [t('colMaterials')]: r.modulesCount,
+      [t('colRecordedGrades')]: r.gradesRecorded,
+      [t('colAverageGrade')]: r.averageScore !== null ? r.averageScore : '-',
     }));
-    exportToCsv(rows, 'Laporan_Rekap_Nilai_Sekolah');
+    exportToCsv(rows, t('excelFilename'));
   };
 
   return (
@@ -85,20 +87,20 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Mata Pelajaran
+              {t('courses')}
             </CardTitle>
             <BookOpen className="h-4 w-4 text-[#002446]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[#002446]">{filteredReports.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Course yang dievaluasi</p>
+            <p className="text-xs text-gray-500 mt-1">{t('coursesDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Rata-rata Sekolah
+              {t('schoolAverage')}
             </CardTitle>
             <Trophy className="h-4 w-4 text-[#FF8928]" />
           </CardHeader>
@@ -106,14 +108,14 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
             <div className="text-2xl font-bold text-[#FF8928]">
               {overallAverage !== null ? overallAverage : '-'}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Ketercapaian nilai seluruh mapel</p>
+            <p className="text-xs text-gray-500 mt-1">{t('schoolAverageDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Data Nilai Masuk
+              {t('recordedGrades')}
             </CardTitle>
             <BarChart3 className="h-4 w-4 text-emerald-600" />
           </CardHeader>
@@ -121,14 +123,14 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
             <div className="text-2xl font-bold text-emerald-600">
               {filteredReports.reduce((acc, r) => acc + r.gradesRecorded, 0)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Akumulasi entri kuis & tugas</p>
+            <p className="text-xs text-gray-500 mt-1">{t('recordedGradesDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Siswa Terbina
+              {t('guidedStudents')}
             </CardTitle>
             <Users className="h-4 w-4 text-purple-600" />
           </CardHeader>
@@ -136,7 +138,7 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
             <div className="text-2xl font-bold text-purple-600">
               {filteredReports.reduce((acc, r) => acc + r.studentsCount, 0)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Total enrollment mapel</p>
+            <p className="text-xs text-gray-500 mt-1">{t('guidedStudentsDesc')}</p>
           </CardContent>
         </Card>
       </div>
@@ -148,7 +150,7 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Cari mapel atau guru..."
+                placeholder={t('searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-9 text-sm"
@@ -157,10 +159,10 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
 
             <Select value={selectedAY} onValueChange={setSelectedAY}>
               <SelectTrigger className="w-full sm:w-48 h-9 text-xs">
-                <SelectValue placeholder="Pilih Tahun Ajaran" />
+                <SelectValue placeholder={t('selectAcademicYear')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">Semua Tahun Ajaran</SelectItem>
+                <SelectItem value="ALL">{t('allAcademicYears')}</SelectItem>
                 {academicYears.map((ay) => (
                   <SelectItem key={ay.id} value={ay.name}>
                     {ay.name}
@@ -176,7 +178,7 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
               className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-1.5 text-xs h-9"
             >
               <FileSpreadsheet className="h-4 w-4 text-[#FF8928]" />
-              Unduh Excel (.xlsx)
+              {t('downloadExcel')}
             </Button>
             <Button
               onClick={handleExportCsv}
@@ -184,7 +186,7 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
               className="border-gray-300 flex items-center gap-1.5 text-xs h-9"
             >
               <Download className="h-4 w-4" />
-              CSV
+              {t('exportCsv')}
             </Button>
           </div>
         </CardHeader>
@@ -194,14 +196,14 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wider">
-                  <th className="py-3 px-4 w-12 text-center">No</th>
-                  <th className="py-3 px-4">Mata Pelajaran</th>
-                  <th className="py-3 px-4">Guru Pengampu</th>
-                  <th className="py-3 px-4">Tahun Ajaran</th>
-                  <th className="py-3 px-4 text-center">Siswa</th>
-                  <th className="py-3 px-4 text-center">Materi</th>
-                  <th className="py-3 px-4 text-center">Nilai Masuk</th>
-                  <th className="py-3 px-4 text-center">Rata-rata Nilai</th>
+                  <th className="py-3 px-4 w-12 text-center">{t('colNo')}</th>
+                  <th className="py-3 px-4">{t('colCourse')}</th>
+                  <th className="py-3 px-4">{t('colTeacher')}</th>
+                  <th className="py-3 px-4">{t('colAcademicYear')}</th>
+                  <th className="py-3 px-4 text-center">{t('colStudents')}</th>
+                  <th className="py-3 px-4 text-center">{t('colMaterials')}</th>
+                  <th className="py-3 px-4 text-center">{t('colRecordedGrades')}</th>
+                  <th className="py-3 px-4 text-center">{t('colAverageGrade')}</th>
                 </tr>
               </thead>
 
@@ -209,7 +211,7 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
                 {filteredReports.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-gray-400">
-                      Tidak ada data laporan
+                      {t('noReportsFound')}
                     </td>
                   </tr>
                 ) : (
@@ -230,7 +232,7 @@ export function SupervisorReportsClient({ initialReports, academicYears }: Repor
                         {r.studentsCount}
                       </td>
                       <td className="py-3.5 px-4 text-center text-gray-600">
-                        {r.modulesCount} bab
+                        {t('chaptersCount', { count: r.modulesCount })}
                       </td>
                       <td className="py-3.5 px-4 text-center text-gray-600">
                         {r.gradesRecorded}

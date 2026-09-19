@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,9 @@ export function NewMessageDialog({
   onOpenChange,
   onSelectConversation,
 }: NewMessageDialogProps) {
+  const t = useTranslations('messages');
+  const tRoles = useTranslations('roles');
+
   const [search, setSearch] = useState('');
   const [users, setUsers] = useState<ContactableUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +58,7 @@ export function NewMessageDialog({
         }
       } catch (err: any) {
         if (isMounted) {
-          setError(err?.message || 'Gagal memuat daftar kontak');
+          setError(err?.message || t('failedLoadContacts'));
         }
       } finally {
         if (isMounted) {
@@ -67,7 +71,7 @@ export function NewMessageDialog({
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [search, open]);
+  }, [search, open, t]);
 
   const handleSelectUser = (user: ContactableUser) => {
     startTransition(async () => {
@@ -77,25 +81,16 @@ export function NewMessageDialog({
         onOpenChange(false);
         onSelectConversation(conversationId);
       } catch (err: any) {
-        setError(err?.message || 'Gagal memulai percakapan');
+        setError(err?.message || t('failedStartChat'));
       }
     });
   };
 
   const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'TEACHER':
-        return 'Guru';
-      case 'STUDENT':
-        return 'Siswa';
-      case 'ADMIN':
-        return 'Admin';
-      case 'SUPERVISOR':
-        return 'Pengawas';
-      case 'SUPER_ADMIN':
-        return 'Super Admin';
-      default:
-        return role;
+    try {
+      return tRoles(role);
+    } catch {
+      return role;
     }
   };
 
@@ -128,10 +123,10 @@ export function NewMessageDialog({
         <DialogHeader className="p-5 pb-3 border-b border-gray-100 dark:border-gray-800">
           <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
             <UserPlus className="w-5 h-5 text-brand-500" />
-            <span>Kirim Pesan Baru</span>
+            <span>{t('newChatTitle')}</span>
           </DialogTitle>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Pilih kontak dari kelas yang sama untuk memulai percakapan
+            {t('newChatSubtitle')}
           </p>
         </DialogHeader>
 
@@ -140,7 +135,7 @@ export function NewMessageDialog({
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <Input
               type="text"
-              placeholder="Cari nama, NIS, NIP..."
+              placeholder={t('searchContactPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
@@ -159,13 +154,13 @@ export function NewMessageDialog({
           {isLoading || isPending ? (
             <div className="py-12 flex flex-col items-center justify-center text-gray-400 text-xs gap-2">
               <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
-              <span>Memuat kontak...</span>
+              <span>{t('loadingContacts')}</span>
             </div>
           ) : users.length === 0 ? (
             <div className="py-12 text-center text-gray-500 dark:text-gray-400 text-xs">
               {search
-                ? 'Tidak ada kontak yang cocok dengan pencarian Anda'
-                : 'Belum ada kontak yang tersedia di kelas yang sama'}
+                ? t('noContactsFound')
+                : t('noContactsAvailable')}
             </div>
           ) : (
             users.map((user) => (
@@ -202,7 +197,7 @@ export function NewMessageDialog({
                     <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate">
                       <BookOpen className="w-3 h-3 shrink-0 text-gray-400" />
                       <span className="truncate">
-                        {user.sharedCourses.join(', ') || 'Kelas Bersama'}
+                        {user.sharedCourses.join(', ') || t('sharedClass')}
                       </span>
                     </div>
                   </div>
