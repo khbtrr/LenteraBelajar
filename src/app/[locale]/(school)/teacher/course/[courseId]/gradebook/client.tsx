@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { CourseGradebookData } from '@/lib/actions/grade';
 import { exportToExcel, exportToCsv } from '@/lib/export';
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Download, FileSpreadsheet, Search, Trophy, CheckCircle2, TrendingUp, Sparkles } from 'lucide-react';
 
 export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) {
+  const t = useTranslations('teacherGradebook');
   const [search, setSearch] = useState('');
   const [isEraporModalOpen, setIsEraporModalOpen] = useState(false);
 
@@ -25,49 +27,49 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
   const handleExportExcel = () => {
     const rows = filteredStudents.map((s, index) => {
       const row: Record<string, unknown> = {
-        No: index + 1,
-        NIS: s.nis || '-',
-        'Nama Siswa': s.name,
-        Email: s.email,
+        [t('excelColNo')]: index + 1,
+        [t('excelColNis')]: s.nis || '-',
+        [t('excelColName')]: s.name,
+        [t('excelColEmail')]: s.email,
       };
 
       data.quizzes.forEach((q) => {
-        row[`Kuis: ${q.title}`] = s.quizScores[q.id] !== null ? s.quizScores[q.id] : '-';
+        row[t('excelColQuiz', { title: q.title })] = s.quizScores[q.id] !== null ? s.quizScores[q.id] : '-';
       });
 
       data.assignments.forEach((a) => {
-        row[`Tugas: ${a.title}`] = s.assignmentScores[a.id] !== null ? s.assignmentScores[a.id] : '-';
+        row[t('excelColAssignment', { title: a.title })] = s.assignmentScores[a.id] !== null ? s.assignmentScores[a.id] : '-';
       });
 
-      row['Nilai Rata-rata'] = s.average !== null ? s.average : '-';
+      row[t('excelColAverage')] = s.average !== null ? s.average : '-';
       return row;
     });
 
-    exportToExcel(rows, `Buku_Nilai_${data.course.title.replace(/\s+/g, '_')}`);
+    exportToExcel(rows, t('exportExcelName', { title: data.course.title.replace(/\s+/g, '_') }));
   };
 
   const handleExportCsv = () => {
     const rows = filteredStudents.map((s, index) => {
       const row: Record<string, unknown> = {
-        No: index + 1,
-        NIS: s.nis || '-',
-        'Nama Siswa': s.name,
-        Email: s.email,
+        [t('excelColNo')]: index + 1,
+        [t('excelColNis')]: s.nis || '-',
+        [t('excelColName')]: s.name,
+        [t('excelColEmail')]: s.email,
       };
 
       data.quizzes.forEach((q) => {
-        row[`Kuis: ${q.title}`] = s.quizScores[q.id] !== null ? s.quizScores[q.id] : '-';
+        row[t('excelColQuiz', { title: q.title })] = s.quizScores[q.id] !== null ? s.quizScores[q.id] : '-';
       });
 
       data.assignments.forEach((a) => {
-        row[`Tugas: ${a.title}`] = s.assignmentScores[a.id] !== null ? s.assignmentScores[a.id] : '-';
+        row[t('excelColAssignment', { title: a.title })] = s.assignmentScores[a.id] !== null ? s.assignmentScores[a.id] : '-';
       });
 
-      row['Nilai Rata-rata'] = s.average !== null ? s.average : '-';
+      row[t('excelColAverage')] = s.average !== null ? s.average : '-';
       return row;
     });
 
-    exportToCsv(rows, `Buku_Nilai_${data.course.title.replace(/\s+/g, '_')}`);
+    exportToCsv(rows, t('exportExcelName', { title: data.course.title.replace(/\s+/g, '_') }));
   };
 
   return (
@@ -81,7 +83,7 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-[#002446]">Buku Nilai (Gradebook)</h1>
+            <h1 className="text-2xl font-bold text-[#002446]">{t('title')}</h1>
           </div>
           <p className="text-sm text-gray-500 pl-10">
             {data.course.title} • {data.course.academicYear.name}
@@ -94,8 +96,8 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
             className="bg-linear-to-r from-[#002446] to-[#013567] hover:from-[#001b33] hover:to-[#002446] text-white flex items-center gap-2 text-sm font-bold shadow-sm border border-[#FF8928]/40"
           >
             <Sparkles className="h-4 w-4 text-[#FF8928]" />
-            <span>Auto-Fill Template e-Rapor</span>
-            <Badge className="bg-[#FF8928] text-white text-[9px] px-1.5 py-0 uppercase">Baru</Badge>
+            <span>{t('btnErapor')}</span>
+            <Badge className="bg-[#FF8928] text-white text-[9px] px-1.5 py-0 uppercase">{t('newBadge')}</Badge>
           </Button>
 
           <Button
@@ -104,7 +106,7 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
             className="border-[#002446]/30 text-[#002446] hover:bg-gray-100 flex items-center gap-2 text-sm"
           >
             <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-            Rekap Excel (.xlsx)
+            {t('btnExcel')}
           </Button>
           <Button
             onClick={handleExportCsv}
@@ -112,7 +114,7 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
             className="border-gray-300 flex items-center gap-2 text-sm"
           >
             <Download className="h-4 w-4" />
-            CSV
+            {t('btnCsv')}
           </Button>
         </div>
       </div>
@@ -122,20 +124,20 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Total Siswa
+              {t('statTotalStudents')}
             </CardTitle>
             <CheckCircle2 className="h-4 w-4 text-[#002446]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[#002446]">{data.students.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Siswa terdaftar di course</p>
+            <p className="text-xs text-gray-500 mt-1">{t('statEnrolledDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Rata-rata Kelas
+              {t('statClassAverage')}
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-[#FF8928]" />
           </CardHeader>
@@ -143,14 +145,14 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
             <div className="text-2xl font-bold text-[#FF8928]">
               {data.classAverage !== null ? data.classAverage : '-'}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Dari kuis & tugas yang telah dinilai</p>
+            <p className="text-xs text-gray-500 mt-1">{t('statAverageDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Nilai Tertinggi
+              {t('statHighestScore')}
             </CardTitle>
             <Trophy className="h-4 w-4 text-emerald-600" />
           </CardHeader>
@@ -158,14 +160,14 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
             <div className="text-2xl font-bold text-emerald-600">
               {data.highestScore !== null ? data.highestScore : '-'}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Pencapaian siswa tertinggi</p>
+            <p className="text-xs text-gray-500 mt-1">{t('statHighestDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Total Evaluasi
+              {t('statTotalEvaluations')}
             </CardTitle>
             <FileSpreadsheet className="h-4 w-4 text-blue-600" />
           </CardHeader>
@@ -174,7 +176,7 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
               {data.quizzes.length + data.assignments.length}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {data.quizzes.length} Kuis • {data.assignments.length} Tugas
+              {t('statEvaluationsCount', { quizzes: data.quizzes.length, assignments: data.assignments.length })}
             </p>
           </CardContent>
         </Card>
@@ -183,11 +185,11 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
       {/* Grade Table */}
       <Card className="bg-white shadow-sm border">
         <CardHeader className="pb-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <CardTitle className="text-lg font-bold text-[#002446]">Matriks Nilai Siswa</CardTitle>
+          <CardTitle className="text-lg font-bold text-[#002446]">{t('matrixTitle')}</CardTitle>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Cari siswa atau NIS..."
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-9 text-sm"
@@ -200,9 +202,9 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wider">
-                  <th className="py-3 px-4 sticky left-0 bg-gray-50 z-10 w-12 text-center">No</th>
-                  <th className="py-3 px-4 sticky left-12 bg-gray-50 z-10 min-w-[200px]">Nama Siswa</th>
-                  <th className="py-3 px-3 text-center min-w-[100px]">NIS</th>
+                  <th className="py-3 px-4 sticky left-0 bg-gray-50 z-10 w-12 text-center">{t('thNo')}</th>
+                  <th className="py-3 px-4 sticky left-12 bg-gray-50 z-10 min-w-[200px]">{t('thStudent')}</th>
+                  <th className="py-3 px-3 text-center min-w-[100px]">{t('thNis')}</th>
 
                   {/* Quizzes Headers */}
                   {data.quizzes.map((q) => (
@@ -211,7 +213,7 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
                         <span className="font-semibold text-blue-900 truncate max-w-[110px]" title={q.title}>
                           {q.title}
                         </span>
-                        <span className="text-[10px] text-blue-600">Kuis (100)</span>
+                        <span className="text-[10px] text-blue-600">{t('thQuizPrefix')}</span>
                       </div>
                     </th>
                   ))}
@@ -223,13 +225,13 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
                         <span className="font-semibold text-amber-900 truncate max-w-[110px]" title={a.title}>
                           {a.title}
                         </span>
-                        <span className="text-[10px] text-amber-700">Tugas ({a.maxScore})</span>
+                        <span className="text-[10px] text-amber-700">{t('thAssignmentPrefix', { max: a.maxScore })}</span>
                       </div>
                     </th>
                   ))}
 
                   <th className="py-3 px-4 text-center min-w-[110px] bg-emerald-50 text-emerald-900 font-bold sticky right-0 z-10">
-                    Rata-rata
+                    {t('thAverage')}
                   </th>
                 </tr>
               </thead>
@@ -241,7 +243,7 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
                       colSpan={4 + data.quizzes.length + data.assignments.length}
                       className="py-8 text-center text-gray-400"
                     >
-                      Tidak ada data siswa
+                      {t('emptyStudents')}
                     </td>
                   </tr>
                 ) : (

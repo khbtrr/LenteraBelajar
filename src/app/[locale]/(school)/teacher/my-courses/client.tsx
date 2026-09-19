@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { BookOpen, Plus, Users, Layers, Send, ExternalLink, FileSpreadsheet, CalendarCheck, MessageSquare } from 'lucide-react';
 import { createCourse } from '@/lib/actions/course';
 import { Link } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { useDialog } from '@/context/DialogContext';
 
 interface CourseItem {
@@ -53,6 +54,7 @@ export function TeacherCoursesClient({
   canCreateDirect?: boolean;
   currentUserId: string;
 }) {
+  const t = useTranslations('teacherCourses');
   const { showAlert } = useDialog();
   const [courses, setCourses] = useState<CourseItem[]>(initialCourses);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -69,7 +71,7 @@ export function TeacherCoursesClient({
   const handleCreateDirect = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!academicYearId) {
-      await showAlert('Pilih Tahun Ajaran aktif terlebih dahulu', { type: 'warning' });
+      await showAlert(t('selectYearWarn'), { type: 'warning' });
       return;
     }
     setLoading(true);
@@ -98,10 +100,10 @@ export function TeacherCoursesClient({
       setIsCreateOpen(false);
       setTitle('');
       setDescription('');
-      await showAlert(`Course "${created.title}" berhasil dibuat!`, { type: 'success' });
+      await showAlert(t('successCreated', { title: created.title }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal membuat course', { type: 'error' });
+      await showAlert(err?.message || t('failedCreated'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -110,8 +112,8 @@ export function TeacherCoursesClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="text-sm text-gray-600">
-          Total <strong>{courses.length}</strong> course diampu
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          {t('totalTaught', { count: courses.length })}
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -120,7 +122,7 @@ export function TeacherCoursesClient({
               variant="outline"
               className="border-accent-500 text-accent-600 dark:text-accent-400 hover:bg-accent-500 hover:text-white dark:hover:bg-accent-600 flex items-center gap-1.5 transition-colors"
             >
-              <Send className="h-4 w-4" /> Ajukan Course ke Admin
+              <Send className="h-4 w-4" /> {t('requestCourse')}
             </Button>
           </Link>
 
@@ -128,7 +130,7 @@ export function TeacherCoursesClient({
             onClick={() => setIsCreateOpen(true)}
             className="flex items-center gap-1.5"
           >
-            <Plus className="h-4 w-4" /> Buat Langsung
+            <Plus className="h-4 w-4" /> {t('createDirect')}
           </Button>
         </div>
       </div>
@@ -138,17 +140,17 @@ export function TeacherCoursesClient({
           <CardContent className="space-y-4">
             <BookOpen className="h-16 w-16 mx-auto text-gray-300 dark:text-gray-600" />
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Belum Ada Course</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('emptyTitle')}</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                Anda belum memiliki course aktif. Buat course secara langsung atau ajukan request ke administrator sekolah.
+                {t('emptyDesc')}
               </p>
             </div>
             <div className="flex justify-center gap-3 pt-2">
               <Button onClick={() => setIsCreateOpen(true)}>
-                Buat Course Sekarang
+                {t('createCourseNow')}
               </Button>
               <Link href="/teacher/request-course">
-                <Button variant="outline">Ajukan ke Admin</Button>
+                <Button variant="outline">{t('requestToAdmin')}</Button>
               </Link>
             </div>
           </CardContent>
@@ -165,7 +167,7 @@ export function TeacherCoursesClient({
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <Badge variant="outline" className="text-xs">
-                      {course.category?.name || 'Umum'}
+                      {course.category?.name || t('generalCategory')}
                     </Badge>
                     <Badge
                       className={
@@ -174,14 +176,14 @@ export function TeacherCoursesClient({
                           : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                       }
                     >
-                      {isActive ? 'Aktif' : 'Arsip'}
+                      {isActive ? t('active') : t('archived')}
                     </Badge>
                   </div>
                   <CardTitle className="text-xl font-bold line-clamp-2 mt-2">
                     {course.title}
                   </CardTitle>
                   <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    Tahun Ajaran: {course.academicYear.name}
+                    {t('academicYear')}: {course.academicYear.name}
                   </div>
                 </CardHeader>
 
@@ -195,11 +197,11 @@ export function TeacherCoursesClient({
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-400">
                     <span className="flex items-center gap-1.5 font-medium">
                       <Users className="h-4 w-4 text-accent-500" />
-                      {course._count.enrollments} Siswa Terdaftar
+                      {t('enrolledStudents', { count: course._count.enrollments })}
                     </span>
                     <span className="flex items-center gap-1.5 font-medium">
                       <Layers className="h-4 w-4 text-brand-500 dark:text-brand-400" />
-                      {course._count.modules} Modul
+                      {t('modulesCount', { count: course._count.modules })}
                     </span>
                   </div>
                 </CardContent>
@@ -214,7 +216,7 @@ export function TeacherCoursesClient({
                         size="sm"
                         className="w-full flex items-center justify-center gap-1 text-xs"
                       >
-                        <Layers className="h-3.5 w-3.5" /> Modul
+                        <Layers className="h-3.5 w-3.5" /> {t('btnModules')}
                       </Button>
                     </Link>
 
@@ -227,7 +229,7 @@ export function TeacherCoursesClient({
                         size="sm"
                         className="w-full flex items-center justify-center gap-1 text-xs"
                       >
-                        <Users className="h-3.5 w-3.5" /> Siswa
+                        <Users className="h-3.5 w-3.5" /> {t('btnStudents')}
                       </Button>
                     </Link>
 
@@ -240,7 +242,7 @@ export function TeacherCoursesClient({
                         size="sm"
                         className="w-full border-accent-500 text-accent-600 dark:text-accent-400 hover:bg-accent-500 hover:text-white flex items-center justify-center gap-1 text-xs font-semibold transition-colors"
                       >
-                        <FileSpreadsheet className="h-3.5 w-3.5" /> Nilai
+                        <FileSpreadsheet className="h-3.5 w-3.5" /> {t('btnGrades')}
                       </Button>
                     </Link>
                   </div>
@@ -255,7 +257,7 @@ export function TeacherCoursesClient({
                         size="sm"
                         className="w-full flex items-center justify-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-medium"
                       >
-                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600" /> Presensi
+                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600" /> {t('btnAttendance')}
                       </Button>
                     </Link>
 
@@ -268,7 +270,7 @@ export function TeacherCoursesClient({
                         size="sm"
                         className="w-full flex items-center justify-center gap-1 text-xs text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-medium"
                       >
-                        <MessageSquare className="h-3.5 w-3.5 text-blue-600" /> Forum
+                        <MessageSquare className="h-3.5 w-3.5 text-blue-600" /> {t('btnForum')}
                       </Button>
                     </Link>
                   </div>
@@ -285,15 +287,15 @@ export function TeacherCoursesClient({
           <form onSubmit={handleCreateDirect}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold">
-                Buat Course Langsung
+                {t('createModalTitle')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="tCourseTitle" className="text-gray-700 dark:text-gray-300">Judul Course</Label>
+                <Label htmlFor="tCourseTitle" className="text-gray-700 dark:text-gray-300">{t('courseTitle')}</Label>
                 <Input
                   id="tCourseTitle"
-                  placeholder="misal: Fisika Dasar Semester 1"
+                  placeholder={t('courseTitlePlaceholder')}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
@@ -301,10 +303,10 @@ export function TeacherCoursesClient({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tCourseDesc" className="text-gray-700 dark:text-gray-300">Deskripsi</Label>
+                <Label htmlFor="tCourseDesc" className="text-gray-700 dark:text-gray-300">{t('courseDesc')}</Label>
                 <Input
                   id="tCourseDesc"
-                  placeholder="Ringkasan materi atau tujuan pembelajaran"
+                  placeholder={t('courseDescPlaceholder')}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -312,7 +314,7 @@ export function TeacherCoursesClient({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tCourseYear" className="text-gray-700 dark:text-gray-300">Tahun Ajaran</Label>
+                  <Label htmlFor="tCourseYear" className="text-gray-700 dark:text-gray-300">{t('activeAcademicYear')}</Label>
                   <select
                     id="tCourseYear"
                     value={academicYearId}
@@ -322,24 +324,24 @@ export function TeacherCoursesClient({
                   >
                     {academicYears.map((y) => (
                       <option key={y.id} value={y.id}>
-                        {y.name} {y.status === 'ACTIVE' ? '(Aktif)' : ''}
+                        {y.name} {y.status === 'ACTIVE' ? `(${t('active')})` : ''}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tCourseCat" className="text-gray-700 dark:text-gray-300">Kategori</Label>
+                  <Label htmlFor="tCourseCat" className="text-gray-700 dark:text-gray-300">{t('category')}</Label>
                   <select
                     id="tCourseCat"
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
                     className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-brand-500 transition-colors"
                   >
-                    <option value="">-- Pilih Kategori (Mapel) --</option>
+                    <option value="">{t('selectCategory')}</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.parent ? `${c.parent.name} → ${c.name}` : `${c.name} (Tahun Ajaran)`}
+                        {c.parent ? `${c.parent.name} → ${c.name}` : `${c.name} (${t('academicYear')})`}
                       </option>
                     ))}
                   </select>
@@ -352,13 +354,13 @@ export function TeacherCoursesClient({
                 variant="outline"
                 onClick={() => setIsCreateOpen(false)}
               >
-                Batal
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
               >
-                {loading ? 'Menyimpan...' : 'Buat Course'}
+                {loading ? t('creating') : t('btnCreate')}
               </Button>
             </DialogFooter>
           </form>

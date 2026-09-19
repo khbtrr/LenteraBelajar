@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
@@ -57,6 +58,9 @@ interface Props {
 }
 
 export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Props) {
+  const t = useTranslations('teacherLiveProctor');
+  const locale = useLocale();
+
   const router = useRouter();
   const { showAlert, showConfirm } = useDialog();
   const [data, setData] = useState<LiveProctorData>(initialData);
@@ -106,15 +110,13 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
     return () => clearInterval(interval);
   }, [autoRefresh, quizId]);
 
-
-
   const handleManualRefresh = async () => {
     setLoading(true);
     try {
       const freshData = await getLiveProctorData(quizId);
       setData(freshData);
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal memperbarui data', { type: 'error' });
+      await showAlert(err.message || t('refreshFailed'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -129,17 +131,17 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
 
   const handleGrantExtraTime = async (attemptId: string, minutes: number) => {
     const confirmed = await showConfirm(
-      `Berikan tambahan waktu ${minutes} menit untuk siswa ini?`,
-      { title: 'Beri Waktu Tambahan', confirmText: `+${minutes} Menit` }
+      t('extraTimeConfirm', { minutes }),
+      { title: t('extraTimeTitle'), confirmText: t('extraTimeBtn', { minutes }) }
     );
     if (!confirmed) return;
     setActionLoadingId(attemptId);
     try {
       await grantExtraTime(attemptId, minutes);
       await handleManualRefresh();
-      await showAlert(`Tambahan waktu ${minutes} menit berhasil diberikan.`, { type: 'success' });
+      await showAlert(t('extraTimeSuccess', { minutes }), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menambah waktu', { type: 'error' });
+      await showAlert(err.message || t('extraTimeFailed'), { type: 'error' });
     } finally {
       setActionLoadingId(null);
     }
@@ -147,17 +149,17 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
 
   const handleForceSubmit = async (attemptId: string) => {
     const confirmed = await showConfirm(
-      'Paksa kumpulkan lembar ujian siswa ini sekarang?',
-      { title: 'Paksa Kumpulkan', confirmText: 'Ya, Paksa Kumpulkan', confirmVariant: 'destructive' }
+      t('forceSubmitConfirm'),
+      { title: t('forceSubmitTitle'), confirmText: t('forceSubmitBtn'), confirmVariant: 'destructive' }
     );
     if (!confirmed) return;
     setActionLoadingId(attemptId);
     try {
-      await forceSubmitAttempt(attemptId, 'Dikumpulkan secara manual oleh pengawas ujian.');
+      await forceSubmitAttempt(attemptId, t('forceSubmitReason'));
       await handleManualRefresh();
-      await showAlert('Lembar ujian siswa berhasil dikumpulkan paksa.', { type: 'success' });
+      await showAlert(t('forceSubmitSuccess'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal mengumpulkan ujian siswa', { type: 'error' });
+      await showAlert(err.message || t('forceSubmitFailed'), { type: 'error' });
     } finally {
       setActionLoadingId(null);
     }
@@ -165,17 +167,17 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
 
   const handleResetAttempt = async (attemptId: string) => {
     const confirmed = await showConfirm(
-      'PERINGATAN: Apakah Anda yakin ingin mereset ujian siswa ini?\n\nSeluruh jawaban yang telah diisi akan dihapus dan siswa dapat memulai kembali dari awal.',
-      { title: 'Reset Pengerjaan Siswa', confirmText: 'Ya, Reset Ujian', confirmVariant: 'destructive' }
+      t('resetAttemptConfirm'),
+      { title: t('resetAttemptTitle'), confirmText: t('resetAttemptBtn'), confirmVariant: 'destructive' }
     );
     if (!confirmed) return;
     setActionLoadingId(attemptId);
     try {
       await resetStudentAttempt(attemptId);
       await handleManualRefresh();
-      await showAlert('Pengerjaan kuis siswa berhasil di-reset.', { type: 'success' });
+      await showAlert(t('resetAttemptSuccess'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal mereset ujian siswa', { type: 'error' });
+      await showAlert(err.message || t('resetAttemptFailed'), { type: 'error' });
     } finally {
       setActionLoadingId(null);
     }
@@ -194,9 +196,9 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
 
       await handleManualRefresh();
       setIsSettingsOpen(false);
-      await showAlert('Pengaturan keamanan ujian berhasil diperbarui!', { type: 'success' });
+      await showAlert(t('saveSettingsSuccess'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal memperbarui pengaturan keamanan', { type: 'error' });
+      await showAlert(err.message || t('saveSettingsFailed'), { type: 'error' });
     } finally {
       setSavingSettings(false);
     }
@@ -205,7 +207,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
   // Format seconds to mm:ss
   const formatTimeRemaining = (seconds: number | null) => {
     if (seconds === null) return '-';
-    if (seconds <= 0) return '00:00 (Habis)';
+    if (seconds <= 0) return t('timeUp');
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
@@ -233,19 +235,23 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
               href={`/teacher/course/${courseId}/quiz-attempts/${quizId}`}
               className="hover:underline flex items-center gap-1 text-gray-500 hover:text-[#002446]"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Riwayat Nilai
+              <ArrowLeft className="h-3.5 w-3.5" /> {t('backToHistory')}
             </Link>
             <span>•</span>
-            <span>Live Proctoring CBT</span>
+            <span>{t('breadcrumbLiveProctor')}</span>
           </div>
           <h1 className="text-2xl font-bold text-[#002446] flex items-center gap-2.5">
             <Shield className="h-6 w-6 text-emerald-600" />
-            Live Proctoring — {data.quiz.title}
+            {t('headerTitle', { title: data.quiz.title })}
           </h1>
           <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-gray-500">
             <Badge variant="outline" className="font-semibold text-gray-700 bg-white">
               <Clock className="h-3 w-3 mr-1 text-[#002446]" />
-              Durasi: {data.quiz.duration ? `${data.quiz.duration} Menit` : 'Tanpa Batas'}
+              {t('duration', {
+                duration: data.quiz.duration
+                  ? t('durationMinutes', { minutes: data.quiz.duration })
+                  : t('unlimitedDuration'),
+              })}
             </Badge>
 
             <Badge
@@ -256,17 +262,19 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
               }
             >
               <ShieldAlert className="h-3 w-3 mr-1" />
-              Lockdown CBT: {data.quiz.enableLockdown ? `Aktif (Toleransi ${data.quiz.maxTabSwitches}x)` : 'Non-aktif'}
+              {data.quiz.enableLockdown
+                ? t('lockdownActive', { max: data.quiz.maxTabSwitches })
+                : t('lockdownInactive')}
             </Badge>
 
             {data.quiz.requireToken && data.quiz.token ? (
               <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100 font-mono tracking-wider font-bold">
                 <KeyRound className="h-3 w-3 mr-1 text-[#FF8928]" />
-                Token: {data.quiz.token}
+                {t('tokenLabel', { token: data.quiz.token })}
               </Badge>
             ) : (
               <Badge variant="outline" className="text-gray-500">
-                Tanpa Token
+                {t('noToken')}
               </Badge>
             )}
           </div>
@@ -280,7 +288,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
               onClick={() => setIsTokenModalOpen(true)}
               className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5 text-xs font-bold"
             >
-              <QrCode className="h-4 w-4 text-[#FF8928]" /> Proyektor Token
+              <QrCode className="h-4 w-4 text-[#FF8928]" /> {t('tokenProjectorBtn')}
             </Button>
           )}
 
@@ -290,7 +298,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
             onClick={() => setIsSettingsOpen(true)}
             className="flex items-center gap-1.5 text-xs text-gray-700"
           >
-            <SlidersHorizontal className="h-3.5 w-3.5" /> Atur Keamanan
+            <SlidersHorizontal className="h-3.5 w-3.5" /> {t('securitySettingsBtn')}
           </Button>
 
           <Button
@@ -301,7 +309,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
             className="flex items-center gap-1.5 text-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Segarkan
+            {t('refreshBtn')}
           </Button>
 
           <button
@@ -317,7 +325,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                 autoRefresh ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'
               }`}
             ></span>
-            {autoRefresh ? 'Live (6s)' : 'Jeda Polling'}
+            {autoRefresh ? t('liveStatus') : t('pausedPolling')}
           </button>
         </div>
       </div>
@@ -326,42 +334,44 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="p-4 text-center">
-            <p className="text-[11px] font-semibold text-gray-500 uppercase">Total Peserta</p>
+            <p className="text-[11px] font-semibold text-gray-500 uppercase">{t('kpiTotal')}</p>
             <h3 className="text-2xl font-bold text-[#002446] mt-1">{data.stats.total}</h3>
-            <p className="text-[10px] text-gray-400">Siswa Terdaftar</p>
+            <p className="text-[10px] text-gray-400">{t('kpiTotalSub')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="p-4 text-center">
-            <p className="text-[11px] font-semibold text-blue-600 uppercase">Sedang Mengerjakan</p>
+            <p className="text-[11px] font-semibold text-blue-600 uppercase">{t('kpiInProgress')}</p>
             <h3 className="text-2xl font-bold text-blue-600 mt-1">{data.stats.inProgress}</h3>
-            <p className="text-[10px] text-gray-400">Di Layar Ujian</p>
+            <p className="text-[10px] text-gray-400">{t('kpiInProgressSub')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="p-4 text-center">
-            <p className="text-[11px] font-semibold text-emerald-600 uppercase">Sudah Selesai</p>
+            <p className="text-[11px] font-semibold text-emerald-600 uppercase">{t('kpiSubmitted')}</p>
             <h3 className="text-2xl font-bold text-emerald-600 mt-1">{data.stats.submitted}</h3>
-            <p className="text-[10px] text-gray-400">Telah Mengumpulkan</p>
+            <p className="text-[10px] text-gray-400">{t('kpiSubmittedSub')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="p-4 text-center">
-            <p className="text-[11px] font-semibold text-gray-500 uppercase">Belum Mulai</p>
+            <p className="text-[11px] font-semibold text-gray-500 uppercase">{t('kpiNotStarted')}</p>
             <h3 className="text-2xl font-bold text-gray-600 mt-1">{data.stats.notStarted}</h3>
-            <p className="text-[10px] text-gray-400">Menunggu Mulai</p>
+            <p className="text-[10px] text-gray-400">{t('kpiNotStartedSub')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white border-gray-200 shadow-sm col-span-2 sm:col-span-1">
           <CardContent className="p-4 text-center">
-            <p className="text-[11px] font-semibold text-rose-600 uppercase">Pelanggaran Layar</p>
+            <p className="text-[11px] font-semibold text-rose-600 uppercase">{t('kpiViolations')}</p>
             <h3 className="text-2xl font-bold text-rose-600 mt-1">{data.stats.violationsCount}</h3>
             <p className="text-[10px] text-rose-500 font-medium">
-              {data.stats.terminated > 0 ? `${data.stats.terminated} Diskualifikasi` : 'Insiden Tab-Switch'}
+              {data.stats.terminated > 0
+                ? t('kpiTerminatedSub', { count: data.stats.terminated })
+                : t('kpiViolationsSub')}
             </p>
           </CardContent>
         </Card>
@@ -372,7 +382,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Cari siswa berdasarkan nama atau NIS..."
+            placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 text-xs h-9"
@@ -380,17 +390,17 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-500 uppercase">Filter Status:</span>
+          <span className="text-xs font-semibold text-gray-500 uppercase">{t('filterStatusLabel')}</span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-9 px-2.5 text-xs border border-gray-300 rounded-md bg-white font-medium text-gray-700"
           >
-            <option value="ALL">Semua Peserta ({data.students.length})</option>
-            <option value="IN_PROGRESS">Sedang Mengerjakan ({data.stats.inProgress})</option>
-            <option value="SUBMITTED">Sudah Selesai ({data.stats.submitted})</option>
-            <option value="NOT_STARTED">Belum Mulai ({data.stats.notStarted})</option>
-            <option value="TERMINATED">Diskualifikasi / Auto-Submit ({data.stats.terminated})</option>
+            <option value="ALL">{t('filterAll', { count: data.students.length })}</option>
+            <option value="IN_PROGRESS">{t('filterInProgress', { count: data.stats.inProgress })}</option>
+            <option value="SUBMITTED">{t('filterSubmitted', { count: data.stats.submitted })}</option>
+            <option value="NOT_STARTED">{t('filterNotStarted', { count: data.stats.notStarted })}</option>
+            <option value="TERMINATED">{t('filterTerminated', { count: data.stats.terminated })}</option>
           </select>
         </div>
       </div>
@@ -402,22 +412,22 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase">
                 <tr>
-                  <th className="px-4 py-3">No</th>
-                  <th className="px-4 py-3">NIS</th>
-                  <th className="px-4 py-3">Nama Siswa</th>
-                  <th className="px-4 py-3 text-center">Status Ujian</th>
-                  <th className="px-4 py-3 text-center">Keaktifan</th>
-                  <th className="px-4 py-3 text-center">Sisa Waktu</th>
-                  <th className="px-4 py-3 text-center">Pelanggaran Tab</th>
-                  <th className="px-4 py-3 text-center">Nilai</th>
-                  <th className="px-4 py-3 text-center">Aksi Pengawas</th>
+                  <th className="px-4 py-3">{t('thNo')}</th>
+                  <th className="px-4 py-3">{t('thNis')}</th>
+                  <th className="px-4 py-3">{t('thStudentName')}</th>
+                  <th className="px-4 py-3 text-center">{t('thExamStatus')}</th>
+                  <th className="px-4 py-3 text-center">{t('thActivity')}</th>
+                  <th className="px-4 py-3 text-center">{t('thTimeRemaining')}</th>
+                  <th className="px-4 py-3 text-center">{t('thTabViolations')}</th>
+                  <th className="px-4 py-3 text-center">{t('thScore')}</th>
+                  <th className="px-4 py-3 text-center">{t('thAction')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-4 py-12 text-center text-gray-400 text-xs">
-                      Tidak ada peserta yang cocok dengan filter atau pencarian.
+                      {t('noFilteredParticipants')}
                     </td>
                   </tr>
                 ) : (
@@ -435,26 +445,26 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                           <div className="text-[11px] text-gray-400">{st.email}</div>
                           {st.terminationReason && (
                             <div className="text-[10px] text-rose-600 font-medium mt-0.5">
-                              Alasan: {st.terminationReason}
+                              {t('reasonLabel', { reason: st.terminationReason })}
                             </div>
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {st.status === 'IN_PROGRESS' ? (
                             <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 font-semibold text-xs">
-                              Mengerjakan
+                              {t('statusInProgress')}
                             </Badge>
                           ) : st.status === 'SUBMITTED' ? (
                             <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 font-semibold text-xs">
-                              Selesai
+                              {t('statusSubmitted')}
                             </Badge>
                           ) : st.status === 'TERMINATED' ? (
                             <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 font-semibold text-xs">
-                              Diskualifikasi
+                              {t('statusTerminated')}
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="text-gray-500 text-xs">
-                              Belum Mulai
+                              {t('statusNotStarted')}
                             </Badge>
                           )}
                         </td>
@@ -467,7 +477,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                                 }`}
                               ></span>
                               <span className={st.isOnline ? 'text-emerald-700 font-medium' : 'text-gray-400'}>
-                                {st.isOnline ? 'Online' : 'Offline'}
+                                {st.isOnline ? t('online') : t('offline')}
                               </span>
                             </div>
                           ) : (
@@ -520,9 +530,9 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                                   disabled={isActing}
                                   onClick={() => handleGrantExtraTime(st.attemptId!, 10)}
                                   className="h-7 px-2 text-[11px] border-emerald-500 text-emerald-700 hover:bg-emerald-50"
-                                  title="Tambah Waktu +10 Menit"
+                                  title={t('addExtraTimeTitle')}
                                 >
-                                  +10m
+                                  {t('addExtraTimeBtn')}
                                 </Button>
 
                                 <Button
@@ -531,9 +541,9 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                                   disabled={isActing}
                                   onClick={() => handleForceSubmit(st.attemptId!)}
                                   className="h-7 px-2 text-[11px] border-amber-500 text-amber-700 hover:bg-amber-50"
-                                  title="Paksa Kumpulkan"
+                                  title={t('forceSubmitTitle')}
                                 >
-                                  Paksa Submit
+                                  {t('forceSubmitBtnShort')}
                                 </Button>
                               </>
                             )}
@@ -545,9 +555,9 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                                 disabled={isActing}
                                 onClick={() => handleResetAttempt(st.attemptId!)}
                                 className="h-7 px-2 text-[11px] text-rose-600 hover:bg-rose-50"
-                                title="Reset / Izinkan Mulai Ulang"
+                                title={t('resetBtnTitle')}
                               >
-                                <RotateCcw className="h-3 w-3 mr-1" /> Reset
+                                <RotateCcw className="h-3 w-3 mr-1" /> {t('resetBtn')}
                               </Button>
                             )}
                           </div>
@@ -567,10 +577,10 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
         <DialogContent className="sm:max-w-md text-center">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              {data.quiz.title}
+              {t('projectorTitle', { title: data.quiz.title })}
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
-              Tampilkan layar ini kepada siswa di depan kelas untuk memasukkan token ujian.
+              {t('projectorDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -583,7 +593,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
 
             <div className="space-y-1 text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
-                Token Akses Ujian Resmi
+                {t('officialTokenLabel')}
               </p>
               <div className="flex items-center justify-center gap-2">
                 <span className="font-mono text-4xl font-extrabold tracking-widest text-[#002446] bg-gray-100 px-5 py-2 rounded-xl border border-gray-200">
@@ -594,7 +604,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                   variant="outline"
                   onClick={handleCopyToken}
                   className="h-12 w-12 p-0"
-                  title="Salin Token"
+                  title={t('copyTokenTitle')}
                 >
                   {copiedToken ? <Check className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
                 </Button>
@@ -602,7 +612,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
             </div>
 
             <p className="text-xs text-gray-500 max-w-xs">
-              Siswa tidak dapat memulai ujian sebelum memasukkan kode token yang tertera di atas.
+              {t('projectorNote')}
             </p>
           </div>
 
@@ -611,7 +621,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
               onClick={() => setIsTokenModalOpen(false)}
               className="bg-[#002446] hover:bg-[#001b33] text-white px-8"
             >
-              Tutup Layar Proyektor
+              {t('closeProjector')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -623,10 +633,10 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
           <form onSubmit={handleSaveSettings}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446]">
-                Pengaturan Keamanan CBT
+                {t('securityModalTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-gray-500">
-                Sesuaikan aturan token dan toleransi lockdown untuk kuis ini secara instan.
+                {t('securityModalDesc')}
               </DialogDescription>
             </DialogHeader>
 
@@ -647,7 +657,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                       className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                     />
                     <Label htmlFor="setRequireToken" className="text-xs font-bold cursor-pointer">
-                      Wajibkan Token Akses Ujian
+                      {t('requireTokenLabel')}
                     </Label>
                   </div>
                   {settingsRequireToken && (
@@ -658,14 +668,14 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                       onClick={() => setSettingsToken(Math.random().toString(36).substring(2, 8).toUpperCase())}
                       className="h-6 px-2 text-[10px] text-[#FF8928]"
                     >
-                      <RefreshCw className="h-3 w-3 mr-1" /> Acak
+                      <RefreshCw className="h-3 w-3 mr-1" /> {t('randomizeBtn')}
                     </Button>
                   )}
                 </div>
 
                 {settingsRequireToken && (
                   <Input
-                    placeholder="misal: PAS2026"
+                    placeholder={t('tokenInputPlaceholder')}
                     value={settingsToken}
                     onChange={(e) => setSettingsToken(e.target.value.toUpperCase())}
                     maxLength={8}
@@ -685,22 +695,22 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                     className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                   />
                   <Label htmlFor="setLockdown" className="text-xs font-bold cursor-pointer">
-                    Mode Lockdown CBT (Fullscreen & Anti-Curang)
+                    {t('lockdownModeLabel')}
                   </Label>
                 </div>
 
                 {settingsLockdown && (
                   <div className="pt-2 flex items-center justify-between border-t border-gray-200">
-                    <span className="text-xs text-gray-600 font-medium">Batas Pindah Tab:</span>
+                    <span className="text-xs text-gray-600 font-medium">{t('tabSwitchLimitLabel')}</span>
                     <select
                       value={settingsMaxSwitches}
                       onChange={(e) => setSettingsMaxSwitches(Number(e.target.value))}
                       className="h-8 px-2 text-xs border border-gray-300 rounded bg-white text-gray-800 font-bold"
                     >
-                      <option value={1}>1 kali (Sangat Ketat)</option>
-                      <option value={2}>2 kali</option>
-                      <option value={3}>3 kali (Standar)</option>
-                      <option value={5}>5 kali (Longgar)</option>
+                      <option value={1}>{t('tabLimit1')}</option>
+                      <option value={2}>{t('tabLimit2')}</option>
+                      <option value={3}>{t('tabLimit3')}</option>
+                      <option value={5}>{t('tabLimit5')}</option>
                     </select>
                   </div>
                 )}
@@ -714,14 +724,14 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
                 onClick={() => setIsSettingsOpen(false)}
                 disabled={savingSettings}
               >
-                Batal
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={savingSettings}
                 className="bg-[#002446] hover:bg-[#001b33] text-white"
               >
-                {savingSettings ? 'Menyimpan...' : 'Simpan Perubahan'}
+                {savingSettings ? t('saving') : t('saveChanges')}
               </Button>
             </DialogFooter>
           </form>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,8 @@ export function TeacherRequestCourseClient({
   academicYears: AcademicYear[];
   categories: Category[];
 }) {
+  const t = useTranslations('teacherRequestCourse');
+  const locale = useLocale();
   const { showAlert } = useDialog();
   const [requests, setRequests] = useState<RequestItem[]>(initialRequests);
   const [title, setTitle] = useState('');
@@ -62,7 +65,7 @@ export function TeacherRequestCourseClient({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!academicYearId) {
-      await showAlert('Pilih Tahun Ajaran aktif terlebih dahulu', { type: 'warning' });
+      await showAlert(t('selectYearWarn'), { type: 'warning' });
       return;
     }
     setLoading(true);
@@ -78,11 +81,11 @@ export function TeacherRequestCourseClient({
       setRequests((prev) => [newReq, ...prev]);
       setTitle('');
       setDescription('');
-      setSuccessMsg('Pengajuan course berhasil dikirim ke Administrator!');
-      await showAlert('Pengajuan course Anda berhasil dikirim ke Administrator!', { type: 'success' });
+      setSuccessMsg(t('successAlert'));
+      await showAlert(t('successAlert'), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal mengirim pengajuan course', { type: 'error' });
+      await showAlert(err?.message || t('failedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -94,10 +97,10 @@ export function TeacherRequestCourseClient({
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl font-bold flex items-center gap-2">
-            <Send className="h-5 w-5 text-accent-500" /> Formulir Pengajuan Course
+            <Send className="h-5 w-5 text-accent-500" /> {t('formTitle')}
           </CardTitle>
           <CardDescription>
-            Setelah dikirim, Administrator akan meninjau dan mengaktifkan course Anda.
+            {t('formDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -110,10 +113,10 @@ export function TeacherRequestCourseClient({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="reqTitle" className="text-gray-700 dark:text-gray-300">Judul Course yang Diajukan</Label>
+              <Label htmlFor="reqTitle" className="text-gray-700 dark:text-gray-300">{t('courseTitle')}</Label>
               <Input
                 id="reqTitle"
-                placeholder="misal: Biologi Sel dan Genetika Kelas XII"
+                placeholder={t('courseTitlePlaceholder')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
@@ -121,10 +124,10 @@ export function TeacherRequestCourseClient({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reqDesc" className="text-gray-700 dark:text-gray-300">Rencana / Deskripsi Pembelajaran</Label>
+              <Label htmlFor="reqDesc" className="text-gray-700 dark:text-gray-300">{t('planDesc')}</Label>
               <Input
                 id="reqDesc"
-                placeholder="misal: Silabus materi semester ganjil, target kompetensi siswa"
+                placeholder={t('planDescPlaceholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -132,7 +135,7 @@ export function TeacherRequestCourseClient({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="reqYear" className="text-gray-700 dark:text-gray-300">Tahun Ajaran</Label>
+                <Label htmlFor="reqYear" className="text-gray-700 dark:text-gray-300">{t('academicYear')}</Label>
                 <select
                   id="reqYear"
                   value={academicYearId}
@@ -142,24 +145,24 @@ export function TeacherRequestCourseClient({
                 >
                   {academicYears.map((y) => (
                     <option key={y.id} value={y.id}>
-                      {y.name} {y.status === 'ACTIVE' ? '(Aktif)' : ''}
+                      {y.name} {y.status === 'ACTIVE' ? t('activeTag') : ''}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reqCat" className="text-gray-700 dark:text-gray-300">Kategori Mata Pelajaran</Label>
+                <Label htmlFor="reqCat" className="text-gray-700 dark:text-gray-300">{t('category')}</Label>
                 <select
                   id="reqCat"
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-brand-500 transition-colors"
                 >
-                  <option value="">-- Pilih Kategori (Mapel) --</option>
+                  <option value="">{t('selectCategory')}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.parent ? `${c.parent.name} → ${c.name}` : `${c.name} (Tahun Ajaran)`}
+                      {c.parent ? `${c.parent.name} → ${c.name}` : `${c.name} ${t('yearSuffix')}`}
                     </option>
                   ))}
                 </select>
@@ -173,7 +176,7 @@ export function TeacherRequestCourseClient({
                 className="bg-accent-500 hover:bg-accent-600 text-white flex items-center gap-2 shadow-xs transition-colors"
               >
                 <Send className="h-4 w-4" />
-                {loading ? 'Mengirim...' : 'Kirim Pengajuan'}
+                {loading ? t('submitting') : t('btnSubmit')}
               </Button>
             </div>
           </form>
@@ -184,24 +187,24 @@ export function TeacherRequestCourseClient({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-bold">
-            Riwayat Pengajuan Course Anda
+            {t('historyTitle')}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Judul Course</TableHead>
-                <TableHead>Tanggal Pengajuan</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Catatan Administrator</TableHead>
+                <TableHead>{t('thCourseTitle')}</TableHead>
+                <TableHead>{t('thSubmitDate')}</TableHead>
+                <TableHead>{t('thStatus')}</TableHead>
+                <TableHead>{t('thAdminNote')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {requests.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    Belum ada riwayat pengajuan course.
+                    {t('emptyHistory')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -216,7 +219,7 @@ export function TeacherRequestCourseClient({
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(r.createdAt).toLocaleDateString('id-ID', {
+                      {new Date(r.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
@@ -234,21 +237,21 @@ export function TeacherRequestCourseClient({
                       >
                         {r.status === 'APPROVED' ? (
                           <span className="flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" /> Disetujui
+                            <CheckCircle2 className="h-3 w-3" /> {t('statusApproved')}
                           </span>
                         ) : r.status === 'REJECTED' ? (
                           <span className="flex items-center gap-1">
-                            <XCircle className="h-3 w-3" /> Ditolak
+                            <XCircle className="h-3 w-3" /> {t('statusRejected')}
                           </span>
                         ) : (
                           <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> Menunggu Review
+                            <Clock className="h-3 w-3" /> {t('statusPending')}
                           </span>
                         )}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                      {r.adminNote || '-'}
+                      {r.adminNote || t('noNote')}
                     </TableCell>
                   </TableRow>
                 ))

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   FileText,
   Image as ImageIcon,
@@ -28,6 +29,7 @@ export function FilePreviewer({
   fileSize,
   className = '',
 }: FilePreviewerProps) {
+  const t = useTranslations('filePreviewer');
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [imageError, setImageError] = useState(false);
@@ -87,7 +89,7 @@ export function FilePreviewer({
                 onClick={handleZoomOut}
                 disabled={zoom <= 0.5}
                 className="h-7 w-7 p-0 text-slate-300 hover:text-white hover:bg-slate-700"
-                title="Perkecil"
+                title={t('zoomOut')}
               >
                 <ZoomOut className="h-3.5 w-3.5" />
               </Button>
@@ -101,7 +103,7 @@ export function FilePreviewer({
                 onClick={handleZoomIn}
                 disabled={zoom >= 3}
                 className="h-7 w-7 p-0 text-slate-300 hover:text-white hover:bg-slate-700"
-                title="Perbesar"
+                title={t('zoomIn')}
               >
                 <ZoomIn className="h-3.5 w-3.5" />
               </Button>
@@ -111,7 +113,7 @@ export function FilePreviewer({
                 size="sm"
                 onClick={handleRotate}
                 className="h-7 w-7 p-0 text-slate-300 hover:text-white hover:bg-slate-700"
-                title="Putar 90 Derajat"
+                title={t('rotate')}
               >
                 <RotateCw className="h-3.5 w-3.5" />
               </Button>
@@ -121,7 +123,7 @@ export function FilePreviewer({
                 size="sm"
                 onClick={handleReset}
                 className="h-7 w-7 p-0 text-slate-300 hover:text-white hover:bg-slate-700"
-                title="Reset Tampilan"
+                title={t('reset')}
               >
                 <RefreshCw className="h-3.5 w-3.5" />
               </Button>
@@ -134,20 +136,20 @@ export function FilePreviewer({
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 px-2 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-            title="Buka di tab baru"
+            title={t('openNewTab')}
           >
             <ExternalLink className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline text-[11px]">Buka Tab Baru</span>
+            <span className="hidden sm:inline text-[11px]">{t('openNewTab')}</span>
           </a>
 
           <a
             href={fileUrl}
             download={fileName}
             className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-700 text-white hover:bg-slate-600 transition-colors text-[11px]"
-            title="Unduh berkas"
+            title={t('download')}
           >
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Unduh</span>
+            <span className="hidden sm:inline">{t('download')}</span>
           </a>
         </div>
       </div>
@@ -158,14 +160,14 @@ export function FilePreviewer({
           imageError ? (
             <div className="text-center p-6 text-slate-400 space-y-2">
               <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
-              <p className="text-sm">Gagal memuat pratinjau gambar.</p>
+              <p className="text-sm">{t('imageError')}</p>
               <a
                 href={fileUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-blue-400 underline block"
               >
-                Buka gambar langsung di tab baru
+                {t('openImageDirectly')}
               </a>
             </div>
           ) : (
@@ -210,7 +212,7 @@ export function FilePreviewer({
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">
-              Berkas berformat <strong>.{ext.toUpperCase()}</strong> tidak dapat dipratinjau langsung di peramban tanpa aplikasi eksternal. Silakan unduh atau buka berkas untuk memeriksanya.
+              {t('unsupportedFormatNotice', { ext: ext.toUpperCase() })}
             </p>
 
             <div className="flex items-center justify-center gap-3 pt-2">
@@ -219,7 +221,7 @@ export function FilePreviewer({
                 download={fileName}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-semibold shadow-md transition-colors"
               >
-                <Download className="h-4 w-4" /> Unduh Berkas
+                <Download className="h-4 w-4" /> {t('downloadFile')}
               </a>
               <a
                 href={fileUrl}
@@ -227,7 +229,7 @@ export function FilePreviewer({
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors"
               >
-                <ExternalLink className="h-4 w-4" /> Buka Tab Baru
+                <ExternalLink className="h-4 w-4" /> {t('openNewTab')}
               </a>
             </div>
           </div>

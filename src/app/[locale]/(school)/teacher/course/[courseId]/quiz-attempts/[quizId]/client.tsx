@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useRouter } from 'next/navigation';
 import { gradeQuizEssayAnswer } from '@/lib/actions/grade';
@@ -89,8 +90,27 @@ export function TeacherQuizAttemptsClient({
   analysisData,
   remedialData,
 }: QuizAttemptsClientProps) {
+  const t = useTranslations('teacherQuizAttempts');
+  const locale = useLocale();
+  const dateLocale = locale === 'en' ? 'en-US' : 'id-ID';
+
   const router = useRouter();
   const { showAlert } = useDialog();
+
+  const getDifficultyLabel = (label: string) => {
+    if (label === 'Mudah') return t('difficultyMudah');
+    if (label === 'Sedang') return t('difficultySedang');
+    if (label === 'Sukar') return t('difficultySukar');
+    return label;
+  };
+
+  const getDiscriminationLabel = (label: string) => {
+    if (label === 'Sangat Baik') return t('discSangatBaik');
+    if (label === 'Baik') return t('discBaik');
+    if (label === 'Cukup') return t('discCukup');
+    if (label === 'Jelek / Revisi') return t('discJelek');
+    return label;
+  };
 
   const [activeTab, setActiveTab] = useState<'attempts' | 'analysis' | 'remedial'>('attempts');
   const [attempts, setAttempts] = useState(data.attempts);
@@ -126,7 +146,7 @@ export function TeacherQuizAttemptsClient({
     setGradingAnswer({
       answerId: ans.id,
       questionText: ans.question.text,
-      studentAnswer: ans.answer || '(Tidak menjawab)',
+      studentAnswer: ans.answer || `(${t('noAnswer')})`,
       maxPoints: ans.question.points,
       score: ans.score ?? ans.question.points,
       note: ans.teacherNote ?? '',
@@ -171,10 +191,10 @@ export function TeacherQuizAttemptsClient({
       }
 
       setGradingAnswer(null);
-      await showAlert('Nilai essay berhasil disimpan!', { type: 'success' });
+      await showAlert(t('essayScoreSavedSuccess'), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menyimpan nilai essay', { type: 'error' });
+      await showAlert(err?.message || t('essayScoreSavedFailed'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -217,11 +237,11 @@ export function TeacherQuizAttemptsClient({
   const handleCreateRemedialQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedStudentIds.length === 0) {
-      await showAlert('Pilih minimal satu siswa target remedial.', { type: 'warning' });
+      await showAlert(t('remedialSelectStudentWarning'), { type: 'warning' });
       return;
     }
     if (selectedQuestionIds.length === 0) {
-      await showAlert('Pilih minimal satu butir soal untuk kuis remedial.', { type: 'warning' });
+      await showAlert(t('remedialSelectQuestionWarning'), { type: 'warning' });
       return;
     }
 
@@ -237,11 +257,11 @@ export function TeacherQuizAttemptsClient({
       });
 
       setIsRemedialModalOpen(false);
-      await showAlert('Kuis remedial berhasil dibuat dan diterbitkan!', { type: 'success' });
+      await showAlert(t('remedialSuccess'), { type: 'success' });
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal membuat kuis remedial', { type: 'error' });
+      await showAlert(err?.message || t('remedialFailed'), { type: 'error' });
     } finally {
       setIsGeneratingRemedial(false);
     }
@@ -258,17 +278,17 @@ export function TeacherQuizAttemptsClient({
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-[#002446]">Kuis: {data.quiz.title}</h1>
+            <h1 className="text-2xl font-bold text-[#002446]">{t('quizTitle', { title: data.quiz.title })}</h1>
           </div>
           <p className="text-sm text-gray-500 pl-10">
-            {data.quiz.courseTitle} • {data.questions.length} Soal{' '}
+            {data.quiz.courseTitle} • {t('questionsCount', { count: data.questions.length })}{' '}
             {data.quiz.passingGrade !== undefined && data.quiz.passingGrade !== null && (
-              <span className="text-blue-700 font-semibold">• KKM: {data.quiz.passingGrade}{' '}</span>
+              <span className="text-blue-700 font-semibold">• {t('kkm', { score: data.quiz.passingGrade })}{' '}</span>
             )}
             {data.quiz.maxAttempts !== undefined && data.quiz.maxAttempts !== null && (
-              <span className="text-purple-700 font-semibold">• Maks: {data.quiz.maxAttempts}x Percobaan{' '}</span>
+              <span className="text-purple-700 font-semibold">• {t('maxAttempts', { count: data.quiz.maxAttempts })}{' '}</span>
             )}
-            {hasEssay && <span className="text-amber-700 font-semibold">(Mengandung Soal Essay)</span>}
+            {hasEssay && <span className="text-amber-700 font-semibold">{t('containsEssay')}</span>}
           </p>
         </div>
 
@@ -276,12 +296,12 @@ export function TeacherQuizAttemptsClient({
           <Link href={`/teacher/course/${data.quiz.courseId}/quiz-attempts/${data.quiz.id}/proctor`}>
             <Button className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5 font-bold">
               <Shield className="h-4 w-4 text-emerald-400" />
-              Live Proctoring
+              {t('liveProctoring')}
             </Button>
           </Link>
           <Link href={`/teacher/course/${data.quiz.courseId}/gradebook`}>
             <Button variant="outline" className="border-[#002446] text-[#002446] hover:bg-gray-100">
-              Lihat Buku Nilai
+              {t('viewGradebook')}
             </Button>
           </Link>
         </div>
@@ -299,7 +319,7 @@ export function TeacherQuizAttemptsClient({
           }`}
         >
           <FileText className="h-4 w-4" />
-          <span>Hasil & Koreksi</span>
+          <span>{t('tabAttempts')}</span>
           <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 font-semibold">
             {attempts.length}
           </span>
@@ -315,10 +335,10 @@ export function TeacherQuizAttemptsClient({
           }`}
         >
           <BarChart3 className="h-4 w-4 text-blue-600" />
-          <span>Analisis Butir Soal</span>
+          <span>{t('tabAnalysis')}</span>
           {analysisData && (
             <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 font-semibold">
-              {analysisData.questions.length} Butir
+              {t('itemsCount', { count: analysisData.questions.length })}
             </span>
           )}
         </button>
@@ -333,10 +353,10 @@ export function TeacherQuizAttemptsClient({
           }`}
         >
           <Sparkles className="h-4 w-4 text-[#FF8928]" />
-          <span>Program Remedial</span>
+          <span>{t('tabRemedial')}</span>
           {remedialData && remedialData.remedialStudents.length > 0 && (
             <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-900 font-semibold">
-              {remedialData.remedialStudents.length} Siswa
+              {t('studentsCount', { count: remedialData.remedialStudents.length })}
             </span>
           )}
         </button>
@@ -347,7 +367,7 @@ export function TeacherQuizAttemptsClient({
         <Card className="bg-white shadow-sm border">
           <CardHeader className="pb-3 border-b">
             <CardTitle className="text-lg font-bold text-[#002446]">
-              Daftar Siswa yang Mengerjakan ({attempts.length})
+              {t('attemptsListTitle', { count: attempts.length })}
             </CardTitle>
           </CardHeader>
 
@@ -356,13 +376,13 @@ export function TeacherQuizAttemptsClient({
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4 w-12 text-center">No</th>
-                    <th className="py-3 px-4">Nama Siswa</th>
-                    <th className="py-3 px-4 text-center">NIS</th>
-                    <th className="py-3 px-4">Waktu Kumpul</th>
-                    <th className="py-3 px-4 text-center">Nilai Akhir</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-right">Aksi</th>
+                    <th className="py-3 px-4 w-12 text-center">{t('thNo')}</th>
+                    <th className="py-3 px-4">{t('thStudentName')}</th>
+                    <th className="py-3 px-4 text-center">{t('thNis')}</th>
+                    <th className="py-3 px-4">{t('thSubmittedAt')}</th>
+                    <th className="py-3 px-4 text-center">{t('thFinalScore')}</th>
+                    <th className="py-3 px-4 text-center">{t('thStatus')}</th>
+                    <th className="py-3 px-4 text-right">{t('thAction')}</th>
                   </tr>
                 </thead>
 
@@ -370,7 +390,7 @@ export function TeacherQuizAttemptsClient({
                   {attempts.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-gray-400">
-                        Belum ada siswa yang mengumpulkan kuis ini
+                        {t('noAttempts')}
                       </td>
                     </tr>
                   ) : (
@@ -387,9 +407,9 @@ export function TeacherQuizAttemptsClient({
                         <td className="py-3.5 px-4 text-xs text-gray-600">
                           {att.submittedAt ? (
                             <div>
-                              <div>{new Date(att.submittedAt).toLocaleDateString('id-ID')}</div>
+                              <div>{new Date(att.submittedAt).toLocaleDateString(dateLocale)}</div>
                               <div className="text-[11px] text-gray-400">
-                                {new Date(att.submittedAt).toLocaleTimeString('id-ID', {
+                                {new Date(att.submittedAt).toLocaleTimeString(dateLocale, {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
@@ -418,11 +438,11 @@ export function TeacherQuizAttemptsClient({
                           <div className="flex flex-col items-center gap-1">
                             {att.isGraded ? (
                               <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-medium">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Selesai Dinilai
+                                <CheckCircle2 className="h-3.5 w-3.5" /> {t('statusGraded')}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-medium">
-                                <Clock className="h-3.5 w-3.5" /> Perlu Penilaian
+                                <Clock className="h-3.5 w-3.5" /> {t('statusNeedsGrading')}
                               </span>
                             )}
                           </div>
@@ -434,7 +454,7 @@ export function TeacherQuizAttemptsClient({
                             onClick={() => setSelectedAttempt(att)}
                             className="text-xs border-[#002446]/30 text-[#002446] hover:bg-[#002446] hover:text-white"
                           >
-                            Periksa Jawaban
+                            {t('checkAnswers')}
                           </Button>
                         </td>
                       </tr>
@@ -453,9 +473,9 @@ export function TeacherQuizAttemptsClient({
           {!analysisData || analysisData.totalParticipants === 0 ? (
             <Card className="p-8 text-center text-gray-500 bg-white border">
               <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <div className="text-lg font-bold text-[#002446]">Belum Ada Data yang Cukup</div>
+              <div className="text-lg font-bold text-[#002446]">{t('notEnoughDataTitle')}</div>
               <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
-                Analisis butir soal (Tingkat Kesukaran, Daya Pembeda, dan Pola Pengecoh) membutuhkan minimal pengerjaan dari siswa yang telah dinilai.
+                {t('notEnoughDataDesc')}
               </p>
             </Card>
           ) : (
@@ -464,16 +484,16 @@ export function TeacherQuizAttemptsClient({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card className="border shadow-xs bg-linear-to-br from-blue-50/50 to-white">
                   <CardContent className="p-4 space-y-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Peserta</div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('totalParticipants')}</div>
                     <div className="text-2xl font-black text-[#002446]">
-                      {analysisData.totalParticipants} <span className="text-xs font-normal text-gray-500">siswa</span>
+                      {analysisData.totalParticipants} <span className="text-xs font-normal text-gray-500">{t('studentsSuffix')}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border shadow-xs bg-linear-to-br from-emerald-50/50 to-white">
                   <CardContent className="p-4 space-y-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rata-Rata Nilai</div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('averageScore')}</div>
                     <div className="text-2xl font-black text-emerald-700">
                       {analysisData.averageScore} <span className="text-xs font-normal text-gray-500">/ 100</span>
                     </div>
@@ -482,7 +502,7 @@ export function TeacherQuizAttemptsClient({
 
                 <Card className="border shadow-xs bg-linear-to-br from-indigo-50/50 to-white">
                   <CardContent className="p-4 space-y-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rentang Skor</div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('scoreRange')}</div>
                     <div className="text-2xl font-black text-[#002446]">
                       {analysisData.lowestScore} - {analysisData.highestScore}
                     </div>
@@ -491,7 +511,7 @@ export function TeacherQuizAttemptsClient({
 
                 <Card className="border shadow-xs bg-linear-to-br from-amber-50/50 to-white">
                   <CardContent className="p-4 space-y-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Kelulusan KKM ({passingGrade})</div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('kkmPassing', { passingGrade })}</div>
                     <div className="text-2xl font-black text-[#FF8928]">
                       {analysisData.passPercentage}%{' '}
                       <span className="text-xs font-normal text-gray-500">
@@ -505,20 +525,20 @@ export function TeacherQuizAttemptsClient({
               {/* Legend & Theoretical Reference */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs bg-gray-50 border p-4 rounded-xl">
                 <div>
-                  <span className="font-bold text-[#002446] block mb-1">Pedoman Tingkat Kesukaran (P):</span>
+                  <span className="font-bold text-[#002446] block mb-1">{t('difficultyGuidelines')}</span>
                   <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-emerald-100 text-emerald-800 border-none">Mudah (P &gt; 0.70)</Badge>
-                    <Badge className="bg-blue-100 text-blue-800 border-none">Sedang (0.30 ≤ P ≤ 0.70)</Badge>
-                    <Badge className="bg-rose-100 text-rose-800 border-none">Sukar (P &lt; 0.30)</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-none">{t('easyLabel')}</Badge>
+                    <Badge className="bg-blue-100 text-blue-800 border-none">{t('mediumLabel')}</Badge>
+                    <Badge className="bg-rose-100 text-rose-800 border-none">{t('hardLabel')}</Badge>
                   </div>
                 </div>
                 <div>
-                  <span className="font-bold text-[#002446] block mb-1">Pedoman Daya Pembeda (D):</span>
+                  <span className="font-bold text-[#002446] block mb-1">{t('discriminationGuidelines')}</span>
                   <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-emerald-100 text-emerald-800 border-none">Sangat Baik (D ≥ 0.40)</Badge>
-                    <Badge className="bg-blue-100 text-blue-800 border-none">Baik (0.30 ≤ D &lt; 0.40)</Badge>
-                    <Badge className="bg-amber-100 text-amber-800 border-none">Cukup (0.20 ≤ D &lt; 0.30)</Badge>
-                    <Badge className="bg-rose-100 text-rose-800 border-none">Jelek / Revisi (D &lt; 0.20)</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-none">{t('veryGoodLabel')}</Badge>
+                    <Badge className="bg-blue-100 text-blue-800 border-none">{t('goodLabel')}</Badge>
+                    <Badge className="bg-amber-100 text-amber-800 border-none">{t('fairLabel')}</Badge>
+                    <Badge className="bg-rose-100 text-rose-800 border-none">{t('poorLabel')}</Badge>
                   </div>
                 </div>
               </div>
@@ -527,8 +547,8 @@ export function TeacherQuizAttemptsClient({
               <Card className="bg-white shadow-sm border overflow-hidden">
                 <CardHeader className="pb-3 border-b bg-gray-50/50">
                   <CardTitle className="text-base font-bold text-[#002446] flex items-center justify-between">
-                    <span>Daftar Parameter Butir Soal ({analysisData.questions.length})</span>
-                    <span className="text-xs text-gray-500 font-normal">Klik butir soal untuk melihat detail efektivitas distraktor</span>
+                    <span>{t('paramListTitle', { count: analysisData.questions.length })}</span>
+                    <span className="text-xs text-gray-500 font-normal">{t('paramListSubtitle')}</span>
                   </CardTitle>
                 </CardHeader>
 
@@ -574,17 +594,17 @@ export function TeacherQuizAttemptsClient({
                                   }`}
                                 >
                                   {q.type === 'MULTIPLE_CHOICE'
-                                    ? 'Pilihan Ganda'
+                                    ? t('mcType')
                                     : q.type === 'MULTIPLE_CHOICE_COMPLEX'
-                                    ? 'PG Kompleks (AKM)'
-                                    : 'Essay'}
+                                    ? t('mccType')
+                                    : t('essayType')}
                                 </Badge>
                                 <span>•</span>
-                                <span>{q.points} Poin</span>
+                                <span>{t('points', { count: q.points })}</span>
                                 <span>•</span>
-                                <span className="text-emerald-700 font-medium">Benar: {q.correctCount}</span>
+                                <span className="text-emerald-700 font-medium">{t('correctCount', { count: q.correctCount })}</span>
                                 <span>•</span>
-                                <span className="text-rose-700 font-medium">Salah: {q.incorrectCount}</span>
+                                <span className="text-rose-700 font-medium">{t('incorrectCount', { count: q.incorrectCount })}</span>
                               </div>
                             </div>
                           </div>
@@ -592,19 +612,19 @@ export function TeacherQuizAttemptsClient({
                           <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
                             {/* Difficulty */}
                             <div className="text-right">
-                              <div className="text-[11px] text-gray-400">Kesukaran (P)</div>
+                              <div className="text-[11px] text-gray-400">{t('difficultyP')}</div>
                               <div className="flex items-center gap-1.5 justify-end">
                                 <span className="text-xs font-mono font-bold text-gray-700">{q.difficultyIndex}</span>
-                                <Badge className={`${difficultyBadgeColor} text-[10px]`}>{q.difficultyLabel}</Badge>
+                                <Badge className={`${difficultyBadgeColor} text-[10px]`}>{getDifficultyLabel(q.difficultyLabel)}</Badge>
                               </div>
                             </div>
 
                             {/* Discrimination */}
                             <div className="text-right">
-                              <div className="text-[11px] text-gray-400">Pembeda (D)</div>
+                              <div className="text-[11px] text-gray-400">{t('discriminationD')}</div>
                               <div className="flex items-center gap-1.5 justify-end">
                                 <span className="text-xs font-mono font-bold text-gray-700">{q.discriminationIndex}</span>
-                                <Badge className={`${discriminationBadgeColor} text-[10px]`}>{q.discriminationLabel}</Badge>
+                                <Badge className={`${discriminationBadgeColor} text-[10px]`}>{getDiscriminationLabel(q.discriminationLabel)}</Badge>
                               </div>
                             </div>
 
@@ -619,14 +639,14 @@ export function TeacherQuizAttemptsClient({
                           <div className="p-4 bg-gray-50 border-t space-y-3">
                             <div className="text-xs font-bold text-[#002446] flex items-center gap-1.5">
                               <AlertCircle className="h-4 w-4 text-blue-600" />
-                              <span>Rekomendasi Evaluasi:</span>
+                              <span>{t('evaluationRecommendation')}</span>
                               <span className="font-medium text-gray-700">{q.recommendation}</span>
                             </div>
 
                             {(q.type === 'MULTIPLE_CHOICE' || q.type === 'MULTIPLE_CHOICE_COMPLEX') && q.optionsStats.length > 0 && (
                               <div className="space-y-2">
                                 <div className="text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                  Efektivitas Pengecoh / Distraktor (Sebaran Jawaban Siswa):
+                                  {t('distractorEfficiency')}
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   {q.optionsStats.map((opt, optIdx) => {
@@ -653,16 +673,16 @@ export function TeacherQuizAttemptsClient({
                                           </span>
                                           <div className="flex items-center gap-1 shrink-0">
                                             {opt.isCorrect && (
-                                              <Badge className="bg-emerald-600 text-white text-[10px]">Kunci</Badge>
+                                              <Badge className="bg-emerald-600 text-white text-[10px]">{t('keyBadge')}</Badge>
                                             )}
                                             {isDysfunctional && (
-                                              <Badge className="bg-rose-600 text-white text-[10px]">Pengecoh Pasif (0%)</Badge>
+                                              <Badge className="bg-rose-600 text-white text-[10px]">{t('passiveDistractor')}</Badge>
                                             )}
                                           </div>
                                         </div>
 
                                         <div className="flex items-center justify-between text-[11px] text-gray-500 mt-2">
-                                          <span>Dipilih {opt.count} siswa</span>
+                                          <span>{t('chosenBy', { count: opt.count })}</span>
                                           <span className="font-bold font-mono">{opt.percentage}%</span>
                                         </div>
                                         {/* Visual progress bar */}
@@ -683,10 +703,14 @@ export function TeacherQuizAttemptsClient({
 
                             {q.type === 'ESSAY' && q.essayScoresSummary && (
                               <div className="p-3 bg-white rounded-lg border text-xs space-y-1">
-                                <div className="font-bold text-[#002446]">Statistik Jawaban Essay:</div>
+                                <div className="font-bold text-[#002446]">{t('essayStats')}</div>
                                 <div className="text-gray-600">
-                                  Rata-rata Skor: <strong>{q.essayScoresSummary.averageScore}</strong> / {q.points} (
-                                  Tertinggi: {q.essayScoresSummary.highestScore}, Terendah: {q.essayScoresSummary.lowestScore})
+                                  {t('essayStatsDesc', {
+                                    avg: q.essayScoresSummary.averageScore,
+                                    max: q.points,
+                                    high: q.essayScoresSummary.highestScore,
+                                    low: q.essayScoresSummary.lowestScore,
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -710,10 +734,10 @@ export function TeacherQuizAttemptsClient({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-6 w-6 text-[#FF8928]" />
-                <h2 className="text-xl font-bold">Program Remedial Terarah</h2>
+                <h2 className="text-xl font-bold">{t('remedialProgramTitle')}</h2>
               </div>
               <p className="text-xs text-white/80 max-w-xl">
-                Bantu siswa yang belum mencapai KKM (<strong>{passingGrade}</strong>) melalui kuis perbaikan terfokus. Nilai kuis remedial akan memperbarui nilai kuis asal dengan batas maksimal sebesar KKM.
+                {t('remedialProgramDesc', { passingGrade })}
               </p>
             </div>
 
@@ -723,7 +747,7 @@ export function TeacherQuizAttemptsClient({
               className="bg-[#FF8928] hover:bg-[#ff7b10] text-white font-bold px-6 shrink-0 flex items-center gap-2 shadow-md"
             >
               <Sparkles className="h-4 w-4" />
-              Buat Kuis Remedial
+              {t('createRemedialQuiz')}
             </Button>
           </div>
 
@@ -732,10 +756,10 @@ export function TeacherQuizAttemptsClient({
             <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
               <CardTitle className="text-base font-bold text-[#002446] flex items-center gap-2">
                 <User className="h-5 w-5 text-rose-600" />
-                Daftar Siswa di Bawah KKM ({remedialData?.remedialStudents.length || 0})
+                {t('underKkmStudents', { count: remedialData?.remedialStudents.length || 0 })}
               </CardTitle>
               <Badge variant="outline" className="text-xs font-semibold">
-                Batas KKM: {passingGrade}
+                {t('kkmThreshold', { kkm: passingGrade })}
               </Badge>
             </CardHeader>
 
@@ -743,9 +767,9 @@ export function TeacherQuizAttemptsClient({
               {!remedialData || remedialData.remedialStudents.length === 0 ? (
                 <div className="p-8 text-center text-emerald-700 bg-emerald-50/50">
                   <CheckCircle2 className="h-10 w-10 text-emerald-600 mx-auto mb-2" />
-                  <div className="font-bold text-base">Semua Siswa Telah Mencapai KKM!</div>
+                  <div className="font-bold text-base">{t('allReachedKkmTitle')}</div>
                   <p className="text-xs text-emerald-600 mt-1">
-                    Tidak ada siswa yang memiliki nilai di bawah {passingGrade} pada kuis ini.
+                    {t('allReachedKkmDesc', { passingGrade })}
                   </p>
                 </div>
               ) : (
@@ -753,12 +777,12 @@ export function TeacherQuizAttemptsClient({
                   <table className="w-full text-left text-sm border-collapse">
                     <thead>
                       <tr className="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wider">
-                        <th className="py-3 px-4 w-12 text-center">No</th>
-                        <th className="py-3 px-4">Nama Siswa</th>
-                        <th className="py-3 px-4 text-center">NIS</th>
-                        <th className="py-3 px-4 text-center">Nilai Terbaik</th>
-                        <th className="py-3 px-4 text-center">Soal Salah</th>
-                        <th className="py-3 px-4">Waktu Terakhir</th>
+                        <th className="py-3 px-4 w-12 text-center">{t('thNo')}</th>
+                        <th className="py-3 px-4">{t('thStudentName')}</th>
+                        <th className="py-3 px-4 text-center">{t('thNis')}</th>
+                        <th className="py-3 px-4 text-center">{t('thBestScore')}</th>
+                        <th className="py-3 px-4 text-center">{t('thWrongQuestions')}</th>
+                        <th className="py-3 px-4">{t('thLastSubmitted')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -779,11 +803,11 @@ export function TeacherQuizAttemptsClient({
                           </td>
                           <td className="py-3.5 px-4 text-center">
                             <Badge variant="outline" className="text-xs font-semibold text-rose-700 bg-rose-50 border-rose-200">
-                              {st.wrongQuestionIds.length} Soal
+                              {t('wrongCount', { count: st.wrongQuestionIds.length })}
                             </Badge>
                           </td>
                           <td className="py-3.5 px-4 text-xs text-gray-500">
-                            {st.submittedAt ? new Date(st.submittedAt).toLocaleDateString('id-ID') : '-'}
+                            {st.submittedAt ? new Date(st.submittedAt).toLocaleDateString(dateLocale) : '-'}
                           </td>
                         </tr>
                       ))}
@@ -800,10 +824,10 @@ export function TeacherQuizAttemptsClient({
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base font-bold text-[#002446] flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500" />
-                  Butir Soal yang Paling Sering Dijawab Salah
+                  {t('mostFailedTitle')}
                 </CardTitle>
                 <p className="text-xs text-gray-500">
-                  Butir-butir soal ini paling banyak digagalkan oleh siswa yang belum tuntas, dan disarankan dimasukkan ke dalam kuis remedial.
+                  {t('mostFailedDesc')}
                 </p>
               </CardHeader>
 
@@ -812,9 +836,9 @@ export function TeacherQuizAttemptsClient({
                   {remedialData.mostFailedQuestions.slice(0, 6).map((q, idx) => (
                     <div key={q.questionId} className="p-3.5 rounded-lg border bg-amber-50/40 border-amber-200 text-xs space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-bold text-amber-900"># Prioritas {idx + 1}</span>
+                        <span className="font-bold text-amber-900">{t('priorityRank', { rank: idx + 1 })}</span>
                         <Badge className="bg-rose-600 text-white text-[10px]">
-                          {q.failCount} Siswa Salah ({q.failPercentage}%)
+                          {t('failBadge', { count: q.failCount, percent: q.failPercentage })}
                         </Badge>
                       </div>
                       <p className="text-gray-800 font-medium line-clamp-2">{q.text}</p>
@@ -831,7 +855,7 @@ export function TeacherQuizAttemptsClient({
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base font-bold text-[#002446] flex items-center gap-2">
                   <Award className="h-5 w-5 text-indigo-600" />
-                  Riwayat Kuis Remedial yang Telah Diterbitkan ({remedialData.existingRemedials.length})
+                  {t('existingRemedialsTitle', { count: remedialData.existingRemedials.length })}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-2">
@@ -841,16 +865,20 @@ export function TeacherQuizAttemptsClient({
                       <div>
                         <div className="font-bold text-gray-900 text-sm flex items-center gap-2">
                           <span>{r.title}</span>
-                          <Badge className="bg-amber-100 text-amber-900 text-[10px]">Remedial</Badge>
+                          <Badge className="bg-amber-100 text-amber-900 text-[10px]">{t('remedialBadge')}</Badge>
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">
-                          Dibuat pada {new Date(r.createdAt).toLocaleDateString('id-ID')} • {r._count.questions} Soal • {r._count.attempts} Siswa Mengerjakan
+                          {t('remedialHistorySubtitle', {
+                            date: new Date(r.createdAt).toLocaleDateString(dateLocale),
+                            questions: r._count.questions,
+                            attempts: r._count.attempts,
+                          })}
                         </div>
                       </div>
 
                       <Link href={`/teacher/course/${data.quiz.courseId}/quiz-attempts/${r.id}`}>
                         <Button variant="outline" size="sm" className="text-xs flex items-center gap-1">
-                          <span>Lihat Riwayat</span>
+                          <span>{t('viewHistory')}</span>
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       </Link>
@@ -869,14 +897,14 @@ export function TeacherQuizAttemptsClient({
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-[#FF8928]" />
-              Buat Kuis Remedial Terarah
+              {t('modalRemedialTitle')}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleCreateRemedialQuiz} className="space-y-5 py-2">
             <div className="space-y-3">
               <div>
-                <Label htmlFor="remTitle" className="text-xs font-bold text-gray-700">Judul Kuis Remedial</Label>
+                <Label htmlFor="remTitle" className="text-xs font-bold text-gray-700">{t('remedialQuizTitleLabel')}</Label>
                 <Input
                   id="remTitle"
                   value={remedialTitle}
@@ -888,7 +916,7 @@ export function TeacherQuizAttemptsClient({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="remDuration" className="text-xs font-bold text-gray-700">Durasi (Menit)</Label>
+                  <Label htmlFor="remDuration" className="text-xs font-bold text-gray-700">{t('durationMinutesLabel')}</Label>
                   <Input
                     id="remDuration"
                     type="number"
@@ -900,10 +928,10 @@ export function TeacherQuizAttemptsClient({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-bold text-gray-700">Batas Nilai Maksimal (KKM)</Label>
+                  <Label className="text-xs font-bold text-gray-700">{t('kkmMaxCapLabel')}</Label>
                   <Input
                     disabled
-                    value={`${passingGrade} (Sesuai KKM Induk)`}
+                    value={t('kkmMatchNote', { kkm: passingGrade })}
                     className="mt-1 bg-gray-100 text-gray-600 font-bold"
                   />
                 </div>
@@ -914,7 +942,10 @@ export function TeacherQuizAttemptsClient({
             <div className="space-y-2 border-t pt-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold text-[#002446] uppercase tracking-wider">
-                  Target Siswa Remedial ({selectedStudentIds.length}/{remedialData?.remedialStudents.length || 0} Terpilih)
+                  {t('targetStudentsLabel', {
+                    selected: selectedStudentIds.length,
+                    total: remedialData?.remedialStudents.length || 0,
+                  })}
                 </Label>
                 <Button
                   type="button"
@@ -924,8 +955,8 @@ export function TeacherQuizAttemptsClient({
                   className="text-xs text-blue-700 hover:text-blue-900 h-7 px-2"
                 >
                   {selectedStudentIds.length === (remedialData?.remedialStudents.length || 0)
-                    ? 'Batal Pilih Semua'
-                    : 'Pilih Semua'}
+                    ? t('deselectAll')
+                    : t('selectAll')}
                 </Button>
               </div>
 
@@ -950,7 +981,7 @@ export function TeacherQuizAttemptsClient({
                         </div>
                       </div>
                       <Badge className="bg-rose-100 text-rose-800 text-[10px]">
-                        Nilai Asal: {st.bestScore}
+                        {t('originalScoreBadge', { score: st.bestScore })}
                       </Badge>
                     </label>
                   );
@@ -962,7 +993,10 @@ export function TeacherQuizAttemptsClient({
             <div className="space-y-2 border-t pt-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold text-[#002446] uppercase tracking-wider">
-                  Pilih Butir Soal ({selectedQuestionIds.length}/{data.questions.length} Terpilih)
+                  {t('selectQuestionsLabel', {
+                    selected: selectedQuestionIds.length,
+                    total: data.questions.length,
+                  })}
                 </Label>
                 <div className="flex items-center gap-2">
                   <Button
@@ -972,7 +1006,7 @@ export function TeacherQuizAttemptsClient({
                     onClick={handleSelectFailedQuestions}
                     className="text-xs text-amber-800 border-amber-300 bg-amber-50 hover:bg-amber-100 h-7 px-2"
                   >
-                    Hanya Soal Gagal
+                    {t('onlyFailedQuestions')}
                   </Button>
                   <Button
                     type="button"
@@ -981,7 +1015,7 @@ export function TeacherQuizAttemptsClient({
                     onClick={handleSelectAllQuestions}
                     className="text-xs text-blue-700 hover:text-blue-900 h-7 px-2"
                   >
-                    {selectedQuestionIds.length === data.questions.length ? 'Batal Semua' : 'Semua Soal'}
+                    {selectedQuestionIds.length === data.questions.length ? t('deselectAllQuestions') : t('allQuestions')}
                   </Button>
                 </div>
               </div>
@@ -1006,10 +1040,10 @@ export function TeacherQuizAttemptsClient({
                       />
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-[#002446]">Soal #{idx + 1}</span>
+                          <span className="font-bold text-xs text-[#002446]">{t('questionItemNum', { num: idx + 1 })}</span>
                           {isMostFailed && (
                             <Badge className="bg-amber-100 text-amber-900 text-[9px] border border-amber-300">
-                              Sering Salah
+                              {t('oftenWrong')}
                             </Badge>
                           )}
                         </div>
@@ -1024,7 +1058,7 @@ export function TeacherQuizAttemptsClient({
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 flex items-start gap-2">
               <Sparkles className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
               <span>
-                Kuis remedial akan otomatis dibuat dan dipublikasikan pada modul pembelajaran yang sama. Hanya siswa target yang dapat membuka dan mengerjakan kuis ini.
+                {t('remedialNotice')}
               </span>
             </div>
 
@@ -1035,14 +1069,14 @@ export function TeacherQuizAttemptsClient({
                 onClick={() => setIsRemedialModalOpen(false)}
                 disabled={isGeneratingRemedial}
               >
-                Batal
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={isGeneratingRemedial}
                 className="bg-[#FF8928] hover:bg-[#ff7b10] text-white font-bold"
               >
-                {isGeneratingRemedial ? 'Membuat Kuis...' : 'Terbitkan Kuis Remedial'}
+                {isGeneratingRemedial ? t('creatingQuiz') : t('publishRemedialQuiz')}
               </Button>
             </DialogFooter>
           </form>
@@ -1058,17 +1092,19 @@ export function TeacherQuizAttemptsClient({
                 <div className="flex items-center justify-between">
                   <div>
                     <DialogTitle className="text-xl font-bold text-[#002446]">
-                      Lembar Jawaban: {selectedAttempt.user.name}
+                      {t('answerSheetTitle', { name: selectedAttempt.user.name })}
                     </DialogTitle>
                     <p className="text-xs text-gray-500 mt-1">
-                      NIS: {selectedAttempt.user.nis || '-'} • Dikumpulkan pada:{' '}
-                      {selectedAttempt.submittedAt
-                        ? new Date(selectedAttempt.submittedAt).toLocaleString('id-ID')
-                        : '-'}
+                      {t('answerSheetSubtitle', {
+                        nis: selectedAttempt.user.nis || '-',
+                        date: selectedAttempt.submittedAt
+                          ? new Date(selectedAttempt.submittedAt).toLocaleString(dateLocale)
+                          : '-',
+                      })}
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-gray-500">Nilai Akhir</div>
+                    <div className="text-xs text-gray-500">{t('finalScore')}</div>
                     <div
                       className={`text-2xl font-black ${
                         (selectedAttempt.score ?? 0) >= passingGrade
@@ -1095,7 +1131,7 @@ export function TeacherQuizAttemptsClient({
                           <div>
                             <p className="text-sm text-gray-900 font-medium">{ans.question.text}</p>
                             <span className="text-xs text-gray-400 font-mono">
-                              ({isEssay ? 'Soal Essay' : 'Pilihan Ganda'} • Bobot: {ans.question.points} Poin)
+                              ({isEssay ? t('essayTypeLabel') : t('mcType')} • {t('weightPoints', { points: ans.question.points })})
                             </span>
                           </div>
                         </div>
@@ -1108,7 +1144,7 @@ export function TeacherQuizAttemptsClient({
                               </span>
                             ) : (
                               <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">
-                                Belum Dinilai
+                                {t('ungraded')}
                               </span>
                             )
                           ) : (
@@ -1125,9 +1161,9 @@ export function TeacherQuizAttemptsClient({
 
                       {/* Student Answer Box */}
                       <div className="p-3 bg-gray-50 rounded-lg border text-sm">
-                        <span className="text-xs text-gray-500 font-bold block mb-1">Jawaban Siswa:</span>
+                        <span className="text-xs text-gray-500 font-bold block mb-1">{t('studentAnswerLabel')}</span>
                         <p className="text-gray-800 whitespace-pre-wrap">
-                          {ans.answer ? ans.answer : <span className="italic text-gray-400">Tidak menjawab</span>}
+                          {ans.answer ? ans.answer : <span className="italic text-gray-400">{t('noAnswer')}</span>}
                         </p>
                       </div>
 
@@ -1137,10 +1173,10 @@ export function TeacherQuizAttemptsClient({
                           <div className="text-xs text-gray-500">
                             {ans.teacherNote ? (
                               <span>
-                                <strong>Catatan Guru:</strong> {ans.teacherNote}
+                                <strong>{t('teacherNoteLabel')}</strong> {ans.teacherNote}
                               </span>
                             ) : (
-                              <span className="italic">Belum ada catatan</span>
+                              <span className="italic">{t('noNoteYet')}</span>
                             )}
                           </div>
                           <Button
@@ -1149,7 +1185,7 @@ export function TeacherQuizAttemptsClient({
                             onClick={() => handleOpenEssayGrade(ans)}
                             className="text-xs border-[#002446] text-[#002446] hover:bg-[#002446] hover:text-white"
                           >
-                            Beri Nilai Essay
+                            {t('gradeEssayBtn')}
                           </Button>
                         </div>
                       )}
@@ -1160,7 +1196,7 @@ export function TeacherQuizAttemptsClient({
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setSelectedAttempt(null)}>
-                  Tutup
+                  {t('close')}
                 </Button>
               </DialogFooter>
             </div>
@@ -1173,21 +1209,21 @@ export function TeacherQuizAttemptsClient({
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-[#002446]">
-              Penilaian Jawaban Essay
+              {t('gradeEssayModalTitle')}
             </DialogTitle>
           </DialogHeader>
 
           {gradingAnswer && (
             <form onSubmit={handleSaveEssayGrade} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500">Pertanyaan:</Label>
+                <Label className="text-xs font-bold text-gray-500">{t('questionLabel')}</Label>
                 <div className="p-2.5 bg-gray-50 rounded border text-sm text-gray-800">
                   {gradingAnswer.questionText}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500">Jawaban Siswa:</Label>
+                <Label className="text-xs font-bold text-gray-500">{t('studentAnswerLabel')}</Label>
                 <div className="p-2.5 bg-gray-50 rounded border text-sm text-gray-800 whitespace-pre-wrap">
                   {gradingAnswer.studentAnswer}
                 </div>
@@ -1196,7 +1232,7 @@ export function TeacherQuizAttemptsClient({
               <div className="space-y-3 pt-2">
                 <div className="space-y-2">
                   <Label htmlFor="essayScore">
-                    Nilai Butir Soal (Maks: {gradingAnswer.maxPoints})
+                    {t('itemScoreLabel', { max: gradingAnswer.maxPoints })}
                   </Label>
                   <Input
                     id="essayScore"
@@ -1213,11 +1249,11 @@ export function TeacherQuizAttemptsClient({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="essayNote">Catatan / Ulasan (Opsional)</Label>
+                  <Label htmlFor="essayNote">{t('noteLabel')}</Label>
                   <Textarea
                     id="essayNote"
                     rows={3}
-                    placeholder="Feedback untuk jawaban essay ini..."
+                    placeholder={t('notePlaceholder')}
                     value={gradingAnswer.note}
                     onChange={(e) => setGradingAnswer({ ...gradingAnswer, note: e.target.value })}
                   />
@@ -1231,10 +1267,10 @@ export function TeacherQuizAttemptsClient({
                   onClick={() => setGradingAnswer(null)}
                   disabled={loading}
                 >
-                  Batal
+                  {t('cancel')}
                 </Button>
                 <Button type="submit" disabled={loading} className="bg-[#FF8928] text-white font-bold">
-                  {loading ? 'Menyimpan...' : 'Simpan Nilai'}
+                  {loading ? t('saving') : t('saveGrade')}
                 </Button>
               </DialogFooter>
             </form>

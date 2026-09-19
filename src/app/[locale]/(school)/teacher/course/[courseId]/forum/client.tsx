@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,8 @@ export function TeacherCourseForumClient({
   initialThreads,
   initialThreadId,
 }: Props) {
+  const t = useTranslations('teacherForum');
+  const locale = useLocale();
   const router = useRouter();
   const { showAlert, showConfirm } = useDialog();
   const [activeTab, setActiveTab] = useState<'announcements' | 'forum'>('announcements');
@@ -154,9 +157,9 @@ export function TeacherCourseForumClient({
       setAnnTitle('');
       setAnnContent('');
       router.refresh();
-      await showAlert('Pengumuman berhasil dipublikasikan!', { type: 'success' });
+      await showAlert(t('annSuccessAlert'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal membuat pengumuman', { type: 'error' });
+      await showAlert(err.message || t('annFailedAlert'), { type: 'error' });
     } finally {
       setLoadingAnn(false);
     }
@@ -170,23 +173,23 @@ export function TeacherCourseForumClient({
       );
       router.refresh();
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal mengubah pin pengumuman', { type: 'error' });
+      await showAlert(err.message || t('pinAnnFailedAlert'), { type: 'error' });
     }
   };
 
   const handleDeleteAnnouncement = async (id: string) => {
     const confirmed = await showConfirm(
-      'Apakah Anda yakin ingin menghapus pengumuman ini?',
-      { title: 'Hapus Pengumuman', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+      t('deleteAnnConfirm'),
+      { title: t('deleteAnnTitle'), confirmText: t('deleteAnnBtn'), confirmVariant: 'destructive' }
     );
     if (!confirmed) return;
     try {
       await deleteCourseAnnouncement(id);
       setAnnouncements((prev) => prev.filter((a) => a.id !== id));
       router.refresh();
-      await showAlert('Pengumuman berhasil dihapus.', { type: 'success' });
+      await showAlert(t('deleteAnnSuccess'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menghapus pengumuman', { type: 'error' });
+      await showAlert(err.message || t('deleteAnnFailed'), { type: 'error' });
     }
   };
 
@@ -204,14 +207,14 @@ export function TeacherCourseForumClient({
       setCommentInputs((prev) => ({ ...prev, [annId]: '' }));
       router.refresh();
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menambahkan komentar', { type: 'error' });
+      await showAlert(err.message || t('addCommentFailed'), { type: 'error' });
     }
   };
 
   const handleDeleteAnnouncementComment = async (annId: string, commentId: string) => {
     const confirmed = await showConfirm(
-      'Apakah Anda yakin ingin menghapus komentar ini?',
-      { title: 'Hapus Komentar', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+      t('deleteCommentConfirm'),
+      { title: t('deleteCommentTitle'), confirmText: t('deleteCommentBtn'), confirmVariant: 'destructive' }
     );
     if (!confirmed) return;
     try {
@@ -225,7 +228,7 @@ export function TeacherCourseForumClient({
       );
       router.refresh();
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menghapus komentar', { type: 'error' });
+      await showAlert(err.message || t('deleteCommentFailed'), { type: 'error' });
     }
   };
 
@@ -248,9 +251,9 @@ export function TeacherCourseForumClient({
       setThreadContent('');
       router.refresh();
       setSelectedThreadId(created.id);
-      await showAlert('Topik diskusi berhasil dibuat!', { type: 'success' });
+      await showAlert(t('threadSuccessAlert'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal membuat topik diskusi', { type: 'error' });
+      await showAlert(err.message || t('threadFailedAlert'), { type: 'error' });
     } finally {
       setLoadingThread(false);
     }
@@ -275,7 +278,7 @@ export function TeacherCourseForumClient({
       setActiveThreadDetail(updated);
       router.refresh();
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal mengirim balasan', { type: 'error' });
+      await showAlert(err.message || t('replyFailedAlert'), { type: 'error' });
     } finally {
       setSubmittingReply(false);
     }
@@ -291,9 +294,9 @@ export function TeacherCourseForumClient({
         prev.map((t) => (t.id === selectedThreadId ? { ...t, isSolved: true } : t))
       );
       router.refresh();
-      await showAlert('Balasan ini berhasil ditandai sebagai Jawaban Terbaik!', { type: 'success' });
+      await showAlert(t('markAnswerSuccess'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menandai jawaban', { type: 'error' });
+      await showAlert(err.message || t('markAnswerFailed'), { type: 'error' });
     }
   };
 
@@ -311,14 +314,14 @@ export function TeacherCourseForumClient({
       }
       router.refresh();
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal mengubah pin diskusi', { type: 'error' });
+      await showAlert(err.message || t('pinThreadFailed'), { type: 'error' });
     }
   };
 
   const handleDeleteThread = async (threadId: string) => {
     const confirmed = await showConfirm(
-      'Hapus topik diskusi ini beserta seluruh balasannya?',
-      { title: 'Hapus Topik Diskusi', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+      t('deleteThreadConfirm'),
+      { title: t('deleteThreadTitle'), confirmText: t('deleteThreadBtn'), confirmVariant: 'destructive' }
     );
     if (!confirmed) return;
     try {
@@ -329,16 +332,16 @@ export function TeacherCourseForumClient({
         setActiveThreadDetail(null);
       }
       router.refresh();
-      await showAlert('Topik diskusi berhasil dihapus.', { type: 'success' });
+      await showAlert(t('deleteThreadSuccess'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menghapus topik diskusi', { type: 'error' });
+      await showAlert(err.message || t('deleteThreadFailed'), { type: 'error' });
     }
   };
 
   const handleDeleteComment = async (commentId: string) => {
     const confirmed = await showConfirm(
-      'Apakah Anda yakin ingin menghapus balasan ini?',
-      { title: 'Hapus Balasan', confirmText: 'Ya, Hapus', confirmVariant: 'destructive' }
+      t('deleteReplyConfirm'),
+      { title: t('deleteReplyTitle'), confirmText: t('deleteReplyBtn'), confirmVariant: 'destructive' }
     );
     if (!confirmed) return;
     try {
@@ -349,7 +352,7 @@ export function TeacherCourseForumClient({
       }
       router.refresh();
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menghapus balasan', { type: 'error' });
+      await showAlert(err.message || t('deleteReplyFailed'), { type: 'error' });
     }
   };
 
@@ -368,16 +371,16 @@ export function TeacherCourseForumClient({
               href={`/teacher/course/${course.id}/modules`}
               className="hover:underline flex items-center gap-1 text-gray-500 hover:text-[#002446]"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Modul
+              <ArrowLeft className="h-3.5 w-3.5" /> {t('backToModules')}
             </Link>
             <span>•</span>
-            <span>{course.category?.name || 'Mata Pelajaran'}</span>
+            <span>{course.category?.name || t('categoryFallback')}</span>
           </div>
           <h1 className="text-2xl font-bold text-[#002446]">
-            Interaksi Pembelajaran — {course.title}
+            {t('title', { title: course.title })}
           </h1>
           <p className="text-sm text-gray-500">
-            Sampaikan pengumuman penting, buka forum tanya-jawab materi, dan diskusikan silabus bersama siswa.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -388,7 +391,7 @@ export function TeacherCourseForumClient({
               onClick={() => setIsNewAnnouncementOpen(true)}
               className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5"
             >
-              <Megaphone className="h-4 w-4" /> Buat Pengumuman
+              <Megaphone className="h-4 w-4" /> {t('btnNewAnnouncement')}
             </Button>
           ) : (
             <Button
@@ -396,7 +399,7 @@ export function TeacherCourseForumClient({
               onClick={() => setIsNewThreadOpen(true)}
               className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5"
             >
-              <Plus className="h-4 w-4" /> Topik Diskusi Baru
+              <Plus className="h-4 w-4" /> {t('btnNewThread')}
             </Button>
           )}
         </div>
@@ -416,7 +419,7 @@ export function TeacherCourseForumClient({
           }`}
         >
           <Megaphone className="h-4 w-4" />
-          Pengumuman Kursus ({announcements.length})
+          {t('tabAnnouncements', { count: announcements.length })}
         </button>
 
         <button
@@ -428,7 +431,7 @@ export function TeacherCourseForumClient({
           }`}
         >
           <MessageSquare className="h-4 w-4" />
-          Forum Tanya-Jawab ({threads.length})
+          {t('tabForum', { count: threads.length })}
         </button>
       </div>
 
@@ -440,16 +443,16 @@ export function TeacherCourseForumClient({
               <CardContent className="space-y-4">
                 <Megaphone className="h-16 w-16 mx-auto text-gray-300" />
                 <div className="space-y-1">
-                  <h3 className="text-lg font-bold text-gray-900">Belum Ada Pengumuman</h3>
+                  <h3 className="text-lg font-bold text-gray-900">{t('emptyAnnouncementsTitle')}</h3>
                   <p className="text-sm text-gray-500 max-w-md mx-auto">
-                    Buat pengumuman penting untuk menginformasikan jadwal ujian, perubahan materi, atau pengingat batas tugas ke seluruh siswa.
+                    {t('emptyAnnouncementsDesc')}
                   </p>
                 </div>
                 <Button
                   onClick={() => setIsNewAnnouncementOpen(true)}
                   className="bg-[#002446] text-white"
                 >
-                  <Plus className="h-4 w-4 mr-1.5" /> Buat Pengumuman Pertama
+                  <Plus className="h-4 w-4 mr-1.5" /> {t('btnCreateFirstAnnouncement')}
                 </Button>
               </CardContent>
             </Card>
@@ -467,16 +470,16 @@ export function TeacherCourseForumClient({
                       <div className="flex items-center gap-2">
                         {ann.isPinned && (
                           <Badge className="bg-[#FF8928] text-white hover:bg-[#FF8928] flex items-center gap-1 text-[11px]">
-                            <Pin className="h-3 w-3 fill-white" /> Disematkan (Pinned Banner)
+                            <Pin className="h-3 w-3 fill-white" /> {t('pinnedBanner')}
                           </Badge>
                         )}
                         <h3 className="text-lg font-bold text-[#002446]">{ann.title}</h3>
                       </div>
                       <p className="text-xs text-gray-500 flex items-center gap-2">
-                        <span>Oleh: <strong>{ann.author.name}</strong></span>
+                        <span>{t('authorBy', { name: ann.author.name })}</span>
                         <span>•</span>
                         <span>
-                          {new Date(ann.createdAt).toLocaleDateString('id-ID', {
+                          {new Date(ann.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                             weekday: 'long',
                             day: 'numeric',
                             month: 'long',
@@ -496,7 +499,7 @@ export function TeacherCourseForumClient({
                         className={`text-xs px-2.5 ${
                           ann.isPinned ? 'text-[#FF8928] hover:bg-amber-50' : 'text-gray-400 hover:text-gray-700'
                         }`}
-                        title={ann.isPinned ? 'Lepas Pin' : 'Sematkan ke Atas'}
+                        title={ann.isPinned ? t('unpin') : t('pinToTop')}
                       >
                         {ann.isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                       </Button>
@@ -506,7 +509,7 @@ export function TeacherCourseForumClient({
                         size="sm"
                         onClick={() => handleDeleteAnnouncement(ann.id)}
                         className="text-red-500 hover:bg-red-50 text-xs px-2.5"
-                        title="Hapus Pengumuman"
+                        title={t('deleteAnnouncement')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -521,7 +524,7 @@ export function TeacherCourseForumClient({
                   <div className="pt-4 border-t border-gray-100 space-y-3">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
                       <MessageCircle className="h-4 w-4 text-[#002446]" />
-                      Tanggapan / Diskusi ({ann.comments?.length || 0})
+                      {t('commentsSection', { count: ann.comments?.length || 0 })}
                     </div>
 
                     {ann.comments && ann.comments.length > 0 && (
@@ -533,13 +536,13 @@ export function TeacherCourseForumClient({
                                 {c.author.name}
                                 {c.author.role === 'TEACHER' && (
                                   <Badge variant="outline" className="text-[10px] px-1 py-0 border-blue-400 text-blue-700">
-                                    Guru
+                                    {t('roleTeacher')}
                                   </Badge>
                                 )}
                               </span>
                               <div className="flex items-center gap-2">
                                 <span>
-                                  {new Date(c.createdAt).toLocaleDateString('id-ID', {
+                                  {new Date(c.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                                     day: 'numeric',
                                     month: 'short',
                                     hour: '2-digit',
@@ -549,6 +552,7 @@ export function TeacherCourseForumClient({
                                 <button
                                   onClick={() => handleDeleteAnnouncementComment(ann.id, c.id)}
                                   className="text-gray-400 hover:text-red-600"
+                                  title={t('deleteComment')}
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </button>
@@ -563,7 +567,7 @@ export function TeacherCourseForumClient({
                     {/* Form Tulis Komentar */}
                     <div className="flex items-center gap-2 pt-1">
                       <Input
-                        placeholder="Tulis tanggapan atau penjelasan tambahan..."
+                        placeholder={t('inputCommentPlaceholder')}
                         value={commentInputs[ann.id] || ''}
                         onChange={(e) =>
                           setCommentInputs((prev) => ({ ...prev, [ann.id]: e.target.value }))
@@ -604,7 +608,7 @@ export function TeacherCourseForumClient({
                 onClick={() => setSelectedThreadId(null)}
                 className="flex items-center gap-1.5 text-xs text-gray-600"
               >
-                <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Daftar Topik
+                <ArrowLeft className="h-3.5 w-3.5" /> {t('btnBackToThreads')}
               </Button>
 
               <Card className="border border-gray-200 shadow-sm bg-white">
@@ -614,17 +618,17 @@ export function TeacherCourseForumClient({
                       <div className="flex flex-wrap items-center gap-2">
                         {activeThreadDetail.isPinned && (
                           <Badge className="bg-[#FF8928] text-white flex items-center gap-1 text-[11px]">
-                            <Pin className="h-3 w-3 fill-white" /> Disematkan
+                            <Pin className="h-3 w-3 fill-white" /> {t('pinned')}
                           </Badge>
                         )}
                         {activeThreadDetail.isSolved && (
                           <Badge className="bg-emerald-100 text-emerald-800 flex items-center gap-1 text-[11px]">
-                            <CheckCircle2 className="h-3 w-3" /> Solusi Ditemukan
+                            <CheckCircle2 className="h-3 w-3" /> {t('solvedBadge')}
                           </Badge>
                         )}
                         {activeThreadDetail.moduleTitle && (
                           <Badge variant="outline" className="text-xs text-gray-600">
-                            Modul: {activeThreadDetail.moduleTitle}
+                            {t('moduleBadge', { title: activeThreadDetail.moduleTitle })}
                           </Badge>
                         )}
                       </div>
@@ -632,10 +636,10 @@ export function TeacherCourseForumClient({
                         {activeThreadDetail.title}
                       </CardTitle>
                       <p className="text-xs text-gray-500 flex items-center gap-2">
-                        <span>Ditanyakan oleh: <strong>{activeThreadDetail.authorName}</strong></span>
+                        <span>{t('askedBy', { name: activeThreadDetail.authorName })}</span>
                         <span>•</span>
                         <span>
-                          {new Date(activeThreadDetail.createdAt).toLocaleDateString('id-ID', {
+                          {new Date(activeThreadDetail.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                             weekday: 'long',
                             day: 'numeric',
                             month: 'long',
@@ -655,7 +659,7 @@ export function TeacherCourseForumClient({
                         className={`text-xs px-2.5 ${
                           activeThreadDetail.isPinned ? 'text-[#FF8928]' : 'text-gray-400'
                         }`}
-                        title="Pin Topik"
+                        title={t('pinThread')}
                       >
                         {activeThreadDetail.isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                       </Button>
@@ -665,7 +669,7 @@ export function TeacherCourseForumClient({
                         size="sm"
                         onClick={() => handleDeleteThread(activeThreadDetail.id)}
                         className="text-red-500 hover:bg-red-50 text-xs px-2.5"
-                        title="Hapus Topik"
+                        title={t('deleteThread')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -682,12 +686,12 @@ export function TeacherCourseForumClient({
                   <div className="space-y-4">
                     <h4 className="text-sm font-bold text-[#002446] flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
-                      Balasan & Tanggapan ({activeThreadDetail.rootComments?.length || 0})
+                      {t('repliesHeading', { count: activeThreadDetail.rootComments?.length || 0 })}
                     </h4>
 
                     {activeThreadDetail.rootComments?.length === 0 ? (
                       <p className="text-xs text-gray-500 italic">
-                        Belum ada balasan pada topik ini. Jadilah yang pertama menjawab!
+                        {t('noRepliesYet')}
                       </p>
                     ) : (
                       <div className="space-y-3">
@@ -705,19 +709,19 @@ export function TeacherCourseForumClient({
                                 <span className="font-bold text-gray-900">{comm.authorName}</span>
                                 {comm.authorRole === 'TEACHER' && (
                                   <Badge className="bg-[#002446] text-white text-[10px] py-0 px-1.5">
-                                    Guru
+                                    {t('roleTeacher')}
                                   </Badge>
                                 )}
                                 {comm.isAnswer && (
                                   <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-1.5 flex items-center gap-1 font-semibold">
-                                    <Sparkles className="h-3 w-3" /> Jawaban Terpilih (Solusi)
+                                    <Sparkles className="h-3 w-3" /> {t('bestAnswerBadge')}
                                   </Badge>
                                 )}
                               </div>
 
                               <div className="flex items-center gap-2">
                                 <span>
-                                  {new Date(comm.createdAt).toLocaleDateString('id-ID', {
+                                  {new Date(comm.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                                     day: 'numeric',
                                     month: 'short',
                                     hour: '2-digit',
@@ -727,6 +731,7 @@ export function TeacherCourseForumClient({
                                 <button
                                   onClick={() => handleDeleteComment(comm.id)}
                                   className="text-gray-400 hover:text-red-600"
+                                  title={t('deleteReply')}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -747,7 +752,7 @@ export function TeacherCourseForumClient({
                                 }`}
                               >
                                 <CheckCircle className="h-3.5 w-3.5" />
-                                {comm.isAnswer ? 'Solusi Aktif' : 'Tandai sebagai Solusi'}
+                                {comm.isAnswer ? t('activeSolution') : t('markAsSolution')}
                               </button>
 
                               <button
@@ -757,7 +762,7 @@ export function TeacherCourseForumClient({
                                 }}
                                 className="text-xs font-semibold text-gray-500 hover:text-[#002446] flex items-center gap-1"
                               >
-                                <CornerDownRight className="h-3.5 w-3.5" /> Balas
+                                <CornerDownRight className="h-3.5 w-3.5" /> {t('replyBtn')}
                               </button>
                             </div>
 
@@ -773,6 +778,7 @@ export function TeacherCourseForumClient({
                                       <button
                                         onClick={() => handleDeleteComment(reply.id)}
                                         className="text-gray-400 hover:text-red-600"
+                                        title={t('deleteReply')}
                                       >
                                         <Trash2 className="h-3 w-3" />
                                       </button>
@@ -791,19 +797,19 @@ export function TeacherCourseForumClient({
                     <form onSubmit={handleAddReply} className="pt-4 border-t border-gray-200 space-y-2">
                       {replyingToId && (
                         <div className="flex items-center justify-between bg-blue-50 px-3 py-1.5 rounded text-xs text-blue-800">
-                          <span>Membalas komentar...</span>
+                          <span>{t('replyingTo')}</span>
                           <button
                             type="button"
                             onClick={() => setReplyingToId(null)}
                             className="text-blue-600 hover:underline font-bold"
                           >
-                            Batal
+                            {t('cancelReply')}
                           </button>
                         </div>
                       )}
                       <textarea
                         id="forumReplyBox"
-                        placeholder="Tulis penjelasan, bantuan jawaban, atau balasan Anda..."
+                        placeholder={t('replyPlaceholder')}
                         value={replyContent}
                         onChange={(e) => setReplyContent(e.target.value)}
                         rows={3}
@@ -816,7 +822,7 @@ export function TeacherCourseForumClient({
                           disabled={submittingReply}
                           className="bg-[#002446] hover:bg-[#001b33] text-white text-xs px-4"
                         >
-                          {submittingReply ? 'Mengirim...' : 'Kirim Balasan'}
+                          {submittingReply ? t('submittingReply') : t('sendReply')}
                         </Button>
                       </div>
                     </form>
@@ -830,13 +836,13 @@ export function TeacherCourseForumClient({
               {/* Filter Modul Bar */}
               <div className="flex items-center justify-between gap-3 bg-white p-3 border border-gray-200 rounded-lg shadow-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase">Filter Modul:</span>
+                  <span className="text-xs font-semibold text-gray-500 uppercase">{t('filterModule')}</span>
                   <select
                     value={selectedModuleFilter}
                     onChange={(e) => setSelectedModuleFilter(e.target.value)}
                     className="h-8 px-2 text-xs border border-gray-300 rounded bg-white text-gray-700"
                   >
-                    <option value="ALL">Semua Modul</option>
+                    <option value="ALL">{t('allModules')}</option>
                     {modules.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.title}
@@ -846,7 +852,7 @@ export function TeacherCourseForumClient({
                 </div>
 
                 <span className="text-xs text-gray-500">
-                  Menampilkan {filteredThreads.length} topik
+                  {t('showingThreads', { count: filteredThreads.length })}
                 </span>
               </div>
 
@@ -855,59 +861,59 @@ export function TeacherCourseForumClient({
                   <CardContent className="space-y-4">
                     <MessageSquare className="h-16 w-16 mx-auto text-gray-300" />
                     <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-gray-900">Belum Ada Topik Diskusi</h3>
+                      <h3 className="text-lg font-bold text-gray-900">{t('emptyThreadsTitle')}</h3>
                       <p className="text-sm text-gray-500 max-w-md mx-auto">
-                        Mulai topik diskusi pertama atau tunggu pertanyaan dari siswa seputar modul pelajaran.
+                        {t('emptyThreadsDesc')}
                       </p>
                     </div>
                     <Button onClick={() => setIsNewThreadOpen(true)} className="bg-[#002446] text-white">
-                      <Plus className="h-4 w-4 mr-1.5" /> Buat Topik Diskusi
+                      <Plus className="h-4 w-4 mr-1.5" /> {t('btnCreateFirstThread')}
                     </Button>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {filteredThreads.map((t) => (
+                  {filteredThreads.map((tItem) => (
                     <Card
-                      key={t.id}
-                      onClick={() => setSelectedThreadId(t.id)}
+                      key={tItem.id}
+                      onClick={() => setSelectedThreadId(tItem.id)}
                       className={`cursor-pointer hover:shadow-md transition-all border bg-white ${
-                        t.isPinned ? 'border-[#FF8928]/40 ring-1 ring-[#FF8928]/20' : 'border-gray-200'
+                        tItem.isPinned ? 'border-[#FF8928]/40 ring-1 ring-[#FF8928]/20' : 'border-gray-200'
                       }`}
                     >
                       <CardContent className="p-4 sm:p-5 flex items-start justify-between gap-4">
                         <div className="space-y-1.5 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            {t.isPinned && (
+                            {tItem.isPinned && (
                               <Badge className="bg-[#FF8928] text-white text-[10px] py-0 px-1.5 flex items-center gap-1">
-                                <Pin className="h-2.5 w-2.5 fill-white" /> Disematkan
+                                <Pin className="h-2.5 w-2.5 fill-white" /> {t('pinned')}
                               </Badge>
                             )}
-                            {t.isSolved && (
+                            {tItem.isSolved && (
                               <Badge className="bg-emerald-100 text-emerald-800 text-[10px] py-0 px-1.5 flex items-center gap-1">
-                                <CheckCircle2 className="h-2.5 w-2.5" /> Solved
+                                <CheckCircle2 className="h-2.5 w-2.5" /> {t('solvedBadge')}
                               </Badge>
                             )}
-                            {t.moduleTitle && (
+                            {tItem.moduleTitle && (
                               <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-gray-600">
-                                {t.moduleTitle}
+                                {tItem.moduleTitle}
                               </Badge>
                             )}
                           </div>
 
                           <h4 className="text-base font-bold text-[#002446] hover:text-[#FF8928] transition-colors">
-                            {t.title}
+                            {tItem.title}
                           </h4>
 
-                          <p className="text-xs text-gray-600 line-clamp-2">{t.content}</p>
+                          <p className="text-xs text-gray-600 line-clamp-2">{tItem.content}</p>
 
                           <div className="flex items-center gap-3 text-xs text-gray-400 pt-1">
                             <span>
-                              Ditanyakan oleh <strong>{t.authorName}</strong> ({t.authorRole})
+                              {t('authorAndRole', { name: tItem.authorName, role: tItem.authorRole })}
                             </span>
                             <span>•</span>
                             <span>
-                              {new Date(t.createdAt).toLocaleDateString('id-ID', {
+                              {new Date(tItem.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                                 day: 'numeric',
                                 month: 'short',
                               })}
@@ -918,7 +924,7 @@ export function TeacherCourseForumClient({
                         <div className="flex flex-col items-end justify-between self-stretch">
                           <Badge variant="outline" className="flex items-center gap-1 text-xs text-gray-600">
                             <MessageSquare className="h-3.5 w-3.5 text-[#002446]" />
-                            {t._count.comments} Balasan
+                            {t('repliesCount', { count: tItem._count.comments })}
                           </Badge>
                         </div>
                       </CardContent>
@@ -937,19 +943,19 @@ export function TeacherCourseForumClient({
           <form onSubmit={handleCreateAnnouncement}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446]">
-                Buat Pengumuman Baru
+                {t('modalAnnTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-gray-500">
-                Pengumuman akan langsung dikirimkan sebagai notifikasi ke seluruh siswa terdaftar.
+                {t('modalAnnDesc')}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
-                <Label htmlFor="annTitle">Judul Pengumuman *</Label>
+                <Label htmlFor="annTitle">{t('annTitleLabel')}</Label>
                 <Input
                   id="annTitle"
-                  placeholder="Contoh: Jadwal Ujian Tengah Semester & Kisi-kisi"
+                  placeholder={t('annTitlePlaceholder')}
                   value={annTitle}
                   onChange={(e) => setAnnTitle(e.target.value)}
                   required
@@ -957,11 +963,11 @@ export function TeacherCourseForumClient({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="annContent">Isi Pengumuman *</Label>
+                <Label htmlFor="annContent">{t('annContentLabel')}</Label>
                 <textarea
                   id="annContent"
                   rows={4}
-                  placeholder="Tuliskan detail pengumuman secara lengkap..."
+                  placeholder={t('annContentPlaceholder')}
                   value={annContent}
                   onChange={(e) => setAnnContent(e.target.value)}
                   required
@@ -978,7 +984,7 @@ export function TeacherCourseForumClient({
                   className="h-4 w-4 rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                 />
                 <Label htmlFor="annIsPinned" className="text-xs cursor-pointer">
-                  Sematkan ke bagian atas kursus siswa (Banner Pinned)
+                  {t('annPinLabel')}
                 </Label>
               </div>
             </div>
@@ -990,14 +996,14 @@ export function TeacherCourseForumClient({
                 onClick={() => setIsNewAnnouncementOpen(false)}
                 disabled={loadingAnn}
               >
-                Batal
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={loadingAnn}
                 className="bg-[#002446] hover:bg-[#001b33] text-white"
               >
-                {loadingAnn ? 'Menerbitkan...' : 'Terbitkan Pengumuman'}
+                {loadingAnn ? t('publishing') : t('btnPublishAnn')}
               </Button>
             </DialogFooter>
           </form>
@@ -1010,19 +1016,19 @@ export function TeacherCourseForumClient({
           <form onSubmit={handleCreateThread}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446]">
-                Mulai Topik Diskusi Baru
+                {t('modalThreadTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-gray-500">
-                Ajukan topik pemantik atau pertanyaan untuk memicu diskusi aktif bersama siswa.
+                {t('modalThreadDesc')}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
-                <Label htmlFor="threadTitle">Judul Diskusi *</Label>
+                <Label htmlFor="threadTitle">{t('threadTitleLabel')}</Label>
                 <Input
                   id="threadTitle"
-                  placeholder="Contoh: Apa perbedaan utama antara DDL dan DML?"
+                  placeholder={t('threadTitlePlaceholder')}
                   value={threadTitle}
                   onChange={(e) => setThreadTitle(e.target.value)}
                   required
@@ -1030,14 +1036,14 @@ export function TeacherCourseForumClient({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="threadModule">Terkait Modul (Opsional)</Label>
+                <Label htmlFor="threadModule">{t('threadModuleLabel')}</Label>
                 <select
                   id="threadModule"
                   value={threadModuleId}
                   onChange={(e) => setThreadModuleId(e.target.value)}
                   className="w-full h-10 px-3 border border-gray-300 rounded-md text-sm bg-white"
                 >
-                  <option value="">-- Diskusi Umum Kursus --</option>
+                  <option value="">{t('generalCourseDiscussion')}</option>
                   {modules.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
@@ -1047,11 +1053,11 @@ export function TeacherCourseForumClient({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="threadContent">Isi Topik / Pertanyaan *</Label>
+                <Label htmlFor="threadContent">{t('threadContentLabel')}</Label>
                 <textarea
                   id="threadContent"
                   rows={4}
-                  placeholder="Uraikan detail pertanyaan atau instruksi diskusi Anda..."
+                  placeholder={t('threadContentPlaceholder')}
                   value={threadContent}
                   onChange={(e) => setThreadContent(e.target.value)}
                   required
@@ -1067,14 +1073,14 @@ export function TeacherCourseForumClient({
                 onClick={() => setIsNewThreadOpen(false)}
                 disabled={loadingThread}
               >
-                Batal
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={loadingThread}
                 className="bg-[#002446] hover:bg-[#001b33] text-white"
               >
-                {loadingThread ? 'Menyimpan...' : 'Buka Diskusi'}
+                {loadingThread ? t('startingThread') : t('btnStartThread')}
               </Button>
             </DialogFooter>
           </form>

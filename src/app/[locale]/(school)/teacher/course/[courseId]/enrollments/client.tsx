@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +67,8 @@ export function CourseEnrollmentsClient({
   availableCohorts: CohortOption[];
   availableStudents: StudentOption[];
 }) {
+  const t = useTranslations('teacherEnrollments');
+  const locale = useLocale();
   const [enrollments, setEnrollments] = useState<EnrollmentItem[]>(course.enrollments || []);
   const [isCohortSyncOpen, setIsCohortSyncOpen] = useState(false);
   const [isManualOpen, setIsManualOpen] = useState(false);
@@ -84,14 +87,13 @@ export function CourseEnrollmentsClient({
       const cohortObj = availableCohorts.find((c) => c.id === selectedCohortId);
       setAlertMsg({
         type: 'success',
-        text: `Sukses menyinkronkan grup kohort "${cohortObj?.name}". ${res.enrolledCount} siswa telah didaftarkan ke course.`,
+        text: t('syncSuccess', { name: cohortObj?.name || '', count: res.enrolledCount }),
       });
       setIsCohortSyncOpen(false);
-      // Refresh page or update list
       window.location.reload();
     } catch (err) {
       console.error(err);
-      setAlertMsg({ type: 'error', text: 'Gagal menyinkronkan kohort' });
+      setAlertMsg({ type: 'error', text: t('syncFailed') });
     } finally {
       setLoading(false);
     }
@@ -117,14 +119,14 @@ export function CourseEnrollmentsClient({
         ]);
         setAlertMsg({
           type: 'success',
-          text: `Siswa ${studentObj.name} berhasil didaftarkan secara manual.`,
+          text: t('manualSuccess', { name: studentObj.name }),
         });
       }
       setIsManualOpen(false);
       setSelectedStudentId('');
     } catch (err) {
       console.error(err);
-      setAlertMsg({ type: 'error', text: 'Gagal mendaftarkan siswa' });
+      setAlertMsg({ type: 'error', text: t('manualFailed') });
     } finally {
       setLoading(false);
     }
@@ -134,18 +136,18 @@ export function CourseEnrollmentsClient({
 
   const handleRemoveStudent = async (userId: string, userName: string) => {
     const confirmed = await showConfirm(
-      `Keluarkan siswa "${userName}" dari course ini? Siswa tidak akan memiliki akses ke materi dan kuis lagi.`,
-      { title: 'Keluarkan Siswa', confirmText: 'Ya, Keluarkan', confirmVariant: 'destructive' }
+      t('removeConfirmDesc', { name: userName }),
+      { title: t('removeConfirmTitle'), confirmText: t('removeConfirmBtn'), confirmVariant: 'destructive' }
     );
     if (!confirmed) return;
     setLoading(true);
     try {
       await removeEnrollment(course.id, userId);
       setEnrollments((prev) => prev.filter((e) => e.user.id !== userId));
-      await showAlert(`Siswa "${userName}" berhasil dikeluarkan dari course.`, { type: 'success' });
+      await showAlert(t('removeSuccess', { name: userName }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal mengeluarkan siswa', { type: 'error' });
+      await showAlert(err?.message || t('removeFailed'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -185,7 +187,7 @@ export function CourseEnrollmentsClient({
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Cari NIS, nama, atau kohort..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 bg-white"
@@ -199,7 +201,7 @@ export function CourseEnrollmentsClient({
             className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white flex items-center gap-2 font-medium"
           >
             <RefreshCw className="h-4 w-4" />
-            Cohort Sync / Add Group
+            {t('btnCohortSync')}
           </Button>
 
           <Button
@@ -208,7 +210,7 @@ export function CourseEnrollmentsClient({
             className="border-[#002446] text-[#002446] hover:bg-[#002446] hover:text-white flex items-center gap-2"
           >
             <UserPlus className="h-4 w-4" />
-            Daftar Manual
+            {t('btnManualEnroll')}
           </Button>
         </div>
       </div>
@@ -217,19 +219,19 @@ export function CourseEnrollmentsClient({
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-bold text-[#002446] flex items-center gap-2">
             <Users className="h-5 w-5 text-[#FF8928]" />
-            Daftar Siswa Terdaftar ({enrollments.length})
+            {t('totalEnrolled', { count: enrollments.length })}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead>NIS</TableHead>
-                <TableHead>Nama Siswa</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Metode Enrollment</TableHead>
-                <TableHead>Tanggal Terdaftar</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead>{t('thNis')}</TableHead>
+                <TableHead>{t('thName')}</TableHead>
+                <TableHead>{t('thEmail')}</TableHead>
+                <TableHead>{t('thMethod')}</TableHead>
+                <TableHead>{t('thEnrolledAt')}</TableHead>
+                <TableHead className="text-right">{t('thAction')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -237,9 +239,9 @@ export function CourseEnrollmentsClient({
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     <Users className="h-10 w-10 mx-auto text-gray-300 mb-2" />
-                    Belum ada siswa yang terdaftar di course ini.
+                    {t('emptyState')}
                     <p className="text-xs text-gray-400 mt-1">
-                      Gunakan tombol <strong>Cohort Sync / Add Group</strong> di atas untuk mendaftarkan seluruh siswa dari suatu kohort sekaligus.
+                      {t('emptyStateHint')}
                     </p>
                   </TableCell>
                 </TableRow>
@@ -258,16 +260,16 @@ export function CourseEnrollmentsClient({
                     <TableCell>
                       {enr.method === 'COHORT_SYNC' ? (
                         <Badge className="bg-[#002446] text-white text-xs font-normal">
-                          Cohort Sync: {enr.cohort?.name || 'Grup'}
+                          {t('methodCohortSync', { name: enr.cohort?.name || '' })}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-xs font-normal">
-                          Manual
+                          {t('methodManual')}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-gray-600">
-                      {new Date(enr.createdAt).toLocaleDateString('id-ID', {
+                      {new Date(enr.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
@@ -298,17 +300,17 @@ export function CourseEnrollmentsClient({
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-[#FF8928]" />
-              Enrollment Method: Cohort Sync
+              {t('modalCohortSyncTitle')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <p className="text-sm text-gray-600">
-              Pilih grup kohort yang sesuai. Seluruh siswa di dalam kohort tersebut otomatis akan terdaftar di course ini.
+              {t('modalCohortSyncDesc')}
             </p>
 
             <div className="space-y-2">
-              <Label htmlFor="cohortSelect">Pilih Grup Kohort</Label>
+              <Label htmlFor="cohortSelect">{t('selectCohortLabel')}</Label>
               <select
                 id="cohortSelect"
                 value={selectedCohortId}
@@ -317,7 +319,7 @@ export function CourseEnrollmentsClient({
               >
                 {availableCohorts.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c._count.members} Siswa)
+                    {c.name} {t('studentCountTag', { count: c._count.members })}
                   </option>
                 ))}
               </select>
@@ -330,7 +332,7 @@ export function CourseEnrollmentsClient({
               variant="outline"
               onClick={() => setIsCohortSyncOpen(false)}
             >
-              Batal
+              {t('cancel')}
             </Button>
             <Button
               type="button"
@@ -338,7 +340,7 @@ export function CourseEnrollmentsClient({
               disabled={loading || !selectedCohortId}
               className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white"
             >
-              {loading ? 'Menyinkronkan...' : 'Sinkronkan & Daftarkan'}
+              {loading ? t('syncing') : t('btnSync')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -350,27 +352,27 @@ export function CourseEnrollmentsClient({
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-[#002446]" />
-              Pendaftaran Siswa Manual
+              {t('modalManualTitle')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <p className="text-sm text-gray-600">
-              Pilih satu per satu siswa untuk didaftarkan secara mandiri ke course ini.
+              {t('modalManualDesc')}
             </p>
 
             <div className="space-y-2">
-              <Label htmlFor="manualStudentSelect">Pilih Siswa</Label>
+              <Label htmlFor="manualStudentSelect">{t('selectStudentLabel')}</Label>
               <select
                 id="manualStudentSelect"
                 value={selectedStudentId}
                 onChange={(e) => setSelectedStudentId(e.target.value)}
                 className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
               >
-                <option value="">-- Pilih Siswa --</option>
+                <option value="">{t('selectStudentPlaceholder')}</option>
                 {unenrolledStudents.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} {s.nis ? `(NIS: ${s.nis})` : ''} - {s.email}
+                    {s.name} {s.nis ? `(${t('thNis')}: ${s.nis})` : ''} - {s.email}
                   </option>
                 ))}
               </select>
@@ -383,7 +385,7 @@ export function CourseEnrollmentsClient({
               variant="outline"
               onClick={() => setIsManualOpen(false)}
             >
-              Batal
+              {t('cancel')}
             </Button>
             <Button
               type="button"
@@ -391,7 +393,7 @@ export function CourseEnrollmentsClient({
               disabled={loading || !selectedStudentId}
               className="bg-[#002446] hover:bg-[#002446]/90 text-white"
             >
-              {loading ? 'Mendaftarkan...' : 'Daftarkan Siswa'}
+              {loading ? t('enrolling') : t('btnManualSubmit')}
             </Button>
           </DialogFooter>
         </DialogContent>

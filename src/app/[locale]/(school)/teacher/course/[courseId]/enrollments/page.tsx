@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getCourseById } from '@/lib/actions/course';
 import { getCohorts, getStudentsInSchool } from '@/lib/actions/cohort';
 import { CourseEnrollmentsClient } from './client';
+import { getTranslations } from 'next-intl/server';
 
 export default async function CourseEnrollmentsPage({
   params,
@@ -15,22 +16,23 @@ export default async function CourseEnrollmentsPage({
     notFound();
   }
 
-  const [cohorts, students] = await Promise.all([
+  const [cohorts, students, t] = await Promise.all([
     getCohorts(),
     getStudentsInSchool(),
+    getTranslations('teacherEnrollments'),
   ]);
 
   return (
     <div className="space-y-6">
       <div>
         <div className="text-xs font-semibold text-[#FF8928] uppercase tracking-wider">
-          {course.category?.name || 'Course'} • {course.academicYear.name}
+          {course.category?.name || t('courseFallback')} • {course.academicYear.name}
         </div>
         <h1 className="text-2xl font-bold text-[#002446]">
-          Enrollment Siswa — {course.title}
+          {t('headerTitle', { title: course.title })}
         </h1>
         <p className="text-sm text-gray-500">
-          Kelola pendaftaran siswa ke course ini menggunakan metode <strong>Cohort Sync</strong> atau pendaftaran manual.
+          {t('headerDesc')}
         </p>
       </div>
 

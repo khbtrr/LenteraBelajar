@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -109,6 +110,7 @@ type Category = {
 
 export function QuestionBankClient({ courseId, course, initialData, initialStats = {} }: any) {
   const router = useRouter();
+  const t = useTranslations('teacherQuestionBank');
   
   // Data state to ensure immediate reactive updates
   const [bankData, setBankData] = useState<{
@@ -203,8 +205,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
     } catch (e: any) {
       console.error(e);
       setNoticeModal({
-        title: 'Gagal Menambahkan Kategori',
-        message: e?.message || 'Terjadi kesalahan saat menambahkan kategori.',
+        title: t('addCategoryFailedTitle'),
+        message: e?.message || t('addCategoryFailedDesc'),
         type: 'error',
       });
     } finally {
@@ -227,8 +229,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
     } catch (e: any) {
       console.error(e);
       setNoticeModal({
-        title: 'Gagal Memperbarui Kategori',
-        message: e?.message || 'Terjadi kesalahan saat memperbarui kategori.',
+        title: t('updateCategoryFailedTitle'),
+        message: e?.message || t('updateCategoryFailedDesc'),
         type: 'error',
       });
     } finally {
@@ -258,8 +260,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
     } catch (e: any) {
       console.error(e);
       setNoticeModal({
-        title: 'Gagal Menghapus Kategori',
-        message: e?.message || 'Terjadi kesalahan saat menghapus kategori.',
+        title: t('deleteCategoryFailedTitle'),
+        message: e?.message || t('deleteCategoryFailedDesc'),
         type: 'error',
       });
     } finally {
@@ -314,15 +316,15 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Gagal mengunggah berkas media');
+        throw new Error(data.error || t('uploadMediaError'));
       }
       const data = await res.json();
       setMediaUrl(data.url);
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Upload Gagal',
-        message: err?.message || 'Gagal mengunggah berkas audio/video.',
+        title: t('uploadFailedTitle'),
+        message: err?.message || t('uploadFailedDesc'),
         type: 'error',
       });
     } finally {
@@ -337,8 +339,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       const hasCorrect = questionOptions.some((o) => o.isCorrect);
       if (!hasCorrect) {
         setNoticeModal({
-          title: 'Kunci Jawaban Diperlukan',
-          message: 'Harap tentukan satu opsi sebagai jawaban benar.',
+          title: t('keyRequiredTitle'),
+          message: t('keyRequiredSingle'),
           type: 'warning',
         });
         return;
@@ -347,8 +349,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       const correctCount = questionOptions.filter((o) => o.isCorrect).length;
       if (correctCount === 0) {
         setNoticeModal({
-          title: 'Kunci Jawaban Diperlukan',
-          message: 'Harap centang minimal satu opsi sebagai jawaban benar untuk soal pilihan ganda kompleks.',
+          title: t('keyRequiredTitle'),
+          message: t('keyRequiredComplex'),
           type: 'warning',
         });
         return;
@@ -422,8 +424,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
     } catch (e: any) {
       console.error(e);
       setNoticeModal({
-        title: 'Gagal Menyimpan Soal',
-        message: e?.message || 'Terjadi kesalahan saat menyimpan butir soal.',
+        title: t('saveQuestionFailedTitle'),
+        message: e?.message || t('saveQuestionFailedDesc'),
         type: 'error',
       });
     } finally {
@@ -460,8 +462,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
     } catch (e: any) {
       console.error(e);
       setNoticeModal({
-        title: 'Gagal Menghapus Soal',
-        message: e?.message || 'Terjadi kesalahan saat menghapus butir soal.',
+        title: t('deleteQuestionFailedTitle'),
+        message: e?.message || t('deleteQuestionFailedDesc'),
         type: 'error',
       });
     } finally {
@@ -504,8 +506,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       if (aikenMode === 'paste') {
         if (!aikenText.trim()) {
           setNoticeModal({
-            title: 'Teks Kosong',
-            message: 'Silakan ketik atau tempelkan (paste) teks soal berformat Aiken terlebih dahulu.',
+            title: t('emptyTextTitle'),
+            message: t('emptyTextDesc'),
             type: 'warning',
           });
           setLoading(false);
@@ -519,8 +521,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       } else {
         if (!aikenFile) {
           setNoticeModal({
-            title: 'File Belum Dipilih',
-            message: 'Silakan pilih berkas file teks (.txt atau .aiken) terlebih dahulu.',
+            title: t('noFileSelectedTitle'),
+            message: t('noFileSelectedDesc'),
             type: 'warning',
           });
           setLoading(false);
@@ -537,8 +539,8 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
       const data = await res.json();
       if (!res.ok) {
         setNoticeModal({
-          title: 'Gagal Memproses Format Aiken',
-          message: data.error || 'Terjadi kesalahan saat memproses teks format Aiken.',
+          title: t('processAikenFailedTitle'),
+          message: data.error || t('processAikenFailedDesc'),
           type: 'error',
         });
         return;
@@ -552,16 +554,16 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
         setImportPreview(data.questions);
       } else {
         setNoticeModal({
-          title: 'Soal Tidak Ditemukan',
-          message: 'Tidak ada butir soal yang berhasil terbaca. Pastikan setiap butir soal memiliki opsi pilihan (A. B. C.) dan baris kunci jawaban (ANSWER: X).',
+          title: t('noQuestionsFoundTitle'),
+          message: t('noQuestionsFoundAikenDesc'),
           type: 'warning',
         });
       }
     } catch (e: any) {
       console.error(e);
       setNoticeModal({
-        title: 'Kesalahan Sistem',
-        message: e?.message || 'Terjadi kesalahan saat memproses format Aiken.',
+        title: t('systemErrorTitle'),
+        message: e?.message || t('systemErrorAikenDesc'),
         type: 'error',
       });
     } finally {
@@ -616,8 +618,8 @@ POINTS: 5`;
       const data = await res.json();
       if (!res.ok) {
         setNoticeModal({
-          title: 'Gagal Memproses File',
-          message: data.error || 'Terjadi kesalahan saat memproses file dokumen Word.',
+          title: t('processWordFailedTitle'),
+          message: data.error || t('processWordFailedDesc'),
           type: 'error',
         });
         return;
@@ -631,16 +633,16 @@ POINTS: 5`;
         setImportPreview(data.questions);
       } else {
         setNoticeModal({
-          title: 'Soal Tidak Ditemukan',
-          message: 'Tidak ada butir soal yang berhasil terbaca dari dokumen. Pastikan penulisan nomor soal diawali angka dan titik (misal: 1. Pertanyaan...)',
+          title: t('noQuestionsFoundTitle'),
+          message: t('noQuestionsFoundWordDesc'),
           type: 'warning',
         });
       }
     } catch (e: any) {
       console.error(e);
       setNoticeModal({
-        title: 'Kesalahan Sistem',
-        message: e?.message || 'Terjadi kesalahan saat mengunggah dan memproses file.',
+        title: t('systemErrorTitle'),
+        message: e?.message || t('systemErrorWordDesc'),
         type: 'error',
       });
     } finally {
@@ -675,7 +677,7 @@ POINTS: 5`;
           <Button variant="ghost" size="sm" asChild className="mb-2 -ml-3 text-muted-foreground hover:text-foreground">
             <Link href={`/teacher/course/${courseId}/modules`}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Kembali ke Modul
+              {t('backToModules')}
             </Link>
           </Button>
           <div className="flex items-center gap-3">
@@ -683,7 +685,7 @@ POINTS: 5`;
               <Database className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-[#002446]">Bank Soal</h1>
+              <h1 className="text-2xl font-bold text-[#002446]">{t('pageTitle')}</h1>
               <p className="text-muted-foreground">{course.title}</p>
             </div>
           </div>
@@ -693,17 +695,17 @@ POINTS: 5`;
             <CardContent className="p-4 flex flex-wrap sm:flex-nowrap justify-around gap-4 sm:gap-6">
               <div className="text-center">
                 <p className="text-2xl font-bold text-[#002446]">{allQuestions.length}</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Soal</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{t('totalQuestions')}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-[#FF8928]">
                   {categories.reduce((acc: number, c: any) => acc + (c.questions?.length || 0), 0)}
                 </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Berkategori</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{t('categorized')}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-slate-400">{uncategorizedQuestions.length}</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Belum Kategori</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{t('uncategorized')}</p>
               </div>
             </CardContent>
           </Card>
@@ -716,7 +718,7 @@ POINTS: 5`;
           <Card>
             <CardHeader className="pb-3 border-b">
               <CardTitle className="text-lg font-semibold flex items-center justify-between">
-                Kategori
+                {t('categoriesTitle')}
                 <Button variant="ghost" size="icon" onClick={() => setIsAddingCategory(true)} disabled={loading}>
                   <Plus className="w-4 h-4 text-[#FF8928]" />
                 </Button>
@@ -729,7 +731,7 @@ POINTS: 5`;
                 }`}
                 onClick={() => setSelectedCategoryId(null)}
               >
-                <span className="truncate">Semua Soal</span>
+                <span className="truncate">{t('allQuestions')}</span>
                 <Badge variant="secondary">{initialStats?.total || 0}</Badge>
               </div>
 
@@ -737,17 +739,17 @@ POINTS: 5`;
                 <div className="p-2 flex items-center gap-2">
                   <Input
                     autoFocus
-                    placeholder="Nama kategori..."
+                    placeholder={t('categoryNamePlaceholder')}
                     value={categoryName}
                     onChange={(e) => setCategoryName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
                     className="h-8 text-sm"
                   />
                   <Button size="sm" className="h-8 bg-[#002446] hover:bg-[#002446]/90 text-white" onClick={handleAddCategory} disabled={loading}>
-                    Simpan
+                    {t('saveBtn')}
                   </Button>
                   <Button size="sm" variant="ghost" className="h-8" onClick={() => { setIsAddingCategory(false); setCategoryName(''); }} disabled={loading}>
-                    Batal
+                    {t('cancelBtn')}
                   </Button>
                 </div>
               )}
@@ -764,10 +766,10 @@ POINTS: 5`;
                         className="h-8 text-sm"
                       />
                       <Button size="sm" className="h-8 bg-[#002446] hover:bg-[#002446]/90 text-white" onClick={() => handleUpdateCategory(cat.id)} disabled={loading}>
-                        Simpan
+                        {t('saveBtn')}
                       </Button>
                       <Button size="sm" variant="ghost" className="h-8" onClick={() => { setEditingCategory(null); setCategoryName(''); }} disabled={loading}>
-                        Batal
+                        {t('cancelBtn')}
                       </Button>
                     </div>
                   ) : (
@@ -819,7 +821,7 @@ POINTS: 5`;
                 }`}
                 onClick={() => setSelectedCategoryId('uncategorized')}
               >
-                <span className="truncate italic text-slate-600">Belum Berkategori</span>
+                <span className="truncate italic text-slate-600">{t('uncategorizedQuestions')}</span>
                 <Badge variant="secondary">{uncategorizedQuestions.length}</Badge>
               </div>
             </CardContent>
@@ -832,20 +834,20 @@ POINTS: 5`;
             <div className="flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-[#002446]" />
               <h2 className="font-semibold text-lg">
-                {selectedCategoryId === null ? 'Semua Soal' : selectedCategoryId === 'uncategorized' ? 'Belum Berkategori' : categories.find((c: any) => c.id === selectedCategoryId)?.name || 'Kategori'}
+                {selectedCategoryId === null ? t('allQuestions') : selectedCategoryId === 'uncategorized' ? t('uncategorizedQuestions') : categories.find((c: any) => c.id === selectedCategoryId)?.name || t('defaultCategoryName')}
               </h2>
               <Badge className="ml-2 bg-[#002446]/10 text-[#002446] hover:bg-[#002446]/20 border-none">
-                {displayedQuestions.length} Soal
+                {t('questionsCount', { count: displayedQuestions.length })}
               </Badge>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" className="border-[#002446] text-[#002446] hover:bg-[#002446]/5 w-full sm:w-auto" onClick={() => setIsImportModalOpen(true)}>
                 <FileUp className="w-4 h-4 mr-2" />
-                Impor Soal (Aiken / Word)
+                {t('importQuestionsBtn')}
               </Button>
               <Button className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white border-none w-full sm:w-auto" onClick={openAddQuestion}>
                 <Plus className="w-4 h-4 mr-2" />
-                Tambah Soal
+                {t('addQuestionBtn')}
               </Button>
             </div>
           </div>
@@ -854,11 +856,11 @@ POINTS: 5`;
             {displayedQuestions.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-xl border border-dashed">
                 <HelpCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-lg font-medium text-slate-900">Belum ada soal</h3>
-                <p className="text-slate-500 max-w-sm mx-auto mt-1">Tambahkan soal baru atau impor dari file Word untuk mulai mengisi bank soal ini.</p>
+                <h3 className="text-lg font-medium text-slate-900">{t('noQuestionsTitle')}</h3>
+                <p className="text-slate-500 max-w-sm mx-auto mt-1">{t('noQuestionsDesc')}</p>
                 <Button className="mt-4 bg-[#002446] hover:bg-[#002446]/90 text-white" onClick={openAddQuestion}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Tambah Soal Pertama
+                  {t('addFirstQuestionBtn')}
                 </Button>
               </div>
             ) : (
@@ -880,27 +882,27 @@ POINTS: 5`;
                             }
                           >
                             {q.type === 'MULTIPLE_CHOICE'
-                              ? 'Pilihan Ganda'
+                              ? t('typeMultipleChoice')
                               : q.type === 'MULTIPLE_CHOICE_COMPLEX'
-                              ? 'PG Kompleks (AKM)'
-                              : 'Essay'}
+                              ? t('typeComplex')
+                              : t('typeEssay')}
                           </Badge>
                           <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">
-                            {q.points} Poin
+                            {t('points', { points: q.points })}
                           </Badge>
                           {q.text && (q.text.includes('quiz-media-audio') || /\[(?:Audio|Suara):/i.test(q.text)) && (
                             <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300 text-xs flex items-center gap-1">
-                              <Headphones className="w-3 h-3" /> Listening
+                              <Headphones className="w-3 h-3" /> {t('listeningBadge')}
                             </Badge>
                           )}
                           {q.text && (q.text.includes('quiz-media-video') || /\[(?:Video|YouTube):/i.test(q.text)) && (
                             <Badge className="bg-rose-100 text-rose-800 border-rose-300 text-xs flex items-center gap-1">
-                              <Video className="w-3 h-3" /> Video
+                              <Video className="w-3 h-3" /> {t('videoBadge')}
                             </Badge>
                           )}
                           {q.categoryId && (
                             <Badge variant="secondary" className="bg-slate-100">
-                              {categories.find((c: any) => c.id === q.categoryId)?.name || 'Kategori'}
+                              {categories.find((c: any) => c.id === q.categoryId)?.name || t('defaultCategoryName')}
                             </Badge>
                           )}
                         </div>
@@ -943,35 +945,35 @@ POINTS: 5`;
         <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] p-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border">
           <DialogHeader className="p-5 sm:p-6 pb-3 border-b border-gray-100 shrink-0 bg-white">
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              {editingQuestion ? 'Edit Soal' : 'Tambah Soal Baru'}
+              {editingQuestion ? t('editQuestionTitle') : t('addQuestionTitle')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="p-5 sm:p-6 py-4 overflow-y-auto overflow-x-hidden flex-1 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Tipe Soal</Label>
+                <Label>{t('questionTypeLabel')}</Label>
                 <Select value={questionType} onValueChange={(val: any) => setQuestionType(val)} disabled={!!editingQuestion || loading}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih tipe" />
+                    <SelectValue placeholder={t('selectTypePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MULTIPLE_CHOICE">Pilihan Ganda (1 Jawaban Benar)</SelectItem>
-                    <SelectItem value="MULTIPLE_CHOICE_COMPLEX">Pilihan Ganda Kompleks (Banyak Jawaban Benar / AKM)</SelectItem>
-                    <SelectItem value="ESSAY">Essay / Uraian</SelectItem>
+                    <SelectItem value="MULTIPLE_CHOICE">{t('optMultipleChoice')}</SelectItem>
+                    <SelectItem value="MULTIPLE_CHOICE_COMPLEX">{t('optComplex')}</SelectItem>
+                    <SelectItem value="ESSAY">{t('optEssay')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Poin</Label>
+                <Label>{t('pointsLabel')}</Label>
                 <Input type="number" min="1" value={questionPoints} onChange={(e) => setQuestionPoints(Number(e.target.value))} disabled={loading} />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Pertanyaan</Label>
+              <Label>{t('questionPromptLabel')}</Label>
               <Textarea 
-                placeholder="Tuliskan pertanyaan Anda di sini..." 
+                placeholder={t('questionPromptPlaceholder')} 
                 className="min-h-[100px] w-full" 
                 value={questionText} 
                 onChange={(e) => setQuestionText(e.target.value)} 
@@ -984,7 +986,7 @@ POINTS: 5`;
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <Label className="text-xs font-bold text-[#002446] flex items-center gap-1.5">
                   <Headphones className="w-3.5 h-3.5 text-[#FF8928]" />
-                  Media Soal (Listening / Video)
+                  {t('mediaHeader')}
                 </Label>
                 <div className="flex items-center gap-1">
                   <Button
@@ -997,7 +999,7 @@ POINTS: 5`;
                       setMediaUrl('');
                     }}
                   >
-                    Tanpa Media
+                    {t('noMedia')}
                   </Button>
                   <Button
                     type="button"
@@ -1006,7 +1008,7 @@ POINTS: 5`;
                     className={`h-7 text-xs ${mediaType === 'AUDIO' ? 'bg-indigo-600 text-white' : 'text-gray-600'}`}
                     onClick={() => setMediaType('AUDIO')}
                   >
-                    <Headphones className="w-3.5 h-3.5 mr-1" /> Audio
+                    <Headphones className="w-3.5 h-3.5 mr-1" /> {t('audioMedia')}
                   </Button>
                   <Button
                     type="button"
@@ -1015,7 +1017,7 @@ POINTS: 5`;
                     className={`h-7 text-xs ${mediaType === 'VIDEO' ? 'bg-rose-600 text-white' : 'text-gray-600'}`}
                     onClick={() => setMediaType('VIDEO')}
                   >
-                    <Video className="w-3.5 h-3.5 mr-1" /> Video
+                    <Video className="w-3.5 h-3.5 mr-1" /> {t('videoMedia')}
                   </Button>
                 </div>
               </div>
@@ -1024,7 +1026,7 @@ POINTS: 5`;
                 <div className="space-y-3 pt-2 border-t border-gray-200 min-w-0">
                   {/* Source Toggle */}
                   <div className="flex items-center gap-4 text-xs flex-wrap">
-                    <span className="text-gray-500 font-medium">Sumber:</span>
+                    <span className="text-gray-500 font-medium">{t('sourceLabel')}</span>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="radio"
@@ -1033,7 +1035,7 @@ POINTS: 5`;
                         onChange={() => setMediaSourceType('UPLOAD')}
                         className="text-[#002446]"
                       />
-                      <span>Upload Berkas ({mediaType === 'AUDIO' ? 'MP3/WAV' : 'MP4/WebM'})</span>
+                      <span>{t('uploadFileLabel', { types: mediaType === 'AUDIO' ? 'MP3/WAV' : 'MP4/WebM' })}</span>
                     </label>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -1043,7 +1045,7 @@ POINTS: 5`;
                         onChange={() => setMediaSourceType('URL')}
                         className="text-[#002446]"
                       />
-                      <span>Tautan URL {mediaType === 'VIDEO' ? '/ YouTube' : ''}</span>
+                      <span>{t('urlLinkLabel', { suffix: mediaType === 'VIDEO' ? '/ YouTube' : '' })}</span>
                     </label>
                   </div>
 
@@ -1057,12 +1059,12 @@ POINTS: 5`;
                         disabled={isUploadingMedia || loading}
                         className="text-xs bg-white"
                       />
-                      {isUploadingMedia && <span className="text-xs text-amber-600 font-medium animate-pulse shrink-0">Mengunggah...</span>}
+                      {isUploadingMedia && <span className="text-xs text-amber-600 font-medium animate-pulse shrink-0">{t('uploadingMedia')}</span>}
                     </div>
                   ) : (
                     <Input
                       type="url"
-                      placeholder={mediaType === 'AUDIO' ? 'https://example.com/audio.mp3' : 'https://www.youtube.com/watch?v=... atau link video'}
+                      placeholder={mediaType === 'AUDIO' ? t('audioPlaceholder') : t('videoPlaceholder')}
                       value={mediaUrl}
                       onChange={(e) => setMediaUrl(e.target.value)}
                       className="text-xs bg-white w-full"
@@ -1072,7 +1074,7 @@ POINTS: 5`;
                   {mediaUrl && (
                     <div className="text-xs text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-200 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
                       <span className="truncate min-w-0 flex-1">
-                        Media aktif: <strong className="font-mono text-[11px] break-all">{mediaUrl}</strong>
+                        {t('activeMediaLabel')} <strong className="font-mono text-[11px] break-all">{mediaUrl}</strong>
                       </span>
                       <Button
                         type="button"
@@ -1081,7 +1083,7 @@ POINTS: 5`;
                         onClick={() => setMediaUrl('')}
                         className="h-6 px-2 text-[10px] text-red-600 hover:bg-red-100 shrink-0"
                       >
-                        Hapus
+                        {t('removeMedia')}
                       </Button>
                     </div>
                   )}
@@ -1090,23 +1092,23 @@ POINTS: 5`;
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
                       <Label className="text-xs text-gray-600">
-                        {mediaType === 'AUDIO' ? 'Batas Pemutaran Siswa (Listening Quota)' : 'Batas Pemutaran Siswa (Video Quota)'}
+                        {mediaType === 'AUDIO' ? t('mediaQuotaAudio') : t('mediaQuotaVideo')}
                       </Label>
                       <select
                         value={mediaMaxPlay}
                         onChange={(e) => setMediaMaxPlay(e.target.value)}
                         className="w-full mt-1 h-9 rounded-md border border-gray-300 px-3 text-xs bg-white focus:ring-2 focus:ring-[#002446]"
                       >
-                        <option value="unlimited">Bebas Putar (Tanpa Batas)</option>
-                        <option value="1">Maksimal 1 Kali Putar</option>
-                        <option value="2">Maksimal 2 Kali Putar (Standar Ujian)</option>
-                        <option value="3">Maksimal 3 Kali Putar</option>
+                        <option value="unlimited">{t('quotaUnlimited')}</option>
+                        <option value="1">{t('quota1')}</option>
+                        <option value="2">{t('quota2')}</option>
+                        <option value="3">{t('quota3')}</option>
                       </select>
                     </div>
                     <p className="text-[11px] text-gray-500 self-end pb-1">
                       {mediaType === 'AUDIO'
-                        ? 'Siswa tidak dapat memutar ulang audio setelah kuota putar habis.'
-                        : 'Siswa tidak dapat memutar ulang video setelah kuota putar habis.'}
+                        ? t('quotaNoteAudio')
+                        : t('quotaNoteVideo')}
                     </p>
                   </div>
                 </div>
@@ -1119,17 +1121,17 @@ POINTS: 5`;
                   <div>
                     <Label className="text-xs font-bold text-[#002446]">
                       {questionType === 'MULTIPLE_CHOICE_COMPLEX'
-                        ? 'Pilihan Jawaban & Kunci Jawaban Kompleks (Centang > 1):'
-                        : 'Pilihan Jawaban & Kunci Jawaban:'}
+                        ? t('optionsLabelComplex')
+                        : t('optionsLabelSingle')}
                     </Label>
                     <p className="text-[11px] text-gray-500 mt-0.5">
                       {questionType === 'MULTIPLE_CHOICE_COMPLEX'
-                        ? 'Centang kotak checkbox untuk menentukan semua jawaban yang benar (Standar AKM).'
-                        : 'Pilih radio button untuk menentukan kunci jawaban yang benar.'}
+                        ? t('optionsNoteComplex')
+                        : t('optionsNoteSingle')}
                     </p>
                   </div>
                   <Button type="button" variant="outline" size="sm" onClick={handleAddOption} disabled={loading} className="text-xs h-8">
-                    <Plus className="w-3.5 h-3.5 mr-1 text-[#FF8928]" /> Tambah Opsi ({getOptionLetter(questionOptions.length)})
+                    <Plus className="w-3.5 h-3.5 mr-1 text-[#FF8928]" /> {t('addOptionBtn', { letter: getOptionLetter(questionOptions.length) })}
                   </Button>
                 </div>
                 <div className="space-y-2">
@@ -1181,7 +1183,7 @@ POINTS: 5`;
                       <Input
                         value={opt.text}
                         onChange={(e) => handleOptionChange(idx, e.target.value)}
-                        placeholder={`Masukkan pilihan jawaban ${getOptionLetter(idx)}...`}
+                        placeholder={t('optionPlaceholder', { letter: getOptionLetter(idx) })}
                         disabled={loading}
                         className={`flex-1 bg-white text-sm ${
                           opt.isCorrect
@@ -1198,7 +1200,7 @@ POINTS: 5`;
                             ? 'text-indigo-700 bg-indigo-100/80'
                             : 'text-emerald-700 bg-emerald-100/80'
                         }`}>
-                          ✓ Kunci Benar
+                          ✓ {t('correctKey')}
                         </span>
                       )}
 
@@ -1210,7 +1212,7 @@ POINTS: 5`;
                           className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 shrink-0"
                           onClick={() => handleRemoveOption(idx)}
                           disabled={loading}
-                          title={`Hapus Pilihan ${getOptionLetter(idx)}`}
+                          title={t('deleteOptionTitle', { letter: getOptionLetter(idx) })}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -1223,10 +1225,10 @@ POINTS: 5`;
           </div>
           <DialogFooter className="p-4 sm:px-6 border-t border-gray-100 bg-gray-50/90 shrink-0 flex items-center justify-end gap-2.5">
             <Button variant="outline" onClick={() => setIsQuestionModalOpen(false)} disabled={loading}>
-              Batal
+              {t('cancelBtn')}
             </Button>
             <Button className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium" onClick={handleSaveQuestion} disabled={loading}>
-              {loading ? 'Menyimpan...' : 'Simpan Soal'}
+              {loading ? t('savingQuestion') : t('saveQuestion')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1238,9 +1240,9 @@ POINTS: 5`;
           <DialogHeader className="p-5 sm:p-6 pb-3 border-b border-gray-100 shrink-0 bg-white">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-xl font-bold text-[#002446]">Impor Bank Soal</DialogTitle>
+                <DialogTitle className="text-xl font-bold text-[#002446]">{t('importModalTitle')}</DialogTitle>
                 <DialogDescription className="text-xs text-gray-500 mt-1">
-                  Pilih format sumber untuk mengimpor soal secara massal ke kursus ini.
+                  {t('importModalDesc')}
                 </DialogDescription>
               </div>
             </div>
@@ -1259,8 +1261,8 @@ POINTS: 5`;
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                <span>Format Aiken (Moodle / Teks)</span>
-                <span className="bg-[#FF8928] text-white text-[10px] px-1.5 py-0.2 rounded font-bold">Populer</span>
+                <span>{t('tabAiken')}</span>
+                <span className="bg-[#FF8928] text-white text-[10px] px-1.5 py-0.2 rounded font-bold">{t('badgePopular')}</span>
               </button>
               <button
                 type="button"
@@ -1275,7 +1277,7 @@ POINTS: 5`;
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                <span>Dokumen Word (.docx)</span>
+                <span>{t('tabWord')}</span>
               </button>
             </div>
           </DialogHeader>
@@ -1293,7 +1295,7 @@ POINTS: 5`;
                       className={`text-xs h-8 ${aikenMode === 'paste' ? 'bg-[#002446] text-white' : 'text-gray-600'}`}
                       onClick={() => setAikenMode('paste')}
                     >
-                      Ketik / Tempel Teks
+                      {t('modePaste')}
                     </Button>
                     <Button
                       type="button"
@@ -1302,7 +1304,7 @@ POINTS: 5`;
                       className={`text-xs h-8 ${aikenMode === 'file' ? 'bg-[#002446] text-white' : 'text-gray-600'}`}
                       onClick={() => setAikenMode('file')}
                     >
-                      Unggah File (.txt)
+                      {t('modeFile')}
                     </Button>
                   </div>
                   {aikenMode === 'paste' && (
@@ -1313,7 +1315,7 @@ POINTS: 5`;
                       onClick={handleLoadAikenSample}
                       className="text-xs h-8 text-[#FF8928] border-[#FF8928]/30 hover:bg-[#FF8928]/10"
                     >
-                      Muat Contoh Format
+                      {t('loadSample')}
                     </Button>
                   )}
                 </div>
@@ -1321,11 +1323,11 @@ POINTS: 5`;
                 {aikenMode === 'paste' ? (
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold text-gray-700">
-                      Teks Format Aiken (Dukungan Pilihan Ganda & PG Kompleks AKM):
+                      {t('aikenTextLabel')}
                     </Label>
                     <Textarea
                       rows={9}
-                      placeholder={`Ketik atau paste soal format Aiken di sini, contoh:\n\nApa ibukota Indonesia?\nA. Surabaya\nB. Bandung\nC. Jakarta\nD. Medan\nANSWER: C\n\nPulau besar di Indonesia? (PG Kompleks)\nA. Jawa\nB. Madura\nC. Sumatera\nANSWER: A, C\nPOINTS: 2`}
+                      placeholder={t('aikenTextPlaceholder')}
                       value={aikenText}
                       onChange={(e) => setAikenText(e.target.value)}
                       className="font-mono text-xs leading-relaxed bg-white"
@@ -1338,7 +1340,7 @@ POINTS: 5`;
                         onClick={handleParseAiken}
                         disabled={loading || !aikenText.trim()}
                       >
-                        {loading ? 'Memproses...' : 'Pratinjau Format Aiken'}
+                        {loading ? t('processing') : t('previewAikenBtn')}
                       </Button>
                     </div>
                   </div>
@@ -1346,7 +1348,7 @@ POINTS: 5`;
                   <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-3">
                     <FileUp className="w-9 h-9 text-slate-300 mx-auto" />
                     <p className="text-xs text-slate-600">
-                      Pilih berkas file teks <strong>.txt</strong> atau <strong>.aiken</strong> berisi soal dari Moodle atau editor teks.
+                      {t('aikenUploadPrompt')}
                     </p>
                     <Input
                       type="file"
@@ -1362,7 +1364,7 @@ POINTS: 5`;
                         onClick={handleParseAiken}
                         disabled={loading}
                       >
-                        {loading ? 'Memproses...' : 'Pratinjau File Aiken'}
+                        {loading ? t('processing') : t('previewFileAikenBtn')}
                       </Button>
                     )}
                   </div>
@@ -1373,13 +1375,13 @@ POINTS: 5`;
               <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-4">
                 <div className="flex flex-col items-center justify-center">
                   <FileUp className="w-10 h-10 text-slate-300 mb-2" />
-                  <p className="text-sm text-slate-600">Unggah file Microsoft Word (.docx) dengan format yang sesuai.</p>
+                  <p className="text-sm text-slate-600">{t('wordUploadPrompt')}</p>
                 </div>
 
                 <div className="p-3.5 bg-blue-50/90 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
                   <div className="text-xs text-slate-700">
-                    <p className="font-bold text-[#002446]">Belum punya format Word yang sesuai?</p>
-                    <p className="text-slate-500 mt-0.5">Unduh template acuan kami dan edit langsung soal Anda di dalamnya.</p>
+                    <p className="font-bold text-[#002446]">{t('noTemplateTitle')}</p>
+                    <p className="text-slate-500 mt-0.5">{t('noTemplateDesc')}</p>
                   </div>
                   <a
                     href="/api/quiz-import/template"
@@ -1387,7 +1389,7 @@ POINTS: 5`;
                     className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md bg-[#002446] text-white hover:bg-[#002446]/90 transition-colors shrink-0 shadow-xs"
                   >
                     <FileDown className="w-4 h-4 text-[#FF8928]" />
-                    Unduh Template (.docx)
+                    {t('downloadTemplateBtn')}
                   </a>
                 </div>
 
@@ -1403,7 +1405,7 @@ POINTS: 5`;
 
                 {importFile && importPreview.length === 0 && (
                   <Button className="mt-2 bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-semibold h-9" onClick={handleUploadWord} disabled={loading}>
-                    {loading ? 'Memproses...' : 'Pratinjau Impor Word'}
+                    {loading ? t('processing') : t('previewWordBtn')}
                   </Button>
                 )}
               </div>
@@ -1413,7 +1415,7 @@ POINTS: 5`;
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
                 <p className="font-semibold flex items-center gap-1">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  Catatan Format Impor ({importWarnings.length}):
+                  {t('importNotes', { count: importWarnings.length })}
                 </p>
                 <ul className="list-disc pl-5 space-y-0.5 max-h-28 overflow-y-auto">
                   {importWarnings.map((w, idx) => (
@@ -1428,7 +1430,7 @@ POINTS: 5`;
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-base flex items-center gap-2 text-[#002446]">
                     <Database className="w-5 h-5 text-[#FF8928]" />
-                    Pratinjau Hasil Impor ({importPreview.length} Soal)
+                    {t('previewResultTitle', { count: importPreview.length })}
                   </h3>
                   <Button
                     type="button"
@@ -1440,7 +1442,7 @@ POINTS: 5`;
                       setImportWarnings([]);
                     }}
                   >
-                    Hapus Pratinjau
+                    {t('clearPreview')}
                   </Button>
                 </div>
 
@@ -1463,13 +1465,13 @@ POINTS: 5`;
                             }
                           >
                             {q.type === 'MULTIPLE_CHOICE'
-                              ? 'PG (Single)'
+                              ? t('typeSingleShort')
                               : q.type === 'MULTIPLE_CHOICE_COMPLEX'
-                              ? 'PG Kompleks (AKM)'
-                              : 'Essay'}
+                              ? t('typeComplex')
+                              : t('typeEssay')}
                           </Badge>
                           <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50 text-[11px]">
-                            {q.points} Poin
+                            {t('points', { points: q.points })}
                           </Badge>
                         </div>
                         <div
@@ -1478,9 +1480,9 @@ POINTS: 5`;
                         />
                         {q.options && q.options.length > 0 && (
                           <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-100 flex items-center justify-between">
-                            <span>{q.options.length} Opsi</span>
+                            <span>{t('optionsCount', { count: q.options.length })}</span>
                             <span className="font-medium text-emerald-700">
-                              Kunci: <strong>{correctLabels || 'Tidak ada'}</strong>
+                              {t('correctAnswerLabel', { key: correctLabels || t('none') })}
                             </span>
                           </div>
                         )}
@@ -1504,14 +1506,14 @@ POINTS: 5`;
               }}
               disabled={loading}
             >
-              Batal
+              {t('cancelBtn')}
             </Button>
             <Button
               className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium"
               onClick={handleConfirmImport}
               disabled={loading || importPreview.length === 0}
             >
-              {loading ? 'Mengimpor...' : `Konfirmasi Impor (${importPreview.length} Soal)`}
+              {loading ? t('importing') : t('confirmImportBtn', { count: importPreview.length })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1525,19 +1527,19 @@ POINTS: 5`;
               <Trash2 className="w-6 h-6" />
             </div>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              Hapus Kategori Bank Soal?
+              {t('deleteCategoryTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 leading-relaxed">
-              Apakah Anda yakin ingin menghapus kategori <strong>&quot;{categoryToDelete?.name}&quot;</strong>?
+              {t('deleteCategoryConfirm', { name: categoryToDelete?.name || '' })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2 text-left">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
             <div>
-              <strong>Informasi Soal:</strong>
+              <strong>{t('infoQuestionTitle')}</strong>
               <p className="mt-0.5">
-                Butir soal ({categoryToDelete?.count || 0} butir) di dalam kategori ini tidak akan terhapus, melainkan otomatis dialihkan ke kategori <strong>&quot;Belum Berkategori&quot;</strong>.
+                {t('deleteCategoryNote', { count: categoryToDelete?.count || 0 })}
               </p>
             </div>
           </div>
@@ -1550,7 +1552,7 @@ POINTS: 5`;
               onClick={() => setCategoryToDelete(null)}
               className="w-full sm:w-1/2"
             >
-              Batal
+              {t('cancelBtn')}
             </Button>
             <Button
               type="button"
@@ -1558,7 +1560,7 @@ POINTS: 5`;
               onClick={confirmDeleteCategory}
               className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
             >
-              {loading ? 'Menghapus...' : 'Hapus Kategori'}
+              {loading ? t('deleting') : t('deleteCategoryBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1572,10 +1574,10 @@ POINTS: 5`;
               <Trash2 className="w-6 h-6" />
             </div>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              Hapus Butir Soal?
+              {t('deleteQuestionTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 leading-relaxed">
-              Apakah Anda yakin ingin menghapus butir soal ini dari Bank Soal? Tindakan ini tidak dapat dibatalkan.
+              {t('deleteQuestionConfirm')}
             </DialogDescription>
           </DialogHeader>
 
@@ -1587,7 +1589,7 @@ POINTS: 5`;
               onClick={() => setQuestionToDelete(null)}
               className="w-full sm:w-1/2"
             >
-              Batal
+              {t('cancelBtn')}
             </Button>
             <Button
               type="button"
@@ -1595,7 +1597,7 @@ POINTS: 5`;
               onClick={confirmDeleteQuestion}
               className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
             >
-              {loading ? 'Menghapus...' : 'Hapus Soal'}
+              {loading ? t('deleting') : t('deleteQuestionBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1635,7 +1637,7 @@ POINTS: 5`;
               onClick={() => setNoticeModal(null)}
               className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
             >
-              Tutup
+              {t('closeBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>

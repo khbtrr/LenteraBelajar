@@ -106,12 +106,13 @@ import { createAssignment, updateAssignment, deleteAssignment } from '@/lib/acti
 import { RichTextEditor } from '@/components/editor/rich-text-editor';
 import { ContentType, QuestionType } from '@prisma/client';
 import { Link } from '@/i18n/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 
 const ASSIGNMENT_FILE_CATEGORIES = [
-  { id: 'pdf', label: 'Dokumen PDF (.pdf)', exts: ['pdf'] },
-  { id: 'image', label: 'Gambar (.jpg, .png, .jpeg, .webp)', exts: ['jpg', 'jpeg', 'png', 'webp'] },
-  { id: 'office', label: 'Dokumen Office (.docx, .xlsx, .pptx)', exts: ['docx', 'xlsx', 'pptx'] },
-  { id: 'archive', label: 'Berkas Arsip (.zip, .rar)', exts: ['zip', 'rar'] },
+  { id: 'pdf', labelKey: 'catPdf' as const, exts: ['pdf'] },
+  { id: 'image', labelKey: 'catImage' as const, exts: ['jpg', 'jpeg', 'png', 'webp'] },
+  { id: 'office', labelKey: 'catOffice' as const, exts: ['docx', 'xlsx', 'pptx'] },
+  { id: 'archive', labelKey: 'catArchive' as const, exts: ['zip', 'rar'] },
 ];
 
 function buildAllowedTypesString(categories: string[], custom: string): string {
@@ -140,6 +141,7 @@ function parseAllowedTypes(allowedString?: string | null): { categories: string[
     .split(',')
     .map((s) => s.trim().replace(/^\./, '').toLowerCase())
     .filter(Boolean);
+
   const categories: string[] = [];
   const matchedExts = new Set<string>();
 
@@ -175,6 +177,9 @@ export function TeacherCourseModulesClient({
   course: any;
   initialModules: any[];
 }) {
+  const t = useTranslations('teacherModules');
+  const locale = useLocale();
+
   const [modules, setModules] = useState<any[]>(initialModules);
   const [loading, setLoading] = useState(false);
 
@@ -336,8 +341,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Membuat Modul',
-        message: err?.message || 'Terjadi kesalahan saat membuat bab modul.',
+        title: t('failedCreateModuleTitle'),
+        message: err?.message || t('failedCreateModuleDesc'),
         type: 'error',
       });
     } finally {
@@ -355,8 +360,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Menghapus Modul',
-        message: err?.message || 'Terjadi kesalahan saat menghapus bab modul.',
+        title: t('failedDeleteModuleTitle'),
+        message: err?.message || t('failedDeleteModuleDesc'),
         type: 'error',
       });
     } finally {
@@ -377,8 +382,8 @@ export function TeacherCourseModulesClient({
       if (contentType === ContentType.FILE) {
         if (!contentFile) {
           setNoticeModal({
-            title: 'Berkas Belum Dipilih',
-            message: 'Silakan pilih berkas dokumen terlebih dahulu sebelum menyimpan.',
+            title: t('missingFileTitle'),
+            message: t('missingFileDesc'),
             type: 'warning',
           });
           setLoading(false);
@@ -392,7 +397,7 @@ export function TeacherCourseModulesClient({
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || 'Upload berkas gagal');
+          throw new Error(errData.error || t('failedUploadFileDesc'));
         }
         const uploadRes = await res.json();
         fileUrl = uploadRes.url;
@@ -428,8 +433,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Menyimpan Materi',
-        message: err?.message || 'Terjadi kesalahan saat menyimpan konten materi pembelajaran.',
+        title: t('failedAddContentTitle'),
+        message: err?.message || t('failedAddContentDesc'),
         type: 'error',
       });
     } finally {
@@ -453,8 +458,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Menghapus Materi',
-        message: err?.message || 'Terjadi kesalahan saat menghapus materi pembelajaran.',
+        title: t('failedDeleteContentTitle'),
+        message: err?.message || t('failedDeleteContentDesc'),
         type: 'error',
       });
     } finally {
@@ -478,8 +483,8 @@ export function TeacherCourseModulesClient({
       const validOptions = mcOptions.filter((o) => o.text.trim());
       if (validOptions.length < 2) {
         setNoticeModal({
-          title: 'Pilihan Jawaban Kurang',
-          message: 'Minimal sediakan 2 Pilihan Jawaban dengan teks yang terisi.',
+          title: t('minOptionsRequiredTitle'),
+          message: t('minOptionsRequiredDesc'),
           type: 'warning',
         });
         return;
@@ -487,8 +492,8 @@ export function TeacherCourseModulesClient({
       const hasCorrect = validOptions.some((o) => o.isCorrect);
       if (!hasCorrect) {
         setNoticeModal({
-          title: 'Kunci Jawaban Belum Dipilih',
-          message: 'Pilih setidaknya 1 jawaban yang benar dengan menandai opsi.',
+          title: t('noCorrectAnswerKeyTitle'),
+          message: t('noCorrectAnswerKeyDesc'),
           type: 'warning',
         });
         return;
@@ -528,15 +533,15 @@ export function TeacherCourseModulesClient({
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Gagal mengunggah berkas');
+        throw new Error(data.error || t('uploadFailedDesc'));
       }
       const data = await res.json();
       setQMediaUrl(data.url);
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Upload Gagal',
-        message: err?.message || 'Gagal mengunggah media audio/video.',
+        title: t('uploadFailedTitle'),
+        message: err?.message || t('uploadFailedDesc'),
         type: 'error',
       });
     } finally {
@@ -555,15 +560,15 @@ export function TeacherCourseModulesClient({
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Gagal mengunggah berkas');
+        throw new Error(data.error || t('uploadFailedDesc'));
       }
       const data = await res.json();
       setEditQMediaUrl(data.url);
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Upload Gagal',
-        message: err?.message || 'Gagal mengunggah media audio/video.',
+        title: t('uploadFailedTitle'),
+        message: err?.message || t('uploadFailedDesc'),
         type: 'error',
       });
     } finally {
@@ -580,8 +585,8 @@ export function TeacherCourseModulesClient({
     } catch (err) {
       console.error('Failed to fetch bank data:', err);
       setNoticeModal({
-        title: 'Gagal Memuat Bank Soal',
-        message: 'Gagal memuat data dari Bank Soal. Silakan coba lagi.',
+        title: t('failedLoadBankTitle'),
+        message: t('failedLoadBankDesc'),
         type: 'error',
       });
     } finally {
@@ -750,8 +755,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Membuat Kuis',
-        message: err?.message || 'Terjadi kesalahan saat membuat kuis baru.',
+        title: t('failedCreateQuizTitle'),
+        message: err?.message || t('failedCreateQuizDesc'),
         type: 'error',
       });
     } finally {
@@ -776,7 +781,7 @@ export function TeacherCourseModulesClient({
       setQuizToDelete(null);
     } catch (err: any) {
       console.error('Error deleting quiz:', err);
-      setDeleteQuizError(err?.message || 'Gagal menghapus kuis. Silakan coba lagi.');
+      setDeleteQuizError(err?.message || t('failedDeleteQuizDesc'));
     } finally {
       setDeleteQuizLoading(false);
     }
@@ -801,7 +806,7 @@ export function TeacherCourseModulesClient({
         });
         if (!res.ok) {
           const errJson = await res.json();
-          throw new Error(errJson.error || 'Gagal mengunggah berkas lampiran guru');
+          throw new Error(errJson.error || t('failedUploadAssignAttachDesc'));
         }
         const fileData = await res.json();
         fileUrl = fileData.url;
@@ -849,8 +854,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Membuat Penugasan',
-        message: err?.message || 'Terjadi kesalahan saat membuat penugasan.',
+        title: t('failedCreateAssignTitle'),
+        message: err?.message || t('failedCreateAssignDesc'),
         type: 'error',
       });
     } finally {
@@ -898,7 +903,7 @@ export function TeacherCourseModulesClient({
         });
         if (!res.ok) {
           const errJson = await res.json();
-          throw new Error(errJson.error || 'Gagal mengunggah berkas lampiran');
+          throw new Error(errJson.error || t('failedUploadNewAttachDesc'));
         }
         const fileData = await res.json();
         fileUrl = fileData.url;
@@ -942,15 +947,15 @@ export function TeacherCourseModulesClient({
 
       setEditingAssignment(null);
       setNoticeModal({
-        title: 'Penugasan Diperbarui',
-        message: 'Perubahan penugasan dan batas waktu pengumpulan berhasil disimpan.',
+        title: t('assignUpdatedTitle'),
+        message: t('assignUpdatedDesc'),
         type: 'success',
       });
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Memperbarui Penugasan',
-        message: err?.message || 'Terjadi kesalahan saat memperbarui penugasan.',
+        title: t('failedUpdateAssignTitle'),
+        message: err?.message || t('failedUpdateAssignDesc'),
         type: 'error',
       });
     } finally {
@@ -974,8 +979,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Menghapus Tugas',
-        message: err?.message || 'Terjadi kesalahan saat menghapus penugasan.',
+        title: t('failedDeleteAssignTitle'),
+        message: err?.message || t('failedDeleteAssignDesc'),
         type: 'error',
       });
     } finally {
@@ -991,8 +996,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Memuat Kuis',
-        message: err?.message || 'Tidak dapat memuat butir soal kuis.',
+        title: t('failedLoadQuizTitle'),
+        message: err?.message || t('failedLoadQuizDesc'),
         type: 'error',
       });
     } finally {
@@ -1027,8 +1032,8 @@ export function TeacherCourseModulesClient({
          const validOptions = editQuestionModal.options.filter((o) => o.text.trim());
          if (validOptions.length < 2) {
            setNoticeModal({
-             title: 'Pilihan Jawaban Kurang',
-             message: 'Minimal sediakan 2 Pilihan Jawaban dengan teks yang terisi.',
+             title: t('minOptionsRequiredTitle'),
+             message: t('minOptionsRequiredDesc'),
              type: 'warning',
            });
            setLoading(false);
@@ -1040,8 +1045,8 @@ export function TeacherCourseModulesClient({
       const questionId = editQuestionModal.id || editQuestionModal.questionId;
       if (!questionId) {
         setNoticeModal({
-          title: 'Soal Tidak Valid',
-          message: 'ID butir soal tidak ditemukan atau tidak valid.',
+          title: t('invalidQuestionTitle'),
+          message: t('invalidQuestionDesc'),
           type: 'error',
         });
         setLoading(false);
@@ -1063,8 +1068,8 @@ export function TeacherCourseModulesClient({
       });
       
       setNoticeModal({
-        title: 'Berhasil Disimpan',
-        message: 'Perubahan butir soal kuis berhasil disimpan.',
+        title: t('questionSavedTitle'),
+        message: t('questionSavedDesc'),
         type: 'success',
       });
       setEditQuestionModal(null);
@@ -1073,8 +1078,8 @@ export function TeacherCourseModulesClient({
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Menyimpan Soal',
-        message: err?.message || 'Terjadi kesalahan saat memperbarui butir soal.',
+        title: t('failedUpdateQuestionTitle'),
+        message: err?.message || t('failedUpdateQuestionDesc'),
         type: 'error',
       });
     } finally {
@@ -1086,20 +1091,20 @@ export function TeacherCourseModulesClient({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          Total <strong>{modules.length}</strong> bab modul pembelajaran
+          {t('totalModules', { count: modules.length })}
         </div>
 
         <div className="flex items-center gap-2">
           <Link href={`/teacher/course/${course.id}/question-bank`}>
             <Button variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-100">
-              Bank Soal
+              {t('bankSoalBtn')}
             </Button>
           </Link>
           <Button
             onClick={() => setIsModuleModalOpen(true)}
             className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2"
           >
-            <Plus className="h-4 w-4" /> Tambah Bab Modul
+            <Plus className="h-4 w-4" /> {t('addModuleBtn')}
           </Button>
         </div>
       </div>
@@ -1108,15 +1113,15 @@ export function TeacherCourseModulesClient({
         <Card className="text-center py-16 border-dashed">
           <CardContent className="space-y-3">
             <Layers className="h-12 w-12 mx-auto text-gray-300" />
-            <h3 className="text-lg font-bold text-[#002446]">Belum Ada Modul</h3>
+            <h3 className="text-lg font-bold text-[#002446]">{t('emptyTitle')}</h3>
             <p className="text-sm text-gray-500 max-w-md mx-auto">
-              Mulai dengan menambahkan bab modul materi (misal: Bab 1 — Pengantar & Konsep Dasar).
+              {t('emptyDesc')}
             </p>
             <Button
               onClick={() => setIsModuleModalOpen(true)}
               className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white"
             >
-              Buat Bab Pertama
+              {t('createFirstBtn')}
             </Button>
           </CardContent>
         </Card>
@@ -1144,7 +1149,7 @@ export function TeacherCourseModulesClient({
                     }}
                     className="h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-50 flex items-center gap-1"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Materi
+                    <Plus className="h-3.5 w-3.5" /> {t('addContentBtn')}
                   </Button>
 
                   <Button
@@ -1156,7 +1161,7 @@ export function TeacherCourseModulesClient({
                     }}
                     className="h-8 text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center gap-1"
                   >
-                    <HelpCircle className="h-3.5 w-3.5" /> Kuis
+                    <HelpCircle className="h-3.5 w-3.5" /> {t('addQuizBtn')}
                   </Button>
 
                   <Button
@@ -1168,7 +1173,7 @@ export function TeacherCourseModulesClient({
                     }}
                     className="h-8 text-xs border-purple-300 text-purple-700 hover:bg-purple-50 flex items-center gap-1"
                   >
-                    <ClipboardList className="h-3.5 w-3.5" /> Tugas
+                    <ClipboardList className="h-3.5 w-3.5" /> {t('addAssignmentBtn')}
                   </Button>
 
                   <Button
@@ -1195,11 +1200,11 @@ export function TeacherCourseModulesClient({
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <FileText className="h-4 w-4 text-blue-600" />
-                    Materi ({mod.contents.length})
+                    {t('contentsHeading', { count: mod.contents.length })}
                   </h4>
 
                   {mod.contents.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic pl-5">Belum ada materi di bab ini.</p>
+                    <p className="text-xs text-gray-400 italic pl-5">{t('emptyContents')}</p>
                   ) : (
                     <div className="space-y-2 pl-2">
                       {mod.contents.map((c: any) => (
@@ -1236,7 +1241,7 @@ export function TeacherCourseModulesClient({
                                 rel="noreferrer"
                                 className="text-xs text-blue-600 hover:underline px-2 py-1"
                               >
-                                Unduh / Lihat
+                                {t('downloadView')}
                               </a>
                             )}
                             <Button
@@ -1265,11 +1270,11 @@ export function TeacherCourseModulesClient({
                 <div className="space-y-2 pt-2 border-t">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <HelpCircle className="h-4 w-4 text-[#FF8928]" />
-                    Kuis ({mod.quizzes.length})
+                    {t('quizzesHeading', { count: mod.quizzes.length })}
                   </h4>
 
                   {mod.quizzes.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic pl-5">Belum ada kuis di bab ini.</p>
+                    <p className="text-xs text-gray-400 italic pl-5">{t('emptyQuizzes')}</p>
                   ) : (
                     <div className="space-y-2 pl-2">
                       {mod.quizzes.map((q: any) => (
@@ -1280,36 +1285,38 @@ export function TeacherCourseModulesClient({
                           <div>
                             <div className="font-semibold text-sm text-[#002446]">{q.title}</div>
                             <div className="text-xs text-gray-600 flex items-center gap-3 mt-1">
-                              <span>{q._count.questions} Soal</span>
+                              <span>{t('questionsCount', { count: q._count.questions })}</span>
                               {q.duration && (
                                 <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3 text-[#FF8928]" /> {q.duration} Menit
+                                  <Clock className="h-3 w-3 text-[#FF8928]" /> {t('durationMinutes', { count: q.duration })}
                                 </span>
                               )}
                               {q.shuffleQuestions && (
                                 <span className="flex items-center gap-1 text-emerald-700">
-                                  <Shuffle className="h-3 w-3" /> Acak Soal
+                                  <Shuffle className="h-3 w-3" /> {t('shuffleQuestionsBadge')}
                                 </span>
                               )}
                               {q.deadline && (
                                 <span className="flex items-center gap-1 text-gray-500">
-                                  <Calendar className="h-3 w-3" /> Batas:{' '}
-                                  {new Date(q.deadline).toLocaleDateString('id-ID')}
+                                  <Calendar className="h-3 w-3" />{' '}
+                                  {t('deadlineBadge', {
+                                    date: new Date(q.deadline).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID')
+                                  })}
                                 </span>
                               )}
                               {q.requireToken && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-400 text-amber-800 bg-amber-50 font-mono">
-                                  Token: {q.token}
+                                  {t('tokenBadge', { token: q.token })}
                                 </Badge>
                               )}
                               {q.enableLockdown && (
                                 <Badge className="text-[10px] px-1.5 py-0 bg-rose-100 text-rose-800 hover:bg-rose-100">
-                                  Lockdown CBT
+                                  {t('lockdownBadge')}
                                 </Badge>
                               )}
                               {q.isRemedial && (
                                 <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-900 border border-amber-300">
-                                  Remedial
+                                  {t('remedialBadge')}
                                 </Badge>
                               )}
                             </div>
@@ -1323,7 +1330,7 @@ export function TeacherCourseModulesClient({
                                 className="h-7 text-xs border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-bold flex items-center gap-1"
                               >
                                 <Shield className="h-3 w-3 text-emerald-600" />
-                                Live Proctor
+                                {t('liveProctorBtn')}
                               </Button>
                             </Link>
                             <Button
@@ -1332,7 +1339,7 @@ export function TeacherCourseModulesClient({
                               onClick={() => handleEditQuizClick(q.id)}
                               className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
                             >
-                              Edit
+                              {t('editBtn')}
                             </Button>
                             <Link href={`/teacher/course/${course.id}/quiz-attempts/${q.id}`}>
                               <Button
@@ -1340,7 +1347,7 @@ export function TeacherCourseModulesClient({
                                 variant="outline"
                                 className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100"
                               >
-                                Riwayat
+                                {t('historyBtn')}
                               </Button>
                             </Link>
                             <Button
@@ -1369,11 +1376,11 @@ export function TeacherCourseModulesClient({
                 <div className="space-y-2 pt-2 border-t">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <ClipboardList className="h-4 w-4 text-purple-600" />
-                    Penugasan ({mod.assignments.length})
+                    {t('assignmentsHeading', { count: mod.assignments.length })}
                   </h4>
 
                   {mod.assignments.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic pl-5">Belum ada tugas di bab ini.</p>
+                    <p className="text-xs text-gray-400 italic pl-5">{t('emptyAssignments')}</p>
                   ) : (
                     <div className="space-y-2 pl-2">
                       {mod.assignments.map((a: any) => (
@@ -1384,17 +1391,19 @@ export function TeacherCourseModulesClient({
                           <div>
                             <div className="font-semibold text-sm text-[#002446]">{a.title}</div>
                             <div className="text-xs text-gray-600 flex flex-wrap items-center gap-3 mt-1">
-                              <span>Skor Max: {a.maxScore}</span>
-                              <span>Terkumpul: {a._count.submissions} Siswa</span>
+                              <span>{t('maxScoreBadge', { score: a.maxScore })}</span>
+                              <span>{t('collectedBadge', { count: a._count.submissions })}</span>
                               {a.deadline && (
                                 <span className="flex items-center gap-1 text-purple-700 font-medium">
-                                  <Calendar className="h-3 w-3" /> Deadline:{' '}
-                                  {new Date(a.deadline).toLocaleDateString('id-ID', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
+                                  <Calendar className="h-3 w-3" />{' '}
+                                  {t('assignmentDeadlineBadge', {
+                                    date: new Date(a.deadline).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
                                   })}
                                 </span>
                               )}
@@ -1404,7 +1413,7 @@ export function TeacherCourseModulesClient({
                                   target="_blank"
                                   rel="noreferrer"
                                   className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline bg-blue-50 px-1.5 py-0.5 rounded"
-                                  title="Lampiran Soal Guru"
+                                  title={t('teacherAttachmentTitle')}
                                 >
                                   <Paperclip className="h-3 w-3" />
                                   <span className="truncate max-w-[120px]">{a.fileName}</span>
@@ -1420,7 +1429,7 @@ export function TeacherCourseModulesClient({
                               onClick={() => handleOpenEditAssignment(a)}
                               className="h-7 text-xs border-purple-300 text-purple-700 hover:bg-purple-100 flex items-center gap-1"
                             >
-                              <Edit className="h-3 w-3" /> Edit
+                              <Edit className="h-3 w-3" /> {t('editBtn')}
                             </Button>
                             <Link href={`/teacher/course/${course.id}/submissions/${a.id}`}>
                               <Button
@@ -1428,7 +1437,7 @@ export function TeacherCourseModulesClient({
                                 variant="outline"
                                 className="h-7 text-xs border-purple-300 text-purple-700 hover:bg-purple-100"
                               >
-                                Periksa Pengumpulan
+                                {t('checkSubmissionsBtn')}
                               </Button>
                             </Link>
                             <Button
@@ -1464,14 +1473,14 @@ export function TeacherCourseModulesClient({
           <form onSubmit={handleCreateModule}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446]">
-                Tambah Bab Modul Baru
+                {t('modalModuleTitle')}
               </DialogTitle>
             </DialogHeader>
             <div className="py-4">
-              <Label htmlFor="mTitle">Judul Bab Modul</Label>
+              <Label htmlFor="mTitle">{t('moduleTitleLabel')}</Label>
               <Input
                 id="mTitle"
-                placeholder="misal: Bab 1 — Konsep dan Pengantar Dasar"
+                placeholder={t('moduleTitlePlaceholder')}
                 value={moduleTitle}
                 onChange={(e) => setModuleTitle(e.target.value)}
                 required
@@ -1480,10 +1489,10 @@ export function TeacherCourseModulesClient({
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsModuleModalOpen(false)}>
-                Batal
+                {t('cancelBtn')}
               </Button>
               <Button type="submit" disabled={loading} className="bg-[#002446] text-white">
-                {loading ? 'Menyimpan...' : 'Simpan Modul'}
+                {loading ? t('saving') : t('saveModuleBtn')}
               </Button>
             </DialogFooter>
           </form>
@@ -1496,16 +1505,16 @@ export function TeacherCourseModulesClient({
           <form onSubmit={handleCreateContent} className="flex flex-col flex-1 overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446]">
-                Tambah Konten Materi Pembelajaran
+                {t('modalContentTitle')}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 py-4 flex-1 overflow-y-auto pr-1">
               <div className="space-y-2">
-                <Label htmlFor="cntTitle">Judul Materi</Label>
+                <Label htmlFor="cntTitle">{t('contentTitleLabel')}</Label>
                 <Input
                   id="cntTitle"
-                  placeholder="misal: Artikel Rangkuman Materi Bab 1"
+                  placeholder={t('contentTitlePlaceholder')}
                   value={contentTitle}
                   onChange={(e) => setContentTitle(e.target.value)}
                   required
@@ -1513,7 +1522,7 @@ export function TeacherCourseModulesClient({
               </div>
 
               <div className="space-y-2">
-                <Label>Format Konten</Label>
+                <Label>{t('contentFormatLabel')}</Label>
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -1522,7 +1531,7 @@ export function TeacherCourseModulesClient({
                     onClick={() => setContentType(ContentType.TEXT)}
                     className={contentType === ContentType.TEXT ? 'bg-[#002446] text-white' : ''}
                   >
-                    <FileText className="h-4 w-4 mr-1.5" /> Rich Text (TipTap)
+                    <FileText className="h-4 w-4 mr-1.5" /> {t('formatText')}
                   </Button>
                   <Button
                     type="button"
@@ -1531,7 +1540,7 @@ export function TeacherCourseModulesClient({
                     onClick={() => setContentType(ContentType.FILE)}
                     className={contentType === ContentType.FILE ? 'bg-[#002446] text-white' : ''}
                   >
-                    <FileDown className="h-4 w-4 mr-1.5" /> Berkas Dokumen (PDF/DOCX)
+                    <FileDown className="h-4 w-4 mr-1.5" /> {t('formatFile')}
                   </Button>
                   <Button
                     type="button"
@@ -1540,21 +1549,21 @@ export function TeacherCourseModulesClient({
                     onClick={() => setContentType(ContentType.VIDEO)}
                     className={contentType === ContentType.VIDEO ? 'bg-[#002446] text-white' : ''}
                   >
-                    <Video className="h-4 w-4 mr-1.5" /> Video
+                    <Video className="h-4 w-4 mr-1.5" /> {t('formatVideo')}
                   </Button>
                 </div>
               </div>
 
               {contentType === ContentType.TEXT && (
                 <div className="space-y-2">
-                  <Label>Isi Teks Materi (WYSIWYG Editor)</Label>
+                  <Label>{t('wysiwygLabel')}</Label>
                   <RichTextEditor content={contentBody} onChange={setContentBody} />
                 </div>
               )}
 
               {contentType === ContentType.FILE && (
                 <div className="space-y-2 p-4 border rounded-lg bg-gray-50">
-                  <Label htmlFor="docFile">Pilih Berkas Materi (PDF, DOCX, PPTX)</Label>
+                  <Label htmlFor="docFile">{t('chooseFileLabel')}</Label>
                   <Input
                     id="docFile"
                     type="file"
@@ -1563,16 +1572,16 @@ export function TeacherCourseModulesClient({
                     required
                     className="bg-white mt-1"
                   />
-                  <p className="text-xs text-gray-500">Berkas tersimpan aman di server lokal LMS.</p>
+                  <p className="text-xs text-gray-500">{t('fileHelpText')}</p>
                 </div>
               )}
 
               {contentType === ContentType.VIDEO && (
                 <div className="space-y-2">
-                  <Label htmlFor="vUrl">URL Video (YouTube / Link Video)</Label>
+                  <Label htmlFor="vUrl">{t('videoUrlLabel')}</Label>
                   <Input
                     id="vUrl"
-                    placeholder="https://www.youtube.com/watch?v=... atau link video"
+                    placeholder={t('videoUrlPlaceholder')}
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
                     required
@@ -1583,10 +1592,10 @@ export function TeacherCourseModulesClient({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsContentModalOpen(false)}>
-                Batal
+                {t('cancelBtn')}
               </Button>
               <Button type="submit" disabled={loading} className="bg-[#002446] text-white">
-                {loading ? 'Mengunggah...' : 'Simpan Materi'}
+                {loading ? t('uploading') : t('saveContentBtn')}
               </Button>
             </DialogFooter>
           </form>
@@ -1599,17 +1608,17 @@ export function TeacherCourseModulesClient({
           <form onSubmit={handleSaveQuiz} className="flex flex-col flex-1 overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-[#FF8928]" /> Buat Kuis Baru
+                <HelpCircle className="h-5 w-5 text-[#FF8928]" /> {t('modalQuizTitle')}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 py-3 flex-1 overflow-y-auto pr-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="qzTitle">Judul Kuis</Label>
+                  <Label htmlFor="qzTitle">{t('quizTitleLabel')}</Label>
                   <Input
                     id="qzTitle"
-                    placeholder="misal: Kuis 1 — Pemahaman Konsep"
+                    placeholder={t('quizTitlePlaceholder')}
                     value={quizTitle}
                     onChange={(e) => setQuizTitle(e.target.value)}
                     required
@@ -1617,7 +1626,7 @@ export function TeacherCourseModulesClient({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="qzDuration">Durasi Waktu Pengerjaan (Menit)</Label>
+                  <Label htmlFor="qzDuration">{t('quizDurationLabel')}</Label>
                   <Input
                     id="qzDuration"
                     type="number"
@@ -1626,12 +1635,12 @@ export function TeacherCourseModulesClient({
                     onChange={(e) => setQuizDuration(e.target.value)}
                   />
                   <p className="text-[11px] text-gray-500">
-                    Siswa akan melihat <strong>timer hitung mundur (countdown)</strong>.
+                    {t('quizDurationHelp')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="qzDeadline">Batas Waktu Pengumpulan (Deadline)</Label>
+                  <Label htmlFor="qzDeadline">{t('quizDeadlineLabel')}</Label>
                   <Input
                     id="qzDeadline"
                     type="datetime-local"
@@ -1652,7 +1661,7 @@ export function TeacherCourseModulesClient({
                     className="rounded border-gray-300 text-[#FF8928] focus:ring-[#002446]"
                   />
                   <Label htmlFor="qzShuffle" className="text-xs font-medium cursor-pointer text-amber-900">
-                    Acak Urutan Soal (Shuffle Questions)
+                    {t('shuffleQuestionsLabel')}
                   </Label>
                 </div>
 
@@ -1665,7 +1674,7 @@ export function TeacherCourseModulesClient({
                     className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                   />
                   <Label htmlFor="qzShuffleOptions" className="text-xs font-medium cursor-pointer text-blue-950">
-                    Acak Pilihan Jawaban PG (Shuffle Options)
+                    {t('shuffleOptionsLabel')}
                   </Label>
                 </div>
               </div>
@@ -1673,20 +1682,20 @@ export function TeacherCourseModulesClient({
               {/* Tampilan per Halaman, Max Attempts & KKM */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="qzPerPage">Tampilan Soal per Halaman</Label>
+                  <Label htmlFor="qzPerPage">{t('perPageLabel')}</Label>
                   <select
                     id="qzPerPage"
                     value={questionsPerPage}
                     onChange={(e) => setQuestionsPerPage(e.target.value)}
                     className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
                   >
-                    <option value="0">Semua Soal dalam 1 Halaman</option>
-                    <option value="1">1 Soal per Halaman (Fokus CBT)</option>
+                    <option value="0">{t('allPerPage')}</option>
+                    <option value="1">{t('onePerPage')}</option>
                   </select>
-                  <p className="text-[11px] text-gray-500">Mode 1 soal menampilkan navigasi ala Moodle/CBT.</p>
+                  <p className="text-[11px] text-gray-500">{t('perPageHelp')}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="qzMaxAttempts">Kesempatan Mengerjakan</Label>
+                  <Label htmlFor="qzMaxAttempts">{t('maxAttemptsLabel')}</Label>
                   <select
                     id="qzMaxAttempts"
                     value={quizMaxAttempts}
@@ -1694,24 +1703,24 @@ export function TeacherCourseModulesClient({
                     className="w-full h-10 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
                   >
                     {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                      <option key={n} value={String(n)}>{n} kali</option>
+                      <option key={n} value={String(n)}>{t('timesAttempt', { count: n })}</option>
                     ))}
-                    <option value="unlimited">Unlimited (Tanpa Batas)</option>
+                    <option value="unlimited">{t('unlimitedAttempts')}</option>
                   </select>
-                  <p className="text-[11px] text-gray-500">Nilai <strong>terbaik</strong> yang diambil.</p>
+                  <p className="text-[11px] text-gray-500">{t('bestAttemptHelp')}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="qzPassingGrade">Nilai Minimal Lulus (KKM)</Label>
+                  <Label htmlFor="qzPassingGrade">{t('passingGradeLabel')}</Label>
                   <Input
                     id="qzPassingGrade"
                     type="number"
                     min={0}
                     max={100}
-                    placeholder="Kosongkan jika tidak ada"
+                    placeholder={t('passingGradePlaceholder')}
                     value={quizPassingGrade}
                     onChange={(e) => setQuizPassingGrade(e.target.value)}
                   />
-                  <p className="text-[11px] text-gray-500">Opsional. Nilai 0-100.</p>
+                  <p className="text-[11px] text-gray-500">{t('passingGradeHelp')}</p>
                 </div>
               </div>
 
@@ -1720,7 +1729,7 @@ export function TeacherCourseModulesClient({
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-[#002446]" />
                   <span className="text-xs font-bold text-[#002446] uppercase tracking-wider">
-                    Keamanan Ujian & CBT
+                    {t('securityHeading')}
                   </span>
                 </div>
 
@@ -1742,7 +1751,7 @@ export function TeacherCourseModulesClient({
                           className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                         />
                         <Label htmlFor="qzRequireToken" className="text-xs font-bold cursor-pointer text-gray-800">
-                          Wajibkan Token Masuk
+                          {t('requireTokenLabel')}
                         </Label>
                       </div>
                       {requireToken && (
@@ -1753,7 +1762,7 @@ export function TeacherCourseModulesClient({
                           onClick={() => setQuizToken(Math.random().toString(36).substring(2, 8).toUpperCase())}
                           className="h-6 px-2 text-[10px] text-[#FF8928] hover:bg-amber-50"
                         >
-                          <RefreshCw className="h-3 w-3 mr-1" /> Acak
+                          <RefreshCw className="h-3 w-3 mr-1" /> {t('randomTokenBtn')}
                         </Button>
                       )}
                     </div>
@@ -1761,7 +1770,7 @@ export function TeacherCourseModulesClient({
                     {requireToken && (
                       <div className="pt-1">
                         <Input
-                          placeholder="misal: PAS2026"
+                          placeholder={t('tokenPlaceholder')}
                           value={quizToken}
                           onChange={(e) => setQuizToken(e.target.value.toUpperCase())}
                           maxLength={8}
@@ -1769,7 +1778,7 @@ export function TeacherCourseModulesClient({
                           required={requireToken}
                         />
                         <p className="text-[10px] text-gray-500 mt-1">
-                          Siswa harus memasukkan token ini sebelum dapat mulai mengerjakan.
+                          {t('tokenHelp')}
                         </p>
                       </div>
                     )}
@@ -1786,26 +1795,26 @@ export function TeacherCourseModulesClient({
                         className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                       />
                       <Label htmlFor="qzEnableLockdown" className="text-xs font-bold cursor-pointer text-gray-800">
-                        Mode Lockdown CBT
+                        {t('lockdownModeLabel')}
                       </Label>
                     </div>
 
                     <p className="text-[10px] text-gray-500">
-                      Wajib fullscreen, blokir klik kanan, copy-paste, dan deteksi pindah tab.
+                      {t('lockdownHelp')}
                     </p>
 
                     {enableLockdown && (
                       <div className="pt-1 flex items-center justify-between gap-2 border-t border-gray-100">
-                        <span className="text-[11px] text-gray-600 font-medium">Batas Pindah Tab:</span>
+                        <span className="text-[11px] text-gray-600 font-medium">{t('tabSwitchLimitLabel')}</span>
                         <select
                           value={maxTabSwitches}
                           onChange={(e) => setMaxTabSwitches(e.target.value)}
                           className="h-7 px-2 text-xs border border-gray-300 rounded bg-white text-gray-800 font-bold"
                         >
-                          <option value="1">1 kali (Sangat Ketat)</option>
-                          <option value="2">2 kali</option>
-                          <option value="3">3 kali (Standar)</option>
-                          <option value="5">5 kali (Longgar)</option>
+                          <option value="1">{t('tabSwitchStrict')}</option>
+                          <option value="2">{t('tabSwitchTimes', { count: 2 })}</option>
+                          <option value="3">{t('tabSwitchStandard')}</option>
+                          <option value="5">{t('tabSwitchRelaxed')}</option>
                         </select>
                       </div>
                     )}
@@ -1825,7 +1834,7 @@ export function TeacherCourseModulesClient({
                   }`}
                 >
                   <Plus className="w-3.5 h-3.5 text-[#FF8928]" />
-                  Input Soal Manual
+                  {t('tabManualMode')}
                 </button>
                 <button
                   type="button"
@@ -1840,7 +1849,7 @@ export function TeacherCourseModulesClient({
                   }`}
                 >
                   <Database className="w-3.5 h-3.5 text-[#FF8928]" />
-                  Ambil dari Bank Soal
+                  {t('tabBankMode')}
                 </button>
               </div>
 
@@ -1849,7 +1858,7 @@ export function TeacherCourseModulesClient({
                 <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="font-bold text-sm text-[#002446]">
-                      Tambah Soal Manual ke Kuis (Total Draft: {questions.length} Soal)
+                      {t('manualSectionTitle', { count: questions.length })}
                     </h4>
                     <div className="flex gap-2 flex-wrap">
                       <Button
@@ -1861,7 +1870,7 @@ export function TeacherCourseModulesClient({
                           qType === QuestionType.MULTIPLE_CHOICE ? 'bg-[#002446] text-white' : ''
                         }
                       >
-                        Pilihan Ganda
+                        {t('typeMultipleChoice')}
                       </Button>
                       <Button
                         type="button"
@@ -1872,7 +1881,7 @@ export function TeacherCourseModulesClient({
                           qType === QuestionType.MULTIPLE_CHOICE_COMPLEX ? 'bg-indigo-700 text-white' : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50'
                         }
                       >
-                        PG Kompleks (AKM)
+                        {t('typeMultipleChoiceComplex')}
                       </Button>
                       <Button
                         type="button"
@@ -1881,22 +1890,22 @@ export function TeacherCourseModulesClient({
                         onClick={() => setQType(QuestionType.ESSAY)}
                         className={qType === QuestionType.ESSAY ? 'bg-[#002446] text-white' : ''}
                       >
-                        Essay / Uraian
+                        {t('typeEssay')}
                       </Button>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     <div className="sm:col-span-3 space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-700">Pertanyaan Soal</Label>
+                      <Label className="text-xs font-semibold text-gray-700">{t('questionTextLabel')}</Label>
                       <Input
-                        placeholder="Tuliskan butir soal di sini..."
+                        placeholder={t('questionTextPlaceholder')}
                         value={qText}
                         onChange={(e) => setQText(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-gray-700">Bobot Poin</Label>
+                      <Label className="text-xs font-semibold text-gray-700">{t('pointsLabel')}</Label>
                       <Input
                         type="number"
                         min={1}
@@ -1905,7 +1914,7 @@ export function TeacherCourseModulesClient({
                         onChange={(e) => setQPoints(Math.max(1, Number(e.target.value) || 1))}
                         className="font-bold text-[#002446]"
                       />
-                      <p className="text-[10px] text-gray-500">Default: 10 poin</p>
+                      <p className="text-[10px] text-gray-500">{t('defaultPointsHelp')}</p>
                     </div>
                   </div>
 
@@ -1914,7 +1923,7 @@ export function TeacherCourseModulesClient({
                     <div className="flex items-center justify-between">
                       <Label className="text-xs font-bold text-[#002446] flex items-center gap-1.5">
                         <Headphones className="w-3.5 h-3.5 text-[#FF8928]" />
-                        Media Soal (Audio / Video)
+                        {t('mediaLabel')}
                       </Label>
                       <div className="flex items-center gap-1">
                         <Button
@@ -1927,7 +1936,7 @@ export function TeacherCourseModulesClient({
                             setQMediaUrl('');
                           }}
                         >
-                          Tanpa Media
+                          {t('noMedia')}
                         </Button>
                         <Button
                           type="button"
@@ -1936,7 +1945,7 @@ export function TeacherCourseModulesClient({
                           className={`h-6 text-[11px] px-2 ${qMediaType === 'AUDIO' ? 'bg-indigo-600 text-white' : 'text-gray-600'}`}
                           onClick={() => setQMediaType('AUDIO')}
                         >
-                          <Headphones className="w-3 h-3 mr-1" /> Audio
+                          <Headphones className="w-3 h-3 mr-1" /> {t('audioMedia')}
                         </Button>
                         <Button
                           type="button"
@@ -1945,7 +1954,7 @@ export function TeacherCourseModulesClient({
                           className={`h-6 text-[11px] px-2 ${qMediaType === 'VIDEO' ? 'bg-rose-600 text-white' : 'text-gray-600'}`}
                           onClick={() => setQMediaType('VIDEO')}
                         >
-                          <Video className="w-3 h-3 mr-1" /> Video
+                          <Video className="w-3 h-3 mr-1" /> {t('videoMedia')}
                         </Button>
                       </div>
                     </div>
@@ -1953,7 +1962,7 @@ export function TeacherCourseModulesClient({
                     {qMediaType !== 'NONE' && (
                       <div className="space-y-2 pt-2 border-t border-gray-100">
                         <div className="flex items-center gap-3 text-xs">
-                          <span className="text-gray-500 font-medium">Sumber:</span>
+                          <span className="text-gray-500 font-medium">{t('mediaSource')}</span>
                           <label className="flex items-center gap-1.5 cursor-pointer">
                             <input
                               type="radio"
@@ -1962,7 +1971,7 @@ export function TeacherCourseModulesClient({
                               onChange={() => setQMediaSource('UPLOAD')}
                               className="text-[#002446]"
                             />
-                            <span>Upload ({qMediaType === 'AUDIO' ? 'MP3/WAV' : 'MP4/WebM'})</span>
+                            <span>{qMediaType === 'AUDIO' ? t('mediaUploadAudio') : t('mediaUploadVideo')}</span>
                           </label>
                           <label className="flex items-center gap-1.5 cursor-pointer">
                             <input
@@ -1972,7 +1981,7 @@ export function TeacherCourseModulesClient({
                               onChange={() => setQMediaSource('URL')}
                               className="text-[#002446]"
                             />
-                            <span>URL {qMediaType === 'VIDEO' ? '/ YouTube' : ''}</span>
+                            <span>{qMediaType === 'VIDEO' ? t('mediaUrlVideo') : t('mediaUrlGeneral')}</span>
                           </label>
                         </div>
 
@@ -1985,12 +1994,12 @@ export function TeacherCourseModulesClient({
                               disabled={qIsUploading || loading}
                               className="text-xs h-8"
                             />
-                            {qIsUploading && <span className="text-xs text-amber-600 animate-pulse">Mengunggah...</span>}
+                            {qIsUploading && <span className="text-xs text-amber-600 animate-pulse">{t('uploading')}</span>}
                           </div>
                         ) : (
                           <Input
                             type="url"
-                            placeholder={qMediaType === 'AUDIO' ? 'https://example.com/audio.mp3' : 'https://www.youtube.com/watch?v=... atau link video'}
+                            placeholder={qMediaType === 'AUDIO' ? t('mediaUrlAudioPlaceholder') : t('mediaUrlVideoPlaceholder')}
                             value={qMediaUrl}
                             onChange={(e) => setQMediaUrl(e.target.value)}
                             className="text-xs h-8"
@@ -2000,7 +2009,7 @@ export function TeacherCourseModulesClient({
                         {qMediaUrl && (
                           <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1.5 rounded-lg border border-emerald-200 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
                             <span className="truncate min-w-0 flex-1">
-                              Media aktif: <strong className="font-mono text-[10px] break-all">{qMediaUrl}</strong>
+                              {t('activeMedia')} <strong className="font-mono text-[10px] break-all">{qMediaUrl}</strong>
                             </span>
                             <Button
                               type="button"
@@ -2009,7 +2018,7 @@ export function TeacherCourseModulesClient({
                               onClick={() => setQMediaUrl('')}
                               className="h-5 px-1.5 text-[10px] text-red-600 hover:bg-red-100 shrink-0"
                             >
-                              Hapus
+                              {t('deleteBtn')}
                             </Button>
                           </div>
                         )}
@@ -2017,23 +2026,23 @@ export function TeacherCourseModulesClient({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                           <div>
                             <Label className="text-[11px] text-gray-600">
-                              {qMediaType === 'AUDIO' ? 'Batas Putar Siswa (Listening Quota)' : 'Batas Putar Siswa (Video Quota)'}
+                              {qMediaType === 'AUDIO' ? t('audioQuotaLabel') : t('videoQuotaLabel')}
                             </Label>
                             <select
                               value={qMediaMaxPlay}
                               onChange={(e) => setQMediaMaxPlay(e.target.value)}
                               className="w-full mt-0.5 h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
                             >
-                              <option value="unlimited">Bebas Putar (Tanpa Batas)</option>
-                              <option value="1">Maksimal 1 Kali Putar</option>
-                              <option value="2">Maksimal 2 Kali Putar</option>
-                              <option value="3">Maksimal 3 Kali Putar</option>
+                              <option value="unlimited">{t('quotaUnlimited')}</option>
+                              <option value="1">{t('quotaOne')}</option>
+                              <option value="2">{t('quotaTwo')}</option>
+                              <option value="3">{t('quotaThree')}</option>
                             </select>
                           </div>
                           <p className="text-[10px] text-gray-500 self-end pb-1">
                             {qMediaType === 'AUDIO'
-                              ? 'Audio terkunci saat kuota putar siswa habis.'
-                              : 'Video terkunci saat kuota putar siswa habis.'}
+                              ? t('audioQuotaHelp')
+                              : t('videoQuotaHelp')}
                           </p>
                         </div>
                       </div>
@@ -2045,13 +2054,13 @@ export function TeacherCourseModulesClient({
                       <div>
                         <Label className="text-xs font-bold text-[#002446]">
                           {qType === QuestionType.MULTIPLE_CHOICE_COMPLEX
-                            ? 'Pilihan Jawaban & Kunci Jawaban Kompleks (Centang > 1):'
-                            : 'Pilihan Jawaban & Tentukan Kunci Jawaban:'}
+                            ? t('complexAnswerHeading')
+                            : t('singleAnswerHeading')}
                         </Label>
                         <p className="text-[11px] text-gray-500 mt-0.5">
                           {qType === QuestionType.MULTIPLE_CHOICE_COMPLEX
-                            ? 'Centang kotak checkbox untuk memilih satu atau lebih jawaban benar (Standar AKM).'
-                            : 'Klik radio button di samping huruf untuk memilih jawaban benar. Anda dapat menambah atau mengurangi pilihan (minimal 2).'}
+                            ? t('complexAnswerHelp')
+                            : t('singleAnswerHelp')}
                         </p>
                       </div>
 
@@ -2108,7 +2117,7 @@ export function TeacherCourseModulesClient({
                             </label>
 
                             <Input
-                              placeholder={`Masukkan teks untuk Pilihan ${opt.id}...`}
+                              placeholder={t('optPlaceholder', { letter: opt.id })}
                               value={opt.text}
                               onChange={(e) => {
                                 setMcOptions((prev) =>
@@ -2122,7 +2131,7 @@ export function TeacherCourseModulesClient({
 
                             {opt.isCorrect && (
                               <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded hidden sm:inline whitespace-nowrap">
-                                ✓ Kunci Benar
+                                {t('correctKeyBadge')}
                               </span>
                             )}
 
@@ -2143,7 +2152,7 @@ export function TeacherCourseModulesClient({
                                   });
                                 }}
                                 className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                title={`Hapus Pilihan ${opt.id}`}
+                                title={t('deleteOptTitle', { letter: opt.id })}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -2164,7 +2173,7 @@ export function TeacherCourseModulesClient({
                           className="w-full mt-2 border-dashed border-2 border-blue-200 bg-blue-50/30 text-[#002446] hover:bg-blue-50 hover:border-[#002446] flex items-center justify-center gap-2 py-2.5 font-semibold text-xs transition-colors"
                         >
                           <Plus className="h-4 w-4 text-[#FF8928]" />
-                          Tambah Pilihan Jawaban ({String.fromCharCode(65 + mcOptions.length)})
+                          {t('addOptionBtn', { letter: String.fromCharCode(65 + mcOptions.length) })}
                         </Button>
                       </div>
                     </div>
@@ -2176,7 +2185,7 @@ export function TeacherCourseModulesClient({
                       onClick={handleAddQuestionToQuizDraft}
                       className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs"
                     >
-                      + Masukkan Soal ke Kuis
+                      {t('addQuestionDraftBtn')}
                     </Button>
                   </div>
                 </div>
@@ -2187,10 +2196,10 @@ export function TeacherCourseModulesClient({
                     <div>
                       <h4 className="font-bold text-sm text-[#002446] flex items-center gap-1.5">
                         <Database className="w-4 h-4 text-[#FF8928]" />
-                        Pilih Butir Soal dari Bank Soal
+                        {t('bankSectionTitle')}
                       </h4>
                       <p className="text-[11px] text-gray-500 mt-0.5">
-                        Centang soal yang ingin dimasukkan ke dalam kuis ini. Soal otomatis ditambahkan ke daftar kuis.
+                        {t('bankSectionDesc')}
                       </p>
                     </div>
                     <Link
@@ -2198,20 +2207,20 @@ export function TeacherCourseModulesClient({
                       target="_blank"
                       className="text-xs text-[#FF8928] hover:underline flex items-center gap-1"
                     >
-                      Buka Kelola Bank Soal ↗
+                      {t('openQuestionBankLink')}
                     </Link>
                   </div>
 
                   {bankLoading ? (
                     <div className="text-center py-8 text-xs text-gray-500">
-                      Memuat daftar soal dari Bank Soal...
+                      {t('bankLoading')}
                     </div>
                   ) : !bankData || (bankData.categories.length === 0 && bankData.uncategorized.length === 0) ? (
                     <div className="text-center py-8 bg-white rounded-lg border border-dashed text-gray-500 text-xs space-y-2">
-                      <p>Bank Soal kursus ini masih kosong.</p>
+                      <p>{t('bankEmptyDesc')}</p>
                       <Link href={`/teacher/course/${course.id}/question-bank`}>
                         <Button type="button" size="sm" variant="outline" className="text-xs">
-                          Tambah atau Impor Soal ke Bank Soal
+                          {t('bankEmptyAddBtn')}
                         </Button>
                       </Link>
                     </div>
@@ -2220,10 +2229,11 @@ export function TeacherCourseModulesClient({
                       {/* Global Batch Select Controls */}
                       <div className="flex items-center justify-between p-2.5 bg-blue-50/70 border border-blue-200 rounded-lg text-xs">
                         <span className="font-bold text-[#002446]">
-                          Total Tersedia:{' '}
-                          {bankData.categories.reduce((acc: number, c: any) => acc + (c.questions?.length || 0), 0) +
-                            (bankData.uncategorized?.length || 0)}{' '}
-                          Soal Bank
+                          {t('bankTotalAvailable', {
+                            count:
+                              bankData.categories.reduce((acc: number, c: any) => acc + (c.questions?.length || 0), 0) +
+                              (bankData.uncategorized?.length || 0),
+                          })}
                         </span>
                         <div className="flex items-center gap-2">
                           <button
@@ -2232,7 +2242,7 @@ export function TeacherCourseModulesClient({
                             className="text-[11px] font-semibold text-[#002446] hover:underline flex items-center gap-1 bg-white px-2 py-1 rounded border border-blue-200"
                           >
                             <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
-                            Pilih Semua Soal
+                            {t('selectAllQuestionsBtn')}
                           </button>
                           <button
                             type="button"
@@ -2240,7 +2250,7 @@ export function TeacherCourseModulesClient({
                             className="text-[11px] font-semibold text-red-600 hover:underline flex items-center gap-1 bg-white px-2 py-1 rounded border border-red-200"
                           >
                             <Square className="w-3.5 h-3.5 text-red-500" />
-                            Batal Pilih Semua
+                            {t('deselectAllQuestionsBtn')}
                           </button>
                         </div>
                       </div>
@@ -2274,11 +2284,11 @@ export function TeacherCourseModulesClient({
                                 <FolderOpen className="w-4 h-4 text-[#FF8928]" />
                                 <span className="font-semibold text-xs text-[#002446]">{cat.name}</span>
                                 <Badge variant="outline" className="text-[10px] text-gray-500">
-                                  {catQuestions.length} Soal
+                                  {t('folderQuestions', { count: catQuestions.length })}
                                 </Badge>
                                 {selectedInCat > 0 && (
                                   <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
-                                    {selectedInCat} terpilih
+                                    {t('folderSelected', { count: selectedInCat })}
                                   </Badge>
                                 )}
                               </div>
@@ -2296,7 +2306,7 @@ export function TeacherCourseModulesClient({
                                       : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                   }`}
                                 >
-                                  {isAllCatSelected ? 'Batal Pilih Kategori' : 'Pilih Semua Kategori'}
+                                  {isAllCatSelected ? t('deselectAllCategoryBtn') : t('selectAllCategoryBtn')}
                                 </button>
                               )}
                             </div>
@@ -2305,7 +2315,7 @@ export function TeacherCourseModulesClient({
                               <div className="divide-y p-1">
                                 {catQuestions.length === 0 ? (
                                   <div className="p-3 text-center text-xs text-gray-400">
-                                    Tidak ada butir soal dalam kategori ini.
+                                    {t('categoryEmptyQuestions')}
                                   </div>
                                 ) : (
                                   catQuestions.map((bankQ: any) => {
@@ -2333,10 +2343,10 @@ export function TeacherCourseModulesClient({
                                         <div className="flex-1 space-y-1">
                                           <div className="flex items-center gap-1.5">
                                             <Badge variant="outline" className="text-[9px]">
-                                              {bankQ.type === QuestionType.MULTIPLE_CHOICE ? 'PG' : 'Essay'}
+                                              {bankQ.type === QuestionType.MULTIPLE_CHOICE ? t('badgeMc') : t('badgeEssay')}
                                             </Badge>
                                             <Badge variant="secondary" className="text-[9px]">
-                                              {bankQ.points} Poin
+                                              {t('badgePoints', { points: bankQ.points })}
                                             </Badge>
                                           </div>
                                           <div
@@ -2373,20 +2383,19 @@ export function TeacherCourseModulesClient({
                                   <ChevronRight className="w-4 h-4 text-gray-500" />
                                 )}
                                 <FolderOpen className="w-4 h-4 text-gray-400" />
-                                <span className="font-semibold text-xs text-gray-700">Belum Berkategori</span>
+                                <span className="font-semibold text-xs text-gray-700">{t('uncategorizedTitle')}</span>
                                 <Badge variant="outline" className="text-[10px] text-gray-500">
-                                  {bankData.uncategorized.length} Soal
+                                  {t('folderQuestions', { count: bankData.uncategorized.length })}
                                 </Badge>
                                 {bankData.uncategorized.filter((q: any) =>
                                   questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
                                 ).length > 0 && (
                                   <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
-                                    {
-                                      bankData.uncategorized.filter((q: any) =>
+                                    {t('folderSelected', {
+                                      count: bankData.uncategorized.filter((q: any) =>
                                         questions.some((draftQ) => draftQ.text === q.text && draftQ.type === q.type)
-                                      ).length
-                                    }{' '}
-                                    terpilih
+                                      ).length,
+                                    })}
                                   </Badge>
                                 )}
                               </div>
@@ -2405,7 +2414,7 @@ export function TeacherCourseModulesClient({
                                   }}
                                   className="text-[10px] font-semibold px-2 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 transition-colors"
                                 >
-                                  Pilih Semua
+                                  {t('selectAllBtn')}
                                 </button>
                               )}
                             </div>
@@ -2437,10 +2446,10 @@ export function TeacherCourseModulesClient({
                                     <div className="flex-1 space-y-1">
                                       <div className="flex items-center gap-1.5">
                                         <Badge variant="outline" className="text-[9px]">
-                                          {bankQ.type === QuestionType.MULTIPLE_CHOICE ? 'PG' : 'Essay'}
+                                          {bankQ.type === QuestionType.MULTIPLE_CHOICE ? t('badgeMc') : t('badgeEssay')}
                                         </Badge>
                                         <Badge variant="secondary" className="text-[9px]">
-                                          {bankQ.points} Poin
+                                          {t('badgePoints', { points: bankQ.points })}
                                         </Badge>
                                       </div>
                                       <div
@@ -2465,10 +2474,10 @@ export function TeacherCourseModulesClient({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-bold text-gray-700">
-                      Daftar Soal Tersimpan di Kuis Ini ({questions.length} Soal):
+                      {t('savedQuestionsHeading', { count: questions.length })}
                     </Label>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Total Akumulasi:</span>
+                      <span className="text-xs text-gray-500">{t('totalAccumulation')}</span>
                       <Badge
                         className={`text-xs font-bold ${
                           questions.reduce((sum, q) => sum + (q.points || 0), 0) === 100
@@ -2476,8 +2485,8 @@ export function TeacherCourseModulesClient({
                             : 'bg-blue-100 text-[#002446] border-blue-300'
                         }`}
                       >
-                        {questions.reduce((sum, q) => sum + (q.points || 0), 0)} Poin
-                        {questions.reduce((sum, q) => sum + (q.points || 0), 0) === 100 && ' ✓ Ideal untuk KKM'}
+                        {t('badgePoints', { points: questions.reduce((sum, q) => sum + (q.points || 0), 0) })}
+                        {questions.reduce((sum, q) => sum + (q.points || 0), 0) === 100 && t('idealPointsHelp')}
                       </Badge>
                     </div>
                   </div>
@@ -2487,10 +2496,10 @@ export function TeacherCourseModulesClient({
                         <div>
                           <span className="font-bold mr-2 text-[#002446]">#{idx + 1}</span>
                           <Badge variant="outline" className="mr-1.5 text-[10px]">
-                            {q.type === 'MULTIPLE_CHOICE' ? 'Pilihan Ganda' : 'Essay'}
+                            {q.type === 'MULTIPLE_CHOICE' ? t('typeMultipleChoice') : t('typeEssay')}
                           </Badge>
                           <Badge variant="secondary" className="mr-2 text-[10px] bg-slate-100 text-slate-700 font-semibold">
-                            {q.points} Poin
+                            {t('badgePoints', { points: q.points })}
                           </Badge>
                           <div
                             className="inline text-gray-800 [&_img]:inline-block [&_img]:max-h-8 [&_img]:rounded [&_img]:align-middle [&_img]:mr-1"
@@ -2514,10 +2523,10 @@ export function TeacherCourseModulesClient({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsQuizModalOpen(false)}>
-                Batal
+                {t('cancelBtn')}
               </Button>
               <Button type="submit" disabled={loading} className="bg-[#002446] text-white">
-                {loading ? 'Menyimpan...' : 'Simpan Kuis & Soal'}
+                {loading ? t('saving') : t('saveQuizAndQuestionsBtn')}
               </Button>
             </DialogFooter>
           </form>
@@ -2530,19 +2539,19 @@ export function TeacherCourseModulesClient({
           <form onSubmit={handleSaveAssignment}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-purple-600" /> Buat Penugasan Siswa
+                <ClipboardList className="h-5 w-5 text-purple-600" /> {t('modalAssignmentTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-gray-500">
-                Berikan instruksi tugas, batas waktu pengumpulan, jenis file yang diterima, serta lampiran lembar soal.
+                {t('assignmentModalDesc')}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-3">
               <div className="space-y-1.5">
-                <Label htmlFor="asTitle" className="text-xs font-semibold">Judul Tugas</Label>
+                <Label htmlFor="asTitle" className="text-xs font-semibold">{t('assignTitleLabel')}</Label>
                 <Input
                   id="asTitle"
-                  placeholder="misal: Tugas Praktikum / Analisis Kasus Bab 1"
+                  placeholder={t('assignTitlePlaceholder')}
                   value={assignTitle}
                   onChange={(e) => setAssignTitle(e.target.value)}
                   required
@@ -2550,11 +2559,11 @@ export function TeacherCourseModulesClient({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="asDesc" className="text-xs font-semibold">Instruksi & Kriteria Penugasan</Label>
+                <Label htmlFor="asDesc" className="text-xs font-semibold">{t('assignDescLabel')}</Label>
                 <textarea
                   id="asDesc"
                   rows={3}
-                  placeholder="Tuliskan petunjuk lengkap pengumpulan tugas, kriteria pengerjaan, dan rubrik penilaian..."
+                  placeholder={t('assignDescPlaceholder')}
                   value={assignDesc}
                   onChange={(e) => setAssignDesc(e.target.value)}
                   className="w-full p-2.5 rounded-md border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#002446]"
@@ -2565,10 +2574,10 @@ export function TeacherCourseModulesClient({
               {/* Lampiran Berkas Guru */}
               <div className="space-y-1.5 p-3 bg-purple-50/50 rounded-lg border border-purple-200">
                 <Label className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
-                  <Paperclip className="h-3.5 w-3.5 text-purple-600" /> Lampiran Berkas dari Guru (Opsional)
+                  <Paperclip className="h-3.5 w-3.5 text-purple-600" /> {t('assignFileLabel')}
                 </Label>
                 <p className="text-[11px] text-gray-500">
-                  Unggah berkas lembar soal, studi kasus, atau panduan tugas (PDF, Word, Gambar, dll).
+                  {t('assignFileHelp')}
                 </p>
 
                 {assignFile ? (
@@ -2602,7 +2611,7 @@ export function TeacherCourseModulesClient({
               {/* Batas Waktu & Nilai Maksimal */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="asDeadline" className="text-xs font-semibold">Batas Waktu Pengumpulan</Label>
+                  <Label htmlFor="asDeadline" className="text-xs font-semibold">{t('assignDeadlineLabel')}</Label>
                   <Input
                     id="asDeadline"
                     type="datetime-local"
@@ -2613,7 +2622,7 @@ export function TeacherCourseModulesClient({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="asScore" className="text-xs font-semibold">Nilai Maksimal</Label>
+                  <Label htmlFor="asScore" className="text-xs font-semibold">{t('assignMaxScoreLabel')}</Label>
                   <Input
                     id="asScore"
                     type="number"
@@ -2629,9 +2638,9 @@ export function TeacherCourseModulesClient({
               <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-bold text-gray-800">
-                    Jenis Berkas yang Diizinkan untuk Siswa:
+                    {t('assignAllowedTypesLabel')}
                   </Label>
-                  <span className="text-[10px] text-gray-500">Pilih kategori yang diperbolehkan</span>
+                  <span className="text-[10px] text-gray-500">{t('assignAllowedTypesDesc')}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -2658,7 +2667,7 @@ export function TeacherCourseModulesClient({
                           }}
                           className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                         />
-                        <span>{cat.label}</span>
+                        <span>{t(cat.labelKey)}</span>
                       </label>
                     );
                   })}
@@ -2666,11 +2675,11 @@ export function TeacherCourseModulesClient({
 
                 <div className="pt-2 border-t mt-2">
                   <Label htmlFor="asCustomExts" className="text-[11px] text-gray-500 block mb-1">
-                    Ekstensi Tambahan Kustom (opsional, pisahkan koma):
+                    {t('assignCustomExtsLabel')}
                   </Label>
                   <Input
                     id="asCustomExts"
-                    placeholder="misal: txt, csv, ipynb"
+                    placeholder={t('assignCustomExtsPlaceholder')}
                     value={assignCustomExts}
                     onChange={(e) => setAssignCustomExts(e.target.value)}
                     className="text-xs h-8 bg-white"
@@ -2681,10 +2690,10 @@ export function TeacherCourseModulesClient({
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsAssignModalOpen(false)}>
-                Batal
+                {t('cancelBtn')}
               </Button>
               <Button type="submit" disabled={loading} className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium text-xs">
-                {loading ? 'Menyimpan...' : 'Simpan Tugas'}
+                {loading ? t('saving') : t('saveAssignmentBtn')}
               </Button>
             </DialogFooter>
           </form>
@@ -2698,16 +2707,16 @@ export function TeacherCourseModulesClient({
             <form onSubmit={handleUpdateAssignment}>
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
-                  <Edit className="h-5 w-5 text-purple-600" /> Edit Penugasan
+                  <Edit className="h-5 w-5 text-purple-600" /> {t('modalEditAssignmentTitle')}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-gray-500">
-                  Ubah judul, instruksi, perpanjang batas waktu pengumpulan tugas, atau kelola berkas lampiran guru.
+                  {t('editAssignmentModalDesc')}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="editAsTitle" className="text-xs font-semibold">Judul Tugas</Label>
+                  <Label htmlFor="editAsTitle" className="text-xs font-semibold">{t('assignTitleLabel')}</Label>
                   <Input
                     id="editAsTitle"
                     value={editAssignTitle}
@@ -2717,7 +2726,7 @@ export function TeacherCourseModulesClient({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="editAsDesc" className="text-xs font-semibold">Instruksi & Kriteria Penugasan</Label>
+                  <Label htmlFor="editAsDesc" className="text-xs font-semibold">{t('assignDescLabel')}</Label>
                   <textarea
                     id="editAsDesc"
                     rows={3}
@@ -2731,7 +2740,7 @@ export function TeacherCourseModulesClient({
                 {/* Lampiran Berkas Guru */}
                 <div className="space-y-1.5 p-3 bg-purple-50/50 rounded-lg border border-purple-200">
                   <Label className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
-                    <Paperclip className="h-3.5 w-3.5 text-purple-600" /> Berkas Lampiran Soal Guru
+                    <Paperclip className="h-3.5 w-3.5 text-purple-600" /> {t('existingAttachmentLabel')}
                   </Label>
 
                   {editAssignExistingFile && !editAssignRemoveFile && !editAssignNewFile && (
@@ -2755,14 +2764,14 @@ export function TeacherCourseModulesClient({
                         onClick={() => setEditAssignRemoveFile(true)}
                         className="h-6 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
                       >
-                        Hapus Berkas
+                        {t('deleteAttachmentBtn')}
                       </Button>
                     </div>
                   )}
 
                   {editAssignRemoveFile && !editAssignNewFile && (
                     <div className="p-2 bg-amber-50 rounded border border-amber-200 text-xs text-amber-800 flex items-center justify-between mt-1">
-                      <span>Lampiran lama akan dihapus setelah Anda menyimpan.</span>
+                      <span>{t('attachmentWillBeDeleted')}</span>
                       <Button
                         type="button"
                         variant="ghost"
@@ -2770,7 +2779,7 @@ export function TeacherCourseModulesClient({
                         onClick={() => setEditAssignRemoveFile(false)}
                         className="h-6 px-2 text-xs text-amber-900 underline"
                       >
-                        Batal Hapus
+                        {t('cancelDeleteAttachment')}
                       </Button>
                     </div>
                   )}
@@ -2797,7 +2806,7 @@ export function TeacherCourseModulesClient({
                   ) : (
                     <div className="pt-1">
                       <Label htmlFor="editAsNewFile" className="text-[11px] text-gray-600 block mb-1">
-                        {editAssignExistingFile && !editAssignRemoveFile ? 'Ganti dengan berkas baru:' : 'Unggah berkas lampiran baru:'}
+                        {editAssignExistingFile && !editAssignRemoveFile ? t('replaceWithNewFile') : t('uploadNewAttachment')}
                       </Label>
                       <Input
                         id="editAsNewFile"
@@ -2816,7 +2825,7 @@ export function TeacherCourseModulesClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="editAsDeadline" className="text-xs font-semibold text-purple-900 flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-purple-600" /> Batas Waktu (Deadline)
+                      <Clock className="h-3.5 w-3.5 text-purple-600" /> {t('assignDeadlineLabel')}
                     </Label>
                     <Input
                       id="editAsDeadline"
@@ -2827,12 +2836,12 @@ export function TeacherCourseModulesClient({
                       className="border-purple-300 focus:ring-purple-600"
                     />
                     <p className="text-[10px] text-gray-500 leading-tight">
-                      Ubah tanggal & jam ini untuk memberikan kelonggaran waktu bagi siswa.
+                      {t('deadlineHelp')}
                     </p>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="editAsScore" className="text-xs font-semibold">Nilai Maksimal</Label>
+                    <Label htmlFor="editAsScore" className="text-xs font-semibold">{t('assignMaxScoreLabel')}</Label>
                     <Input
                       id="editAsScore"
                       type="number"
@@ -2848,7 +2857,7 @@ export function TeacherCourseModulesClient({
                 <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-bold text-gray-800">
-                      Jenis Berkas yang Diizinkan untuk Siswa:
+                      {t('assignAllowedTypesLabel')}
                     </Label>
                   </div>
 
@@ -2876,7 +2885,7 @@ export function TeacherCourseModulesClient({
                             }}
                             className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                           />
-                          <span>{cat.label}</span>
+                          <span>{t(cat.labelKey)}</span>
                         </label>
                       );
                     })}
@@ -2884,11 +2893,11 @@ export function TeacherCourseModulesClient({
 
                   <div className="pt-2 border-t mt-2">
                     <Label htmlFor="editAsCustomExts" className="text-[11px] text-gray-500 block mb-1">
-                      Ekstensi Tambahan Kustom (opsional, pisahkan koma):
+                      {t('assignCustomExtsLabel')}
                     </Label>
                     <Input
                       id="editAsCustomExts"
-                      placeholder="misal: txt, csv, ipynb"
+                      placeholder={t('assignCustomExtsPlaceholder')}
                       value={editAssignCustomExts}
                       onChange={(e) => setEditAssignCustomExts(e.target.value)}
                       className="text-xs h-8 bg-white"
@@ -2904,14 +2913,14 @@ export function TeacherCourseModulesClient({
                   onClick={() => setEditingAssignment(null)}
                   disabled={editAssignLoading}
                 >
-                  Batal
+                  {t('cancelBtn')}
                 </Button>
                 <Button
                   type="submit"
                   disabled={editAssignLoading}
                   className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium text-xs"
                 >
-                  {editAssignLoading ? 'Menyimpan Perubahan...' : 'Simpan Perubahan'}
+                  {editAssignLoading ? t('savingChanges') : t('saveChangesBtn')}
                 </Button>
               </DialogFooter>
             </form>
@@ -2929,18 +2938,18 @@ export function TeacherCourseModulesClient({
         <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              Edit Kuis: {editingQuiz?.title}
+              {t('modalEditQuizTitle', { title: editingQuiz?.title || '' })}
             </DialogTitle>
           </DialogHeader>
 
           {editingQuiz?._count?.attempts > 0 && (
             <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm font-semibold">
-              ⚠️ Peringatan: Sudah ada {editingQuiz._count.attempts} siswa yang mengerjakan kuis ini. Perubahan pada soal bisa memengaruhi perhitungan nilai.
+              {t('quizAttemptsWarning', { count: editingQuiz._count.attempts })}
             </div>
           )}
 
           <div className="py-4 flex-1 overflow-y-auto space-y-4">
-            <h4 className="font-bold text-sm">Daftar Soal</h4>
+            <h4 className="font-bold text-sm">{t('questionsListHeading')}</h4>
             <div className="divide-y border rounded-lg bg-white">
               {editingQuiz?.questions?.map((q: any, idx: number) => {
                 const extracted = extractMediaFromText(q.text);
@@ -2949,19 +2958,19 @@ export function TeacherCourseModulesClient({
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold mr-1 text-[#002446]">#{idx + 1}</span>
                       <Badge variant="outline" className="mr-1 text-[10px]">
-                        {q.type === 'MULTIPLE_CHOICE' ? 'PG' : 'Essay'}
+                        {q.type === 'MULTIPLE_CHOICE' ? t('badgeMc') : t('badgeEssay')}
                       </Badge>
                       {extracted.type === 'AUDIO' && (
                         <Badge className="mr-1 text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1">
                           <Headphones className="w-3 h-3" />
-                          Listening
+                          {t('listeningBadge')}
                           {extracted.maxPlay ? ` (${extracted.maxPlay}x)` : ''}
                         </Badge>
                       )}
                       {extracted.type === 'VIDEO' && (
                         <Badge className="mr-1 text-[10px] bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1">
                           <Video className="w-3 h-3" />
-                          Video
+                          {t('videoBadge')}
                         </Badge>
                       )}
                       <span className="text-gray-800">{extracted.cleanText.substring(0, 50)}{extracted.cleanText.length > 50 ? '...' : ''}</span>
@@ -2972,20 +2981,20 @@ export function TeacherCourseModulesClient({
                       onClick={() => handleOpenEditQuestionModal(q)}
                       className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100"
                     >
-                      Edit Soal
+                      {t('editQuestionBtn')}
                     </Button>
                   </div>
                 );
               })}
               {editingQuiz?.questions?.length === 0 && (
-                <div className="p-4 text-center text-gray-500 text-sm">Belum ada soal.</div>
+                <div className="p-4 text-center text-gray-500 text-sm">{t('noQuestionsYet')}</div>
               )}
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingQuiz(null)}>
-              Tutup
+              {t('closeBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2997,14 +3006,14 @@ export function TeacherCourseModulesClient({
           <form onSubmit={handleSaveEditedQuestion} className="flex flex-col flex-1 overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-[#002446]">
-                Edit Soal
+                {t('modalEditQuestionTitle')}
               </DialogTitle>
             </DialogHeader>
 
             {editQuestionModal && (
               <div className="space-y-4 py-4 flex-1 overflow-y-auto pr-1">
                 <div className="space-y-2">
-                  <Label>Pertanyaan</Label>
+                  <Label>{t('questionLabel')}</Label>
                   <Textarea
                     rows={3}
                     value={editQuestionModal.text}
@@ -3018,7 +3027,7 @@ export function TeacherCourseModulesClient({
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-bold text-[#002446] flex items-center gap-1.5">
                       <Headphones className="w-3.5 h-3.5 text-[#FF8928]" />
-                      Media Soal (Audio / Video)
+                      {t('mediaLabel')}
                     </Label>
                     <div className="flex items-center gap-1">
                       <Button
@@ -3031,7 +3040,7 @@ export function TeacherCourseModulesClient({
                           setEditQMediaUrl('');
                         }}
                       >
-                        Tanpa Media
+                        {t('noMedia')}
                       </Button>
                       <Button
                         type="button"
@@ -3040,7 +3049,7 @@ export function TeacherCourseModulesClient({
                         className={`h-6 text-[11px] px-2 ${editQMediaType === 'AUDIO' ? 'bg-indigo-600 text-white' : 'text-gray-600'}`}
                         onClick={() => setEditQMediaType('AUDIO')}
                       >
-                        <Headphones className="w-3 h-3 mr-1" /> Audio
+                        <Headphones className="w-3 h-3 mr-1" /> {t('audioMedia')}
                       </Button>
                       <Button
                         type="button"
@@ -3049,7 +3058,7 @@ export function TeacherCourseModulesClient({
                         className={`h-6 text-[11px] px-2 ${editQMediaType === 'VIDEO' ? 'bg-rose-600 text-white' : 'text-gray-600'}`}
                         onClick={() => setEditQMediaType('VIDEO')}
                       >
-                        <Video className="w-3 h-3 mr-1" /> Video
+                        <Video className="w-3 h-3 mr-1" /> {t('videoMedia')}
                       </Button>
                     </div>
                   </div>
@@ -3057,7 +3066,7 @@ export function TeacherCourseModulesClient({
                   {editQMediaType !== 'NONE' && (
                     <div className="space-y-2 pt-2 border-t border-gray-100">
                       <div className="flex items-center gap-3 text-xs">
-                        <span className="text-gray-500 font-medium">Sumber:</span>
+                        <span className="text-gray-500 font-medium">{t('mediaSource')}</span>
                         <label className="flex items-center gap-1.5 cursor-pointer">
                           <input
                             type="radio"
@@ -3066,7 +3075,7 @@ export function TeacherCourseModulesClient({
                             onChange={() => setEditQMediaSource('UPLOAD')}
                             className="text-[#002446]"
                           />
-                          <span>Upload ({editQMediaType === 'AUDIO' ? 'MP3/WAV' : 'MP4/WebM'})</span>
+                          <span>{editQMediaType === 'AUDIO' ? t('mediaUploadAudio') : t('mediaUploadVideo')}</span>
                         </label>
                         <label className="flex items-center gap-1.5 cursor-pointer">
                           <input
@@ -3076,7 +3085,7 @@ export function TeacherCourseModulesClient({
                             onChange={() => setEditQMediaSource('URL')}
                             className="text-[#002446]"
                           />
-                          <span>URL {editQMediaType === 'VIDEO' ? '/ YouTube' : ''}</span>
+                          <span>{editQMediaType === 'VIDEO' ? t('mediaUrlVideo') : t('mediaUrlGeneral')}</span>
                         </label>
                       </div>
 
@@ -3089,12 +3098,12 @@ export function TeacherCourseModulesClient({
                             disabled={editQIsUploading || loading}
                             className="text-xs h-8 bg-white"
                           />
-                          {editQIsUploading && <span className="text-xs text-amber-600 animate-pulse">Mengunggah...</span>}
+                          {editQIsUploading && <span className="text-xs text-amber-600 animate-pulse">{t('uploading')}</span>}
                         </div>
                       ) : (
                         <Input
                           type="url"
-                          placeholder={editQMediaType === 'AUDIO' ? 'https://example.com/audio.mp3' : 'https://www.youtube.com/watch?v=... atau link video'}
+                          placeholder={editQMediaType === 'AUDIO' ? t('mediaUrlAudioPlaceholder') : t('mediaUrlVideoPlaceholder')}
                           value={editQMediaUrl}
                           onChange={(e) => setEditQMediaUrl(e.target.value)}
                           className="text-xs h-8 bg-white"
@@ -3104,7 +3113,8 @@ export function TeacherCourseModulesClient({
                       {editQMediaUrl && (
                         <div className="text-[11px] text-emerald-700 bg-emerald-50 p-1.5 rounded-lg border border-emerald-200 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
                           <span className="truncate min-w-0 flex-1">
-                            Media aktif: <strong className="font-mono text-[10px] break-all">{editQMediaUrl}</strong>
+                            {t('activeMedia')}{' '}
+                            <strong className="font-mono text-[10px] break-all">{editQMediaUrl}</strong>
                           </span>
                           <Button
                             type="button"
@@ -3113,7 +3123,7 @@ export function TeacherCourseModulesClient({
                             onClick={() => setEditQMediaUrl('')}
                             className="h-5 px-1.5 text-[10px] text-red-600 hover:bg-red-100 shrink-0"
                           >
-                            Hapus
+                            {t('deleteBtn')}
                           </Button>
                         </div>
                       )}
@@ -3121,23 +3131,21 @@ export function TeacherCourseModulesClient({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                           <div>
                             <Label className="text-[11px] text-gray-600">
-                              {editQMediaType === 'AUDIO' ? 'Batas Putar Siswa (Listening Quota)' : 'Batas Putar Siswa (Video Quota)'}
+                              {editQMediaType === 'AUDIO' ? t('audioQuotaLabel') : t('videoQuotaLabel')}
                             </Label>
                             <select
                               value={editQMediaMaxPlay}
                               onChange={(e) => setEditQMediaMaxPlay(e.target.value)}
                               className="w-full mt-0.5 h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
                             >
-                              <option value="unlimited">Bebas Putar (Tanpa Batas)</option>
-                              <option value="1">Maksimal 1 Kali Putar</option>
-                              <option value="2">Maksimal 2 Kali Putar</option>
-                              <option value="3">Maksimal 3 Kali Putar</option>
+                              <option value="unlimited">{t('quotaUnlimited')}</option>
+                              <option value="1">{t('quotaOne')}</option>
+                              <option value="2">{t('quotaTwo')}</option>
+                              <option value="3">{t('quotaThree')}</option>
                             </select>
                           </div>
                           <p className="text-[10px] text-gray-500 self-end pb-1">
-                            {editQMediaType === 'AUDIO'
-                              ? 'Audio terkunci saat kuota putar siswa habis.'
-                              : 'Video terkunci saat kuota putar siswa habis.'}
+                            {editQMediaType === 'AUDIO' ? t('audioQuotaHelp') : t('videoQuotaHelp')}
                           </p>
                         </div>
                     </div>
@@ -3145,7 +3153,7 @@ export function TeacherCourseModulesClient({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Poin</Label>
+                  <Label>{t('pointsFieldLabel')}</Label>
                   <Input
                     type="number"
                     value={editQuestionModal.points}
@@ -3158,10 +3166,10 @@ export function TeacherCourseModulesClient({
                   <div className="space-y-3 pt-2 border-t border-gray-200">
                     <div>
                       <Label className="text-xs font-bold text-[#002446]">
-                        Pilihan Jawaban & Tentukan Kunci Jawaban:
+                        {t('singleAnswerHeading')}
                       </Label>
                       <p className="text-[11px] text-gray-500 mt-0.5">
-                        Pilih radio button untuk menentukan kunci jawaban yang benar.
+                        {t('editSingleAnswerHelp')}
                       </p>
                     </div>
 
@@ -3194,7 +3202,7 @@ export function TeacherCourseModulesClient({
                             <span
                               className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
                                 opt.isCorrect
-                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
                                   : 'bg-gray-100 text-gray-700'
                               }`}
                             >
@@ -3219,7 +3227,7 @@ export function TeacherCourseModulesClient({
 
                           {opt.isCorrect && (
                             <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded hidden sm:inline whitespace-nowrap">
-                              ✓ Kunci Benar
+                              {t('correctKeyBadge')}
                             </span>
                           )}
 
@@ -3243,7 +3251,7 @@ export function TeacherCourseModulesClient({
                                 });
                               }}
                               className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                              title={`Hapus Pilihan ${opt.id}`}
+                              title={t('deleteOptTitle', { letter: opt.id })}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -3267,7 +3275,7 @@ export function TeacherCourseModulesClient({
                         className="w-full mt-2 border-dashed border-2 border-blue-200 bg-blue-50/30 text-[#002446] hover:bg-blue-50 hover:border-[#002446] flex items-center justify-center gap-2 py-2.5 font-semibold text-xs transition-colors"
                       >
                         <Plus className="h-4 w-4 text-[#FF8928]" />
-                        Tambah Pilihan Jawaban ({String.fromCharCode(65 + editQuestionModal.options.length)})
+                        {t('addOptionBtn', { letter: String.fromCharCode(65 + editQuestionModal.options.length) })}
                       </Button>
                     </div>
                   </div>
@@ -3277,10 +3285,10 @@ export function TeacherCourseModulesClient({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditQuestionModal(null)}>
-                Batal
+                {t('cancelBtn')}
               </Button>
               <Button type="submit" disabled={loading} className="bg-[#002446] text-white">
-                {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                {loading ? t('savingChanges') : t('saveChangesBtn')}
               </Button>
             </DialogFooter>
           </form>
@@ -3295,10 +3303,10 @@ export function TeacherCourseModulesClient({
               <Trash2 className="w-6 h-6" />
             </div>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              Hapus Kuis?
+              {t('deleteQuizTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 leading-relaxed">
-              Apakah Anda yakin ingin menghapus kuis <strong>{quizToDelete?.title}</strong>? Tindakan ini akan menghapus seluruh butir soal di dalamnya dan tidak dapat dibatalkan.
+              {t('deleteQuizDesc', { title: quizToDelete?.title || '' })}
             </DialogDescription>
           </DialogHeader>
 
@@ -3306,9 +3314,9 @@ export function TeacherCourseModulesClient({
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2 text-left">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
               <div>
-                <strong>Peringatan Riwayat Pengerjaan:</strong>
+                <strong>{t('deleteQuizWarningTitle')}</strong>
                 <p className="mt-0.5">
-                  Kuis ini memiliki <strong>{quizToDelete.attemptsCount}</strong> riwayat pengerjaan siswa yang juga akan ikut dihapus secara permanen.
+                  {t('deleteQuizWarningDesc', { count: quizToDelete.attemptsCount })}
                 </p>
               </div>
             </div>
@@ -3328,7 +3336,7 @@ export function TeacherCourseModulesClient({
               onClick={() => setQuizToDelete(null)}
               className="w-full sm:w-1/2"
             >
-              Batal
+              {t('cancelBtn')}
             </Button>
             <Button
               type="button"
@@ -3336,7 +3344,7 @@ export function TeacherCourseModulesClient({
               onClick={handleConfirmDeleteQuiz}
               className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
             >
-              {deleteQuizLoading ? 'Menghapus...' : 'Hapus Kuis'}
+              {deleteQuizLoading ? t('deleting') : t('confirmDeleteQuizBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3350,19 +3358,23 @@ export function TeacherCourseModulesClient({
               <Trash2 className="w-6 h-6" />
             </div>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              Hapus Bab Modul?
+              {t('deleteModuleTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 leading-relaxed">
-              Apakah Anda yakin ingin menghapus bab modul <strong>{moduleToDelete?.title}</strong>?
+              {t('deleteModuleDesc', { title: moduleToDelete?.title || '' })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2 text-left">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
             <div>
-              <strong>Peringatan Penghapusan:</strong>
+              <strong>{t('deleteModuleWarningTitle')}</strong>
               <p className="mt-0.5">
-                Seluruh isi bab ini ({moduleToDelete?.contentsCount || 0} materi, {moduleToDelete?.quizzesCount || 0} kuis, {moduleToDelete?.assignmentsCount || 0} tugas) akan ikut dihapus secara permanen.
+                {t('deleteModuleWarningDesc', {
+                  contents: moduleToDelete?.contentsCount || 0,
+                  quizzes: moduleToDelete?.quizzesCount || 0,
+                  assignments: moduleToDelete?.assignmentsCount || 0,
+                })}
               </p>
             </div>
           </div>
@@ -3375,7 +3387,7 @@ export function TeacherCourseModulesClient({
               onClick={() => setModuleToDelete(null)}
               className="w-full sm:w-1/2"
             >
-              Batal
+              {t('cancelBtn')}
             </Button>
             <Button
               type="button"
@@ -3383,7 +3395,7 @@ export function TeacherCourseModulesClient({
               onClick={handleConfirmDeleteModule}
               className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
             >
-              {deleteModuleLoading ? 'Menghapus...' : 'Hapus Modul'}
+              {deleteModuleLoading ? t('deleting') : t('confirmDeleteModuleBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3397,10 +3409,10 @@ export function TeacherCourseModulesClient({
               <Trash2 className="w-6 h-6" />
             </div>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              Hapus Materi?
+              {t('deleteContentTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 leading-relaxed">
-              Apakah Anda yakin ingin menghapus materi <strong>{contentToDelete?.title}</strong>? Tindakan ini tidak dapat dibatalkan.
+              {t('deleteContentDesc', { title: contentToDelete?.title || '' })}
             </DialogDescription>
           </DialogHeader>
 
@@ -3412,7 +3424,7 @@ export function TeacherCourseModulesClient({
               onClick={() => setContentToDelete(null)}
               className="w-full sm:w-1/2"
             >
-              Batal
+              {t('cancelBtn')}
             </Button>
             <Button
               type="button"
@@ -3420,7 +3432,7 @@ export function TeacherCourseModulesClient({
               onClick={handleConfirmDeleteContent}
               className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
             >
-              {deleteContentLoading ? 'Menghapus...' : 'Hapus Materi'}
+              {deleteContentLoading ? t('deleting') : t('confirmDeleteContentBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3434,10 +3446,10 @@ export function TeacherCourseModulesClient({
               <Trash2 className="w-6 h-6" />
             </div>
             <DialogTitle className="text-xl font-bold text-[#002446]">
-              Hapus Penugasan?
+              {t('deleteAssignmentTitle')}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 leading-relaxed">
-              Apakah Anda yakin ingin menghapus tugas <strong>{assignmentToDelete?.title}</strong>?
+              {t('deleteAssignmentDesc', { title: assignmentToDelete?.title || '' })}
             </DialogDescription>
           </DialogHeader>
 
@@ -3445,9 +3457,9 @@ export function TeacherCourseModulesClient({
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2 text-left">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
               <div>
-                <strong>Peringatan Pengumpulan Siswa:</strong>
+                <strong>{t('deleteAssignmentWarningTitle')}</strong>
                 <p className="mt-0.5">
-                  Tugas ini memiliki <strong>{assignmentToDelete.submissionsCount}</strong> pengumpulan berkas dari siswa yang juga akan ikut dihapus.
+                  {t('deleteAssignmentWarningDesc', { count: assignmentToDelete.submissionsCount })}
                 </p>
               </div>
             </div>
@@ -3461,7 +3473,7 @@ export function TeacherCourseModulesClient({
               onClick={() => setAssignmentToDelete(null)}
               className="w-full sm:w-1/2"
             >
-              Batal
+              {t('cancelBtn')}
             </Button>
             <Button
               type="button"
@@ -3469,7 +3481,7 @@ export function TeacherCourseModulesClient({
               onClick={handleConfirmDeleteAssignment}
               className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold"
             >
-              {deleteAssignmentLoading ? 'Menghapus...' : 'Hapus Tugas'}
+              {deleteAssignmentLoading ? t('deleting') : t('confirmDeleteAssignmentBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3509,7 +3521,7 @@ export function TeacherCourseModulesClient({
               onClick={() => setNoticeModal(null)}
               className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
             >
-              Tutup
+              {t('closeBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>

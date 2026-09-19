@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { gradeAssignmentSubmission } from '@/lib/actions/grade';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,10 @@ interface SubmissionsClientProps {
 }
 
 export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
+  const t = useTranslations('teacherSubmissions');
+  const locale = useLocale();
+  const dateLocale = locale === 'en' ? 'en-US' : 'id-ID';
+
   const [students, setStudents] = useState(data.enrolledStudents);
   const [selectedSubmission, setSelectedSubmission] = useState<{
     id: string;
@@ -141,8 +146,8 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Menyimpan Nilai',
-        message: err?.message || 'Terjadi kesalahan saat menyimpan nilai. Silakan coba lagi.',
+        title: t('saveErrorTitle'),
+        message: err?.message || t('saveErrorDesc'),
         type: 'error',
       });
     } finally {
@@ -204,8 +209,8 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
-        title: 'Gagal Menyimpan Nilai',
-        message: err?.message || 'Terjadi kesalahan saat menyimpan nilai. Silakan coba lagi.',
+        title: t('saveErrorTitle'),
+        message: err?.message || t('saveErrorDesc'),
         type: 'error',
       });
     } finally {
@@ -224,16 +229,16 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-[#002446]">Penilaian Tugas: {data.assignment.title}</h1>
+            <h1 className="text-2xl font-bold text-[#002446]">{t('title', { title: data.assignment.title })}</h1>
           </div>
           <p className="text-sm text-gray-500 pl-10">
-            {data.assignment.courseTitle} • Skor Maksimal: {data.assignment.maxScore}
+            {t('maxScoreSubtitle', { courseTitle: data.assignment.courseTitle, maxScore: data.assignment.maxScore })}
           </p>
         </div>
 
         <Link href={`/teacher/course/${data.assignment.courseId}/gradebook`}>
           <Button variant="outline" className="border-[#002446] text-[#002446] hover:bg-gray-100">
-            Lihat Buku Nilai
+            {t('viewGradebook')}
           </Button>
         </Link>
       </div>
@@ -243,27 +248,27 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Total Siswa
+              {t('totalStudents')}
             </CardTitle>
             <CheckCircle className="h-4 w-4 text-[#002446]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[#002446]">{students.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Siswa terdaftar di course</p>
+            <p className="text-xs text-gray-500 mt-1">{t('enrolledStudentsDesc')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Sudah Mengumpulkan
+              {t('submitted')}
             </CardTitle>
             <Clock className="h-4 w-4 text-[#FF8928]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[#FF8928]">{submittedCount}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {students.length - submittedCount} belum mengumpulkan
+              {t('notSubmittedCount', { count: students.length - submittedCount })}
             </p>
           </CardContent>
         </Card>
@@ -271,13 +276,13 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
         <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Sudah Dinilai
+              {t('graded')}
             </CardTitle>
             <Award className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">{gradedCount}</div>
-            <p className="text-xs text-gray-500 mt-1">{submittedCount - gradedCount} menunggu penilaian</p>
+            <p className="text-xs text-gray-500 mt-1">{t('awaitingGradingCount', { count: submittedCount - gradedCount })}</p>
           </CardContent>
         </Card>
       </div>
@@ -285,7 +290,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
       {/* Submissions Table */}
       <Card className="bg-white shadow-sm border">
         <CardHeader className="pb-3 border-b">
-          <CardTitle className="text-lg font-bold text-[#002446]">Daftar Pengumpulan Siswa</CardTitle>
+          <CardTitle className="text-lg font-bold text-[#002446]">{t('submissionListTitle')}</CardTitle>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -293,13 +298,13 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b text-gray-600 text-xs uppercase tracking-wider">
-                  <th className="py-3 px-4 w-12 text-center">No</th>
-                  <th className="py-3 px-4">Nama Siswa</th>
-                  <th className="py-3 px-4 text-center">NIS</th>
-                  <th className="py-3 px-4">Berkas Tugas</th>
-                  <th className="py-3 px-4">Waktu Kumpul</th>
-                  <th className="py-3 px-4 text-center">Nilai</th>
-                  <th className="py-3 px-4 text-right">Aksi</th>
+                  <th className="py-3 px-4 w-12 text-center">{t('thNo')}</th>
+                  <th className="py-3 px-4">{t('thStudentName')}</th>
+                  <th className="py-3 px-4 text-center">{t('thNis')}</th>
+                  <th className="py-3 px-4">{t('thAssignmentFile')}</th>
+                  <th className="py-3 px-4">{t('thSubmittedAt')}</th>
+                  <th className="py-3 px-4 text-center">{t('thScore')}</th>
+                  <th className="py-3 px-4 text-right">{t('thAction')}</th>
                 </tr>
               </thead>
 
@@ -328,7 +333,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                               type="button"
                               onClick={() => handleOpenGradeModal(item)}
                               className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium text-left group"
-                              title="Klik untuk pratinjau dan beri nilai"
+                              title={t('clickToPreviewAndGrade')}
                             >
                               <FileText className="h-4 w-4 shrink-0 text-blue-500 group-hover:text-blue-700" />
                               <span className="truncate max-w-[130px] font-medium" title={sub.fileName}>
@@ -339,29 +344,29 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                               type="button"
                               onClick={() => handleOpenGradeModal(item)}
                               className="inline-flex items-center gap-1 text-[11px] bg-blue-50 text-blue-700 hover:bg-blue-100 px-1.5 py-0.5 rounded transition-colors shrink-0"
-                              title="Buka pratinjau berkas"
+                              title={t('openFilePreview')}
                             >
-                              <Eye className="h-3 w-3" /> Pratinjau
+                              <Eye className="h-3 w-3" /> {t('preview')}
                             </button>
                           </div>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
-                            <AlertCircle className="h-3.5 w-3.5" /> Belum Mengumpulkan
+                            <AlertCircle className="h-3.5 w-3.5" /> {t('notSubmitted')}
                           </span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-xs text-gray-600">
                         {sub ? (
                           <div>
-                            <div>{new Date(sub.submittedAt).toLocaleDateString('id-ID')}</div>
+                            <div>{new Date(sub.submittedAt).toLocaleDateString(dateLocale)}</div>
                             <div className="text-[11px] text-gray-400">
-                              {new Date(sub.submittedAt).toLocaleTimeString('id-ID', {
+                              {new Date(sub.submittedAt).toLocaleTimeString(dateLocale, {
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}
                             </div>
                             {isLate && (
-                              <span className="text-[10px] text-red-600 font-semibold">Terlambat</span>
+                              <span className="text-[10px] text-red-600 font-semibold">{t('late')}</span>
                             )}
                           </div>
                         ) : (
@@ -382,7 +387,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                             {sub.score} / {data.assignment.maxScore}
                           </span>
                         ) : sub ? (
-                          <span className="text-xs text-amber-600 font-medium">Belum Dinilai</span>
+                          <span className="text-xs text-amber-600 font-medium">{t('ungraded')}</span>
                         ) : (
                           <span className="text-xs text-gray-300">-</span>
                         )}
@@ -394,7 +399,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                             onClick={() => handleOpenGradeModal(item)}
                             className="bg-[#002446] hover:bg-[#002446]/90 text-white text-xs h-8"
                           >
-                            {sub.score !== null ? 'Ubah Nilai' : 'Beri Nilai'}
+                            {sub.score !== null ? t('editGrade') : t('grade')}
                           </Button>
                         ) : (
                           <Button size="sm" variant="ghost" disabled className="text-xs h-8 text-gray-400">
@@ -437,16 +442,25 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                       )}
                       {selectedSubmission.isLate ? (
                         <span className="text-[10px] bg-red-500/80 text-white font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                          Terlambat
+                          {t('late')}
                         </span>
                       ) : (
                         <span className="text-[10px] bg-emerald-500/80 text-white font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                          Tepat Waktu
+                          {t('onTime')}
                         </span>
                       )}
                     </div>
                     <p className="text-[11px] text-slate-300 truncate">
-                      Tugas: {data.assignment.title} • Dikumpulkan: {new Date(selectedSubmission.submittedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {t('assignmentModalSubtitle', {
+                        title: data.assignment.title,
+                        date: new Date(selectedSubmission.submittedAt).toLocaleDateString(dateLocale, {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }),
+                      })}
                     </p>
                   </div>
                 </div>
@@ -462,7 +476,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                         disabled={!hasPrevStudent || loading}
                         onClick={() => handleNavigateStudent('prev')}
                         className="h-7 w-7 p-0 text-slate-200 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                        title="Siswa Sebelumnya"
+                        title={t('prevStudent')}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
@@ -477,11 +491,11 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                           if (target) handleOpenGradeModal(target);
                         }}
                         className="bg-slate-900 text-white text-xs border border-slate-700 rounded px-2 py-1 max-w-[160px] sm:max-w-[200px] truncate focus:outline-none focus:ring-1 focus:ring-[#FF8928]"
-                        title="Pilih Siswa"
+                        title={t('selectStudent')}
                       >
                         {submittedStudents.map((item, idx) => (
                           <option key={item.student.id} value={item.student.id}>
-                            {idx + 1}. {item.student.name} {item.submission?.score !== null ? `(${item.submission?.score} poin)` : '(Belum dinilai)'}
+                            {idx + 1}. {item.student.name} {item.submission?.score !== null ? `(${item.submission?.score} ${t('pointsSuffix')})` : `(${t('ungradedOption')})`}
                           </option>
                         ))}
                       </select>
@@ -493,7 +507,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                         disabled={!hasNextStudent || loading}
                         onClick={() => handleNavigateStudent('next')}
                         className="h-7 w-7 p-0 text-slate-200 hover:text-white hover:bg-slate-700 disabled:opacity-30"
-                        title="Siswa Berikutnya"
+                        title={t('nextStudent')}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -501,7 +515,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                   )}
 
                   <span className="text-xs text-slate-300 hidden md:inline ml-1">
-                    Skor Maks: <strong>{data.assignment.maxScore}</strong>
+                    {t('maxScoreLabel')} <strong>{data.assignment.maxScore}</strong>
                   </span>
                 </div>
               </div>
@@ -524,10 +538,10 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                     <div className="space-y-4">
                       <div>
                         <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
-                          Form Penilaian Guru
+                          {t('formTitle')}
                         </h3>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Periksa berkas di sisi kiri, lalu masukkan nilai dan catatan evaluasi untuk siswa.
+                          {t('formDesc')}
                         </p>
                       </div>
 
@@ -535,7 +549,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                       <div className="space-y-1.5 pt-2 border-t">
                         <div className="flex items-center justify-between">
                           <Label htmlFor="score" className="text-xs font-bold text-gray-700">
-                            Nilai Angka (Maks: {data.assignment.maxScore})
+                            {t('scoreLabel', { maxScore: data.assignment.maxScore })}
                           </Label>
                           <div className="flex items-center gap-1">
                             {[100, 90, 85, 75].map((preset) => (
@@ -575,11 +589,11 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
 
                       <div className="space-y-1.5">
                         <Label htmlFor="note" className="text-xs font-bold text-gray-700">
-                          Catatan Evaluasi / Umpan Balik Guru (Opsional)
+                          {t('feedbackLabel')}
                         </Label>
                         <Textarea
                           id="note"
-                          placeholder="Tuliskan catatan perbaikan, apresiasi, atau poin evaluasi terhadap tugas siswa ini..."
+                          placeholder={t('feedbackPlaceholder')}
                           rows={6}
                           value={selectedSubmission.teacherNote}
                           onChange={(e) =>
@@ -601,7 +615,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                         disabled={loading}
                         className="text-xs"
                       >
-                        Tutup
+                        {t('close')}
                       </Button>
 
                       <div className="flex items-center gap-2">
@@ -610,7 +624,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                           disabled={loading}
                           className="bg-[#002446] hover:bg-[#002446]/90 text-white font-medium text-xs shadow-sm"
                         >
-                          {loading ? 'Menyimpan...' : 'Simpan Nilai'}
+                          {loading ? t('saving') : t('saveGrade')}
                         </Button>
 
                         {hasNextStudent ? (
@@ -620,7 +634,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                             onClick={handleSaveAndNext}
                             className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white font-semibold text-xs shadow-sm flex items-center gap-1.5"
                           >
-                            <span>Simpan & Lanjut</span>
+                            <span>{t('saveAndNext')}</span>
                             <ArrowRight className="h-3.5 w-3.5" />
                           </Button>
                         ) : (
@@ -630,7 +644,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
                             onClick={handleSaveAndNext}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm flex items-center gap-1.5"
                           >
-                            <span>Simpan & Selesai</span>
+                            <span>{t('saveAndFinish')}</span>
                           </Button>
                         )}
                       </div>
@@ -677,7 +691,7 @@ export function TeacherSubmissionsClient({ data }: SubmissionsClientProps) {
               onClick={() => setNoticeModal(null)}
               className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white font-bold"
             >
-              Mengerti
+              {t('understand')}
             </Button>
           </DialogFooter>
         </DialogContent>

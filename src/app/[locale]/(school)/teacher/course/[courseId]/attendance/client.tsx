@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
@@ -83,6 +84,8 @@ export function TeacherAttendanceClient({
   initialSessions,
   recapData,
 }: Props) {
+  const t = useTranslations('teacherAttendance');
+  const locale = useLocale();
   const router = useRouter();
   const { showAlert, showConfirm } = useDialog();
   const [activeTab, setActiveTab] = useState<'sessions' | 'matrix'>('sessions');
@@ -175,9 +178,9 @@ export function TeacherAttendanceClient({
       setNewToken('');
       router.refresh();
       setExpandedSessionId(created.id);
-      await showAlert(`Sesi presensi "${created.title}" berhasil dibuat!`, { type: 'success' });
+      await showAlert(t('createSuccessAlert', { title: created.title }), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal membuat sesi presensi', { type: 'error' });
+      await showAlert(err.message || t('createFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -194,14 +197,14 @@ export function TeacherAttendanceClient({
       }
       router.refresh();
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal mengubah status sesi', { type: 'error' });
+      await showAlert(err.message || t('toggleFailedAlert'), { type: 'error' });
     }
   };
 
   const handleDeleteSession = async (sessionId: string) => {
     const confirmed = await showConfirm(
-      'Apakah Anda yakin ingin menghapus sesi presensi ini beserta seluruh riwayat kehadirannya?',
-      { title: 'Hapus Sesi Presensi', confirmText: 'Ya, Hapus Sesi', confirmVariant: 'destructive' }
+      t('deleteConfirmDesc'),
+      { title: t('deleteConfirmTitle'), confirmText: t('deleteConfirmBtn'), confirmVariant: 'destructive' }
     );
     if (!confirmed) {
       return;
@@ -212,9 +215,9 @@ export function TeacherAttendanceClient({
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       if (expandedSessionId === sessionId) setExpandedSessionId(null);
       router.refresh();
-      await showAlert('Sesi presensi berhasil dihapus.', { type: 'success' });
+      await showAlert(t('deleteSuccessAlert'), { type: 'success' });
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menghapus sesi', { type: 'error' });
+      await showAlert(err.message || t('deleteFailedAlert'), { type: 'error' });
     }
   };
 
@@ -234,7 +237,7 @@ export function TeacherAttendanceClient({
       await updateAttendanceRecord(recordId, newStatus);
       router.refresh();
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal mengupdate status kehadiran', { type: 'error' });
+      await showAlert(err.message || t('updateStatusFailedAlert'), { type: 'error' });
       setActiveSessionDetails({ ...activeSessionDetails, records: previousRecords });
     }
   };
@@ -247,8 +250,8 @@ export function TeacherAttendanceClient({
 
   const handleSyncGradebook = async () => {
     const confirmed = await showConfirm(
-      'Sinkronkan nilai persentase kehadiran seluruh siswa ke Buku Nilai (Gradebook) sekarang?',
-      { title: 'Sinkronkan ke Gradebook', confirmText: 'Ya, Sinkronkan' }
+      t('syncConfirmDesc'),
+      { title: t('syncConfirmTitle'), confirmText: t('syncConfirmBtn') }
     );
     if (!confirmed) {
       return;
@@ -257,12 +260,12 @@ export function TeacherAttendanceClient({
     setSyncing(true);
     setSyncSuccessMessage(null);
     try {
-      const res = await syncAttendanceToGradebook(course.id, 'Nilai Presensi', 100);
-      setSyncSuccessMessage(`Berhasil menyinkronkan nilai presensi untuk ${res.count} siswa ke Gradebook!`);
-      await showAlert(`Berhasil menyinkronkan nilai presensi untuk ${res.count} siswa ke Buku Nilai!`, { type: 'success' });
+      const res = await syncAttendanceToGradebook(course.id, t('gradebookSyncItemName'), 100);
+      setSyncSuccessMessage(t('syncSuccessAlert', { count: res.count }));
+      await showAlert(t('syncSuccessAlert', { count: res.count }), { type: 'success' });
       setTimeout(() => setSyncSuccessMessage(null), 5000);
     } catch (err: any) {
-      await showAlert(err.message || 'Gagal menyinkronkan ke Buku Nilai', { type: 'error' });
+      await showAlert(err.message || t('syncFailedAlert'), { type: 'error' });
     } finally {
       setSyncing(false);
     }
@@ -271,35 +274,35 @@ export function TeacherAttendanceClient({
   const handleExportExcel = () => {
     const rows = recapData.students.map((st, index) => {
       const row: Record<string, unknown> = {
-        No: index + 1,
-        NIS: st.student.nis || '-',
-        'Nama Siswa': st.student.name,
-        Email: st.student.email,
+        [t('excelColNo')]: index + 1,
+        [t('excelColNis')]: st.student.nis || '-',
+        [t('excelColName')]: st.student.name,
+        [t('excelColEmail')]: st.student.email,
       };
 
       recapData.sessions.forEach((sess) => {
         const sRecord = st.sessions.find((s) => s.sessionId === sess.id);
         const statusLetter =
           sRecord?.status === 'PRESENT'
-            ? 'H'
+            ? t('statusPresentShort')
             : sRecord?.status === 'SICK'
-            ? 'S'
+            ? t('statusSickShort')
             : sRecord?.status === 'PERMISSION'
-            ? 'I'
-            : 'A';
+            ? t('statusPermissionShort')
+            : t('statusAbsentShort');
         row[sess.title] = statusLetter;
       });
 
-      row['Total Hadir (H)'] = st.present;
-      row['Total Sakit (S)'] = st.sick;
-      row['Total Izin (I)'] = st.permission;
-      row['Total Alpa (A)'] = st.absent;
-      row['Persentase Kehadiran'] = `${st.rate}%`;
+      row[t('excelColPresent')] = st.present;
+      row[t('excelColSick')] = st.sick;
+      row[t('excelColPermission')] = st.permission;
+      row[t('excelColAbsent')] = st.absent;
+      row[t('excelColRate')] = `${st.rate}%`;
 
       return row;
     });
 
-    exportToExcel(rows, `Rekap_Presensi_${course.title.replace(/\s+/g, '_')}`);
+    exportToExcel(rows, t('exportExcelName', { title: course.title.replace(/\s+/g, '_') }));
   };
 
   // Calculate overall class attendance rate
@@ -321,16 +324,16 @@ export function TeacherAttendanceClient({
               href={`/teacher/course/${course.id}/modules`}
               className="hover:underline flex items-center gap-1 text-gray-500 hover:text-[#002446]"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Modul
+              <ArrowLeft className="h-3.5 w-3.5" /> {t('backToModules')}
             </Link>
             <span>•</span>
-            <span>{course.category?.name || 'Mata Pelajaran'}</span>
+            <span>{course.category?.name || t('categoryFallback')}</span>
           </div>
           <h1 className="text-2xl font-bold text-[#002446]">
-            Presensi & Kehadiran Siswa — {course.title}
+            {t('title', { title: course.title })}
           </h1>
           <p className="text-sm text-gray-500">
-            Kelola sesi pertemuan, buka kode token/QR check-in, dan tinjau rekapitulasi kehadiran kelas.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -341,7 +344,7 @@ export function TeacherAttendanceClient({
             onClick={handleExportExcel}
             className="flex items-center gap-1.5"
           >
-            <Download className="h-4 w-4" /> Ekspor Excel
+            <Download className="h-4 w-4" /> {t('btnExportExcel')}
           </Button>
 
           <Button
@@ -352,7 +355,7 @@ export function TeacherAttendanceClient({
             className="flex items-center gap-1.5 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           >
             <Award className="h-4 w-4" />
-            {syncing ? 'Menyinkronkan...' : 'Sinkron ke Gradebook'}
+            {syncing ? t('btnSyncing') : t('btnSyncGradebook')}
           </Button>
 
           <Button
@@ -360,7 +363,7 @@ export function TeacherAttendanceClient({
             onClick={() => setIsCreateOpen(true)}
             className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5"
           >
-            <Plus className="h-4 w-4" /> Buka Sesi Baru
+            <Plus className="h-4 w-4" /> {t('btnNewSession')}
           </Button>
         </div>
       </div>
@@ -377,7 +380,7 @@ export function TeacherAttendanceClient({
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase">Total Sesi Pertemuan</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">{t('statTotalSessions')}</p>
               <h3 className="text-2xl font-bold text-[#002446] mt-1">{sessions.length}</h3>
             </div>
             <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
@@ -389,7 +392,7 @@ export function TeacherAttendanceClient({
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase">Rata-rata Kehadiran</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">{t('statAverageAttendance')}</p>
               <h3 className="text-2xl font-bold text-emerald-600 mt-1">{overallRate}%</h3>
             </div>
             <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -401,7 +404,7 @@ export function TeacherAttendanceClient({
         <Card className="bg-white border-gray-200 shadow-sm">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase">Total Siswa Terdaftar</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase">{t('statTotalEnrolled')}</p>
               <h3 className="text-2xl font-bold text-[#FF8928] mt-1">{recapData.students.length}</h3>
             </div>
             <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center text-[#FF8928]">
@@ -422,7 +425,7 @@ export function TeacherAttendanceClient({
           }`}
         >
           <Calendar className="h-4 w-4" />
-          Sesi Pertemuan Presensi ({sessions.length})
+          {t('tabSessions', { count: sessions.length })}
         </button>
 
         <button
@@ -434,7 +437,7 @@ export function TeacherAttendanceClient({
           }`}
         >
           <FileSpreadsheet className="h-4 w-4" />
-          Matriks Rekapitulasi Kelas
+          {t('tabMatrix')}
         </button>
       </div>
 
@@ -446,20 +449,20 @@ export function TeacherAttendanceClient({
               <CardContent className="space-y-4">
                 <Calendar className="h-16 w-16 mx-auto text-gray-300" />
                 <div className="space-y-1">
-                  <h3 className="text-lg font-bold text-gray-900">Belum Ada Sesi Presensi</h3>
+                  <h3 className="text-lg font-bold text-gray-900">{t('emptySessionsTitle')}</h3>
                   <p className="text-sm text-gray-500 max-w-md mx-auto">
-                    Buka sesi presensi pertemuan kelas pertama Anda untuk mengaktifkan kode check-in atau menginput daftar hadir siswa.
+                    {t('emptySessionsDesc')}
                   </p>
                 </div>
                 <Button onClick={() => setIsCreateOpen(true)} className="bg-[#002446] text-white">
-                  <Plus className="h-4 w-4 mr-1.5" /> Buka Sesi Pertama
+                  <Plus className="h-4 w-4 mr-1.5" /> {t('btnCreateFirst')}
                 </Button>
               </CardContent>
             </Card>
           ) : (
             sessions.map((sess) => {
               const isExpanded = expandedSessionId === sess.id;
-              const formattedDate = new Date(sess.date).toLocaleDateString('id-ID', {
+              const formattedDate = new Date(sess.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',
@@ -475,7 +478,7 @@ export function TeacherAttendanceClient({
                         <span className="font-bold text-base text-[#002446]">{sess.title}</span>
                         {sess.moduleTitle && (
                           <Badge variant="outline" className="text-xs bg-white text-gray-600">
-                            Modul: {sess.moduleTitle}
+                            {t('moduleBadge', { title: sess.moduleTitle })}
                           </Badge>
                         )}
                         <Badge
@@ -485,7 +488,7 @@ export function TeacherAttendanceClient({
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-200'
                           }
                         >
-                          {sess.isOpen ? 'Sesi Terbuka' : 'Sesi Dikunci'}
+                          {sess.isOpen ? t('sessionOpen') : t('sessionLocked')}
                         </Badge>
                       </div>
 
@@ -497,12 +500,12 @@ export function TeacherAttendanceClient({
                         {sess.startTime && sess.endTime && (
                           <span className="flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5 text-gray-400" />
-                            {new Date(sess.startTime).toLocaleTimeString('id-ID', {
+                            {new Date(sess.startTime).toLocaleTimeString(locale === 'en' ? 'en-US' : 'id-ID', {
                               hour: '2-digit',
                               minute: '2-digit',
                             })}{' '}
                             -{' '}
-                            {new Date(sess.endTime).toLocaleTimeString('id-ID', {
+                            {new Date(sess.endTime).toLocaleTimeString(locale === 'en' ? 'en-US' : 'id-ID', {
                               hour: '2-digit',
                               minute: '2-digit',
                             })}
@@ -521,7 +524,7 @@ export function TeacherAttendanceClient({
                           className="text-xs font-semibold flex items-center gap-1.5 border-[#002446] text-[#002446] hover:bg-blue-50"
                         >
                           <QrCode className="h-4 w-4 text-[#FF8928]" />
-                          Token: <span className="font-mono tracking-widest">{sess.token}</span>
+                          {t('tokenLabel')} <span className="font-mono tracking-widest">{sess.token}</span>
                         </Button>
                       )}
 
@@ -535,11 +538,11 @@ export function TeacherAttendanceClient({
                       >
                         {sess.isOpen ? (
                           <>
-                            <Lock className="h-3.5 w-3.5" /> Kunci Sesi
+                            <Lock className="h-3.5 w-3.5" /> {t('lockSession')}
                           </>
                         ) : (
                           <>
-                            <Unlock className="h-3.5 w-3.5" /> Buka Sesi
+                            <Unlock className="h-3.5 w-3.5" /> {t('unlockSession')}
                           </>
                         )}
                       </Button>
@@ -561,11 +564,11 @@ export function TeacherAttendanceClient({
                       >
                         {isExpanded ? (
                           <>
-                            Tutup Detail <ChevronUp className="h-4 w-4 ml-1" />
+                            {t('closeDetails')} <ChevronUp className="h-4 w-4 ml-1" />
                           </>
                         ) : (
                           <>
-                            Daftar Hadir ({sess.counts.present}/{sess.counts.total}){' '}
+                            {t('attendanceList', { present: sess.counts.present, total: sess.counts.total })}{' '}
                             <ChevronDown className="h-4 w-4 ml-1" />
                           </>
                         )}
@@ -577,19 +580,19 @@ export function TeacherAttendanceClient({
                   <div className="px-5 py-2.5 bg-white border-t border-b border-gray-100 flex flex-wrap items-center gap-4 text-xs font-medium">
                     <span className="text-emerald-700 flex items-center gap-1">
                       <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                      Hadir: {sess.counts.present}
+                      {t('badgePresent', { count: sess.counts.present })}
                     </span>
                     <span className="text-amber-700 flex items-center gap-1">
                       <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-                      Sakit: {sess.counts.sick}
+                      {t('badgeSick', { count: sess.counts.sick })}
                     </span>
                     <span className="text-blue-700 flex items-center gap-1">
                       <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                      Izin: {sess.counts.permission}
+                      {t('badgePermission', { count: sess.counts.permission })}
                     </span>
                     <span className="text-rose-700 flex items-center gap-1">
                       <span className="h-2 w-2 rounded-full bg-rose-500"></span>
-                      Alpa: {sess.counts.absent}
+                      {t('badgeAbsent', { count: sess.counts.absent })}
                     </span>
                   </div>
 
@@ -599,24 +602,24 @@ export function TeacherAttendanceClient({
                       {loadingDetails ? (
                         <div className="py-8 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
                           <RefreshCw className="h-4 w-4 animate-spin text-[#002446]" />
-                          Memuat data daftar hadir siswa...
+                          {t('loadingStudents')}
                         </div>
                       ) : activeSessionDetails && activeSessionDetails.records ? (
                         <div className="overflow-x-auto border border-gray-200 rounded-lg">
                           <table className="w-full text-left text-sm">
                             <thead className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase">
                               <tr>
-                                <th className="px-4 py-3">No</th>
-                                <th className="px-4 py-3">NIS</th>
-                                <th className="px-4 py-3">Nama Siswa</th>
-                                <th className="px-4 py-3">Waktu Check-in</th>
-                                <th className="px-4 py-3 text-center">Status Kehadiran</th>
+                                <th className="px-4 py-3">{t('thNo')}</th>
+                                <th className="px-4 py-3">{t('thNis')}</th>
+                                <th className="px-4 py-3">{t('thStudent')}</th>
+                                <th className="px-4 py-3">{t('thCheckinTime')}</th>
+                                <th className="px-4 py-3 text-center">{t('thStatus')}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                               {activeSessionDetails.records.map((rec: any, idx: number) => {
                                 const checkInTimeFormatted = rec.checkInAt
-                                  ? new Date(rec.checkInAt).toLocaleTimeString('id-ID', {
+                                  ? new Date(rec.checkInAt).toLocaleTimeString(locale === 'en' ? 'en-US' : 'id-ID', {
                                       hour: '2-digit',
                                       minute: '2-digit',
                                       second: '2-digit',
@@ -644,9 +647,9 @@ export function TeacherAttendanceClient({
                                               ? 'bg-emerald-600 text-white shadow-sm'
                                               : 'bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-800'
                                           }`}
-                                          title="Hadir"
+                                          title={t('titlePresent')}
                                         >
-                                          H
+                                          {t('statusPresentShort')}
                                         </button>
                                         <button
                                           onClick={() => handleStatusChange(rec.id, AttendanceStatus.SICK)}
@@ -655,9 +658,9 @@ export function TeacherAttendanceClient({
                                               ? 'bg-amber-500 text-white shadow-sm'
                                               : 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-800'
                                           }`}
-                                          title="Sakit"
+                                          title={t('titleSick')}
                                         >
-                                          S
+                                          {t('statusSickShort')}
                                         </button>
                                         <button
                                           onClick={() => handleStatusChange(rec.id, AttendanceStatus.PERMISSION)}
@@ -666,9 +669,9 @@ export function TeacherAttendanceClient({
                                               ? 'bg-blue-600 text-white shadow-sm'
                                               : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-800'
                                           }`}
-                                          title="Izin"
+                                          title={t('titlePermission')}
                                         >
-                                          I
+                                          {t('statusPermissionShort')}
                                         </button>
                                         <button
                                           onClick={() => handleStatusChange(rec.id, AttendanceStatus.ABSENT)}
@@ -677,9 +680,9 @@ export function TeacherAttendanceClient({
                                               ? 'bg-rose-600 text-white shadow-sm'
                                               : 'bg-gray-100 text-gray-600 hover:bg-rose-100 hover:text-rose-800'
                                           }`}
-                                          title="Alpa"
+                                          title={t('titleAbsent')}
                                         >
-                                          A
+                                          {t('statusAbsentShort')}
                                         </button>
                                       </div>
                                     </td>
@@ -704,10 +707,10 @@ export function TeacherAttendanceClient({
         <Card className="border border-gray-200 shadow-sm bg-white">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-bold text-[#002446]">
-              Rekapitulasi Kehadiran Kelas Keseluruhan
+              {t('matrixTitle')}
             </CardTitle>
             <CardDescription className="text-xs text-gray-500">
-              Keterangan: <strong>H</strong> = Hadir, <strong>S</strong> = Sakit, <strong>I</strong> = Izin, <strong>A</strong> = Alpa. Persentase dihitung dari (H + I) / Total Sesi.
+              {t('matrixDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -715,9 +718,9 @@ export function TeacherAttendanceClient({
               <table className="w-full text-left text-xs">
                 <thead className="bg-gray-50 border-y border-gray-200 font-semibold text-gray-600 uppercase">
                   <tr>
-                    <th className="px-4 py-3">No</th>
-                    <th className="px-4 py-3">NIS</th>
-                    <th className="px-4 py-3 min-w-[180px]">Nama Siswa</th>
+                    <th className="px-4 py-3">{t('thNo')}</th>
+                    <th className="px-4 py-3">{t('thNis')}</th>
+                    <th className="px-4 py-3 min-w-[180px]">{t('thStudent')}</th>
                     {recapData.sessions.map((sess, idx) => (
                       <th
                         key={sess.id}
@@ -727,11 +730,11 @@ export function TeacherAttendanceClient({
                         P{idx + 1}
                       </th>
                     ))}
-                    <th className="px-3 py-3 text-center border-l border-gray-200 text-emerald-700">H</th>
-                    <th className="px-3 py-3 text-center text-amber-700">S</th>
-                    <th className="px-3 py-3 text-center text-blue-700">I</th>
-                    <th className="px-3 py-3 text-center text-rose-700">A</th>
-                    <th className="px-4 py-3 text-center bg-gray-100 border-l border-gray-200">% Hadir</th>
+                    <th className="px-3 py-3 text-center border-l border-gray-200 text-emerald-700">{t('statusPresentShort')}</th>
+                    <th className="px-3 py-3 text-center text-amber-700">{t('statusSickShort')}</th>
+                    <th className="px-3 py-3 text-center text-blue-700">{t('statusPermissionShort')}</th>
+                    <th className="px-3 py-3 text-center text-rose-700">{t('statusAbsentShort')}</th>
+                    <th className="px-4 py-3 text-center bg-gray-100 border-l border-gray-200">{t('thPercentPresent')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -751,7 +754,14 @@ export function TeacherAttendanceClient({
                             : status === 'PERMISSION'
                             ? 'text-blue-700 bg-blue-50'
                             : 'text-rose-700 bg-rose-50';
-                        const label = status === 'PRESENT' ? 'H' : status === 'SICK' ? 'S' : status === 'PERMISSION' ? 'I' : 'A';
+                        const label =
+                          status === 'PRESENT'
+                            ? t('statusPresentShort')
+                            : status === 'SICK'
+                            ? t('statusSickShort')
+                            : status === 'PERMISSION'
+                            ? t('statusPermissionShort')
+                            : t('statusAbsentShort');
                         return (
                           <td
                             key={sess.id}
@@ -789,24 +799,24 @@ export function TeacherAttendanceClient({
               {qrModalSession?.title}
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
-              Tampilkan layar ini kepada siswa di kelas untuk scan QR atau masukkan kode 6-digit.
+              {t('qrModalDesc')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-6 flex flex-col items-center justify-center space-y-4">
             {qrDataUrl ? (
               <div className="p-3 bg-white border-2 border-[#002446] rounded-xl shadow-md inline-block">
-                <img src={qrDataUrl} alt="QR Code Presensi" className="w-56 h-56 mx-auto" />
+                <img src={qrDataUrl} alt={t('qrAlt')} className="w-56 h-56 mx-auto" />
               </div>
             ) : (
               <div className="h-56 w-56 bg-gray-100 flex items-center justify-center text-xs text-gray-400">
-                Membuat QR Code...
+                {t('qrGenerating')}
               </div>
             )}
 
             <div className="space-y-1 text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
-                Kode Token Check-in Mandiri
+                {t('tokenCode')}
               </p>
               <div className="flex items-center justify-center gap-2">
                 <span className="font-mono text-4xl font-extrabold tracking-widest text-[#002446] bg-gray-100 px-4 py-1.5 rounded-lg border border-gray-200">
@@ -817,7 +827,7 @@ export function TeacherAttendanceClient({
                   variant="outline"
                   onClick={() => qrModalSession?.token && handleCopyToken(qrModalSession.token)}
                   className="h-11 w-11 p-0"
-                  title="Salin Token"
+                  title={t('copyToken')}
                 >
                   {copiedToken ? <Check className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
                 </Button>
@@ -830,7 +840,7 @@ export function TeacherAttendanceClient({
               onClick={() => setQrModalSession(null)}
               className="bg-[#002446] hover:bg-[#001b33] text-white px-8"
             >
-              Selesai / Tutup
+              {t('qrClose')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -842,19 +852,19 @@ export function TeacherAttendanceClient({
           <form onSubmit={handleCreateSession}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446]">
-                Buka Sesi Presensi Baru
+                {t('modalCreateTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs text-gray-500">
-                Buat sesi pertemuan untuk merekam absensi siswa dengan kode token unik.
+                {t('modalCreateDesc')}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
-                <Label htmlFor="sessionTitle">Judul Pertemuan *</Label>
+                <Label htmlFor="sessionTitle">{t('inputTitle')}</Label>
                 <Input
                   id="sessionTitle"
-                  placeholder="Contoh: Pertemuan 3: Praktikum Basis Data"
+                  placeholder={t('inputTitlePlaceholder')}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   required
@@ -863,7 +873,7 @@ export function TeacherAttendanceClient({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sessionDate">Tanggal *</Label>
+                  <Label htmlFor="sessionDate">{t('inputDate')}</Label>
                   <Input
                     id="sessionDate"
                     type="date"
@@ -874,14 +884,14 @@ export function TeacherAttendanceClient({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="sessionModule">Terkait Modul (Opsional)</Label>
+                  <Label htmlFor="sessionModule">{t('inputModule')}</Label>
                   <select
                     id="sessionModule"
                     value={newModuleId}
                     onChange={(e) => setNewModuleId(e.target.value)}
                     className="w-full h-10 px-3 border border-gray-300 rounded-md text-sm bg-white"
                   >
-                    <option value="">-- Tanpa Modul Khusus --</option>
+                    <option value="">{t('inputModulePlaceholder')}</option>
                     {modules.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.title}
@@ -893,7 +903,7 @@ export function TeacherAttendanceClient({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sessionStartTime">Waktu Mulai (Opsional)</Label>
+                  <Label htmlFor="sessionStartTime">{t('inputStartTime')}</Label>
                   <Input
                     id="sessionStartTime"
                     type="time"
@@ -903,7 +913,7 @@ export function TeacherAttendanceClient({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="sessionEndTime">Waktu Berakhir (Opsional)</Label>
+                  <Label htmlFor="sessionEndTime">{t('inputEndTime')}</Label>
                   <Input
                     id="sessionEndTime"
                     type="time"
@@ -915,11 +925,11 @@ export function TeacherAttendanceClient({
 
               <div className="space-y-1.5">
                 <Label htmlFor="sessionCustomToken">
-                  Kode Token Kustom (Kosongkan untuk acak 6-digit)
+                  {t('inputToken')}
                 </Label>
                 <Input
                   id="sessionCustomToken"
-                  placeholder="Contoh: BIO123 atau kosongkan"
+                  placeholder={t('inputTokenPlaceholder')}
                   value={newToken}
                   onChange={(e) => setNewToken(e.target.value.toUpperCase())}
                   maxLength={8}
@@ -936,7 +946,7 @@ export function TeacherAttendanceClient({
                   className="h-4 w-4 rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
                 />
                 <Label htmlFor="allowSelfCheckin" className="text-xs cursor-pointer">
-                  Izinkan siswa melakukan check-in mandiri dengan token/QR
+                  {t('allowSelfCheckin')}
                 </Label>
               </div>
             </div>
@@ -948,14 +958,14 @@ export function TeacherAttendanceClient({
                 onClick={() => setIsCreateOpen(false)}
                 disabled={loading}
               >
-                Batal
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
                 className="bg-[#002446] hover:bg-[#001b33] text-white"
               >
-                {loading ? 'Menyimpan...' : 'Buka Sesi Sekarang'}
+                {loading ? t('creatingSession') : t('btnSubmitSession')}
               </Button>
             </DialogFooter>
           </form>
