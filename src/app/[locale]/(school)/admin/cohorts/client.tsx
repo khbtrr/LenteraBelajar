@@ -1436,8 +1436,8 @@ export function CohortsClient({
         onOpenChange={(open) => !open && setSelectedCohort(null)}
       >
         <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="border-b pb-3">
-            <div className="flex items-center justify-between">
+          <DialogHeader className="border-b pb-3 pr-8 sm:pr-10">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white flex items-center gap-2">
                   <UsersRound className="w-5 h-5 text-[#FF8928]" />
@@ -1452,7 +1452,7 @@ export function CohortsClient({
                   size="sm"
                   variant="outline"
                   onClick={() => handleExportCohortExcel(selectedCohort)}
-                  className="text-xs flex items-center gap-1.5"
+                  className="text-xs flex items-center gap-1.5 shrink-0"
                 >
                   <Download className="w-3.5 h-3.5" />
                   {t('exportExcelBtn')}
