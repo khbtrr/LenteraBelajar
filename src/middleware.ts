@@ -97,9 +97,9 @@ export default async function middleware(request: NextRequest) {
   // Role-based route protection
   const role = session.user.role;
   const allowedPrefixes: Record<string, string[]> = {
-    SUPER_ADMIN: ['/platform'],
-    ADMIN: ['/admin'],
-    SUPERVISOR: ['/supervisor'],
+    SUPER_ADMIN: ['/platform', '/admin', '/teacher/course'],
+    ADMIN: ['/admin', '/teacher/course'],
+    SUPERVISOR: ['/supervisor', '/teacher/course'],
     TEACHER: ['/teacher'],
     STUDENT: ['/student'],
   };
