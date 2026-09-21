@@ -22,8 +22,25 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { BookOpen, Plus, Search, Users, Layers, ExternalLink } from 'lucide-react';
-import { createCourse } from '@/lib/actions/course';
+import {
+  BookOpen,
+  Plus,
+  Search,
+  Users,
+  Layers,
+  ExternalLink,
+  Pencil,
+  Trash2,
+  Archive,
+  ArchiveRestore,
+} from 'lucide-react';
+import {
+  createCourse,
+  updateCourse,
+  toggleArchiveCourse,
+  deleteCourse,
+} from '@/lib/actions/course';
+import { CourseStatus } from '@prisma/client';
 import { Link } from '@/i18n/navigation';
 import { useDialog } from '@/context/DialogContext';
 
@@ -68,14 +85,15 @@ export function AdminCoursesClient({
   teachers: Teacher[];
 }) {
   const t = useTranslations('adminCourses');
-  const { showAlert } = useDialog();
+  const { showAlert, showConfirm } = useDialog();
   const [courses, setCourses] = useState<CourseItem[]>(initialCourses);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Form states
+  // Form states (Create)
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [academicYearId, setAcademicYearId] = useState(
@@ -83,6 +101,15 @@ export function AdminCoursesClient({
   );
   const [categoryId, setCategoryId] = useState('');
   const [teacherId, setTeacherId] = useState(teachers[0]?.id || '');
+
+  // Form states (Edit)
+  const [editingCourseId, setEditingCourseId] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editAcademicYearId, setEditAcademicYearId] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const [editTeacherId, setEditTeacherId] = useState('');
+  const [editStatus, setEditStatus] = useState<CourseStatus>(CourseStatus.ACTIVE);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +149,129 @@ export function AdminCoursesClient({
     } catch (err: any) {
       console.error(err);
       await showAlert(err?.message || t('courseCreateFailedAlert'), { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenEdit = (course: CourseItem) => {
+    setEditingCourseId(course.id);
+    setEditTitle(course.title);
+    setEditDescription(course.description || '');
+    setEditAcademicYearId(course.academicYear.id || academicYears[0]?.id || '');
+    setEditCategoryId(course.category?.id || '');
+    setEditTeacherId(course.teacher.id || teachers[0]?.id || '');
+    setEditStatus(course.status as CourseStatus);
+    setIsEditOpen(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editAcademicYearId) {
+      await showAlert(t('selectYearAlert'), { type: 'warning' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const updated = await updateCourse(editingCourseId, {
+        title: editTitle,
+        description: editDescription,
+        academicYearId: editAcademicYearId,
+        categoryId: editCategoryId || undefined,
+        teacherId: editTeacherId,
+        status: editStatus,
+      });
+
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.id === editingCourseId
+            ? {
+                ...c,
+                ...updated,
+                status: updated.status as any,
+                academicYear: {
+                  ...c.academicYear,
+                  id: updated.academicYear.id,
+                  name: updated.academicYear.name,
+                  status: updated.academicYear.status,
+                },
+              }
+            : c
+        )
+      );
+
+      setIsEditOpen(false);
+      await showAlert(t('courseUpdatedAlert', { title: updated.title }), { type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || t('courseUpdateFailedAlert'), { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleArchive = async (course: CourseItem) => {
+    const isArchived = course.status === 'ARCHIVED';
+    const confirmed = await showConfirm(
+      isArchived
+        ? t('unarchiveConfirmDesc', { title: course.title })
+        : t('archiveConfirmDesc', { title: course.title }),
+      {
+        title: isArchived ? t('unarchiveConfirmTitle') : t('archiveConfirmTitle'),
+        confirmText: isArchived ? t('confirmUnarchive') : t('confirmArchive'),
+        cancelText: t('cancelButton'),
+      }
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const updated = await toggleArchiveCourse(course.id);
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.id === course.id
+            ? {
+                ...c,
+                status: updated.status as any,
+              }
+            : c
+        )
+      );
+      await showAlert(
+        isArchived
+          ? t('courseUnarchivedAlert', { title: course.title })
+          : t('courseArchivedAlert', { title: course.title }),
+        { type: 'success' }
+      );
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || t('courseArchiveFailedAlert'), { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (course: CourseItem) => {
+    const confirmed = await showConfirm(
+      t('deleteConfirmDesc', { title: course.title }),
+      {
+        title: t('deleteConfirmTitle'),
+        confirmText: t('confirmDelete'),
+        cancelText: t('cancelButton'),
+        type: 'error',
+        confirmVariant: 'destructive',
+      }
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      await deleteCourse(course.id);
+      setCourses((prev) => prev.filter((c) => c.id !== course.id));
+      await showAlert(t('courseDeletedAlert', { title: course.title }), { type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || t('courseDeleteFailedAlert'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -243,19 +393,56 @@ export function AdminCoursesClient({
                           : t('statusDraft')}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right space-x-3">
-                      <Link
-                        href={`/teacher/course/${course.id}/modules`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#002446] hover:underline dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        {t('linkModules')} <ExternalLink className="h-3 w-3" />
-                      </Link>
-                      <Link
-                        href={`/teacher/course/${course.id}/enrollments`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#FF8928] hover:underline dark:text-orange-400 dark:hover:text-orange-300"
-                      >
-                        {t('linkEnrollment')} <ExternalLink className="h-3 w-3" />
-                      </Link>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                        <Link
+                          href={`/teacher/course/${course.id}/modules`}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-[#002446] hover:bg-gray-100 rounded dark:text-blue-400 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          {t('linkModules')} <ExternalLink className="h-3 w-3" />
+                        </Link>
+                        <Link
+                          href={`/teacher/course/${course.id}/enrollments`}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-[#FF8928] hover:bg-orange-50 rounded dark:text-orange-400 dark:hover:bg-orange-950/30 transition-colors"
+                        >
+                          {t('linkEnrollment')} <ExternalLink className="h-3 w-3" />
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleOpenEdit(course)}
+                          title={t('btnEdit')}
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:text-gray-400 dark:hover:text-blue-400"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleArchive(course)}
+                          title={course.status === 'ARCHIVED' ? t('btnUnarchive') : t('btnArchive')}
+                          className={`h-8 w-8 p-0 transition-colors ${
+                            course.status === 'ARCHIVED'
+                              ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30'
+                              : 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30'
+                          }`}
+                        >
+                          {course.status === 'ARCHIVED' ? (
+                            <ArchiveRestore className="h-4 w-4" />
+                          ) : (
+                            <Archive className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(course)}
+                          title={t('btnDelete')}
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -264,6 +451,126 @@ export function AdminCoursesClient({
           </Table>
         </CardContent>
       </Card>
+
+      {/* Modal Edit Course */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={handleUpdate}>
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
+                {t('editModalTitle')}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="editTitle">{t('courseTitleLabel')}</Label>
+                <Input
+                  id="editTitle"
+                  placeholder={t('courseTitlePlaceholder')}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="editDesc">{t('courseDescLabel')}</Label>
+                <Input
+                  id="editDesc"
+                  placeholder={t('courseDescPlaceholder')}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editYear">{t('academicYearLabel')}</Label>
+                  <select
+                    id="editYear"
+                    value={editAcademicYearId}
+                    onChange={(e) => setEditAcademicYearId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
+                    required
+                  >
+                    {academicYears.map((y) => (
+                      <option key={y.id} value={y.id}>
+                        {y.name} {y.status === 'ACTIVE' ? `(${t('statusActive')})` : `(${t('statusArchived')})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editCategory">{t('categoryLabel')}</Label>
+                  <select
+                    id="editCategory"
+                    value={editCategoryId}
+                    onChange={(e) => setEditCategoryId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
+                  >
+                    <option value="">{t('categoryPlaceholder')}</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.parent ? `${c.parent.name} → ${c.name}` : c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editTeacher">{t('teacherLabel')}</Label>
+                  <select
+                    id="editTeacher"
+                    value={editTeacherId}
+                    onChange={(e) => setEditTeacherId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
+                    required
+                  >
+                    {teachers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editStatus">{t('courseStatusLabel')}</Label>
+                  <select
+                    id="editStatus"
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as CourseStatus)}
+                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#002446] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
+                  >
+                    <option value={CourseStatus.ACTIVE}>{t('statusActive')}</option>
+                    <option value={CourseStatus.DRAFT}>{t('statusDraft')}</option>
+                    <option value={CourseStatus.ARCHIVED}>{t('statusArchived')}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditOpen(false)}
+              >
+                {t('cancelButton')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
+              >
+                {loading ? t('updating') : t('updateButton')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Buat Course Baru */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

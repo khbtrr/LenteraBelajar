@@ -248,3 +248,131 @@ export async function reviewCourseRequest(
   revalidatePath('/[locale]/admin/dashboard', 'page');
   revalidatePath('/[locale]/teacher/my-courses', 'page');
 }
+
+export async function updateCourse(
+  courseId: string,
+  data: {
+    title: string;
+    description?: string | null;
+    categoryId?: string | null;
+    academicYearId: string;
+    teacherId: string;
+    status: CourseStatus;
+  }
+) {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('No school selected');
+
+  const existing = await db.course.findUnique({
+    where: { id: courseId, schoolId },
+  });
+  if (!existing) throw new Error('Course tidak ditemukan');
+
+  const updated = await db.course.update({
+    where: { id: courseId },
+    data: {
+      title: data.title,
+      description: data.description || null,
+      categoryId: data.categoryId || null,
+      academicYearId: data.academicYearId,
+      teacherId: data.teacherId,
+      status: data.status,
+    },
+    include: {
+      teacher: { select: { id: true, name: true, email: true } },
+      category: { select: { id: true, name: true } },
+      academicYear: { select: { id: true, name: true, status: true } },
+      _count: {
+        select: {
+          enrollments: true,
+          modules: true,
+        },
+      },
+    },
+  });
+
+  revalidatePath('/[locale]/admin/courses', 'page');
+  revalidatePath('/[locale]/admin/dashboard', 'page');
+  revalidatePath('/[locale]/teacher/my-courses', 'page');
+  return updated;
+}
+
+export async function toggleArchiveCourse(courseId: string) {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('No school selected');
+
+  const existing = await db.course.findUnique({
+    where: { id: courseId, schoolId },
+    select: { id: true, status: true, title: true },
+  });
+  if (!existing) throw new Error('Course tidak ditemukan');
+
+  const newStatus = existing.status === CourseStatus.ARCHIVED ? CourseStatus.ACTIVE : CourseStatus.ARCHIVED;
+
+  const updated = await db.course.update({
+    where: { id: courseId },
+    data: { status: newStatus },
+    include: {
+      teacher: { select: { id: true, name: true, email: true } },
+      category: { select: { id: true, name: true } },
+      academicYear: { select: { id: true, name: true, status: true } },
+      _count: {
+        select: {
+          enrollments: true,
+          modules: true,
+        },
+      },
+    },
+  });
+
+  revalidatePath('/[locale]/admin/courses', 'page');
+  revalidatePath('/[locale]/admin/dashboard', 'page');
+  revalidatePath('/[locale]/teacher/my-courses', 'page');
+  return updated;
+}
+
+export async function deleteCourse(courseId: string) {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('No school selected');
+
+  const course = await db.course.findUnique({
+    where: { id: courseId, schoolId },
+    include: {
+      _count: {
+        select: {
+          enrollments: true,
+          modules: true,
+          grades: true,
+          attendanceSessions: true,
+          forumThreads: true,
+        },
+      },
+    },
+  });
+  if (!course) throw new Error('Course tidak ditemukan');
+
+  const hasHistory =
+    course._count.enrollments > 0 ||
+    course._count.modules > 0 ||
+    course._count.grades > 0 ||
+    course._count.attendanceSessions > 0 ||
+    course._count.forumThreads > 0;
+
+  if (hasHistory) {
+    throw new Error(
+      'Course tidak dapat dihapus karena sudah memiliki siswa terdaftar, modul pembelajaran, atau riwayat nilai. Silakan gunakan fitur Arsip untuk menyembunyikan course ini.'
+    );
+  }
+
+  await db.course.delete({
+    where: { id: courseId },
+  });
+
+  revalidatePath('/[locale]/admin/courses', 'page');
+  revalidatePath('/[locale]/admin/dashboard', 'page');
+  revalidatePath('/[locale]/teacher/my-courses', 'page');
+  return { success: true };
+}
