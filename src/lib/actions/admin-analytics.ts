@@ -36,13 +36,12 @@ export async function getAdminDashboardData() {
 
   const passingThreshold = school?.defaultPassingGrade ?? 75;
 
-  // 2. Fetch User Analytics in Parallel
+  // 2. Fetch User Analytics in Parallel (Active users only)
   const [
-    totalUsers,
+    activeUserCount,
     studentCount,
     teacherCount,
     staffCount,
-    activeUserCount,
     totalCourses,
     activeCourses,
     archivedCourses,
@@ -53,11 +52,10 @@ export async function getAdminDashboardData() {
     pendingCount,
     completedAttempts,
   ] = await Promise.all([
-    db.user.count({ where: { schoolId } }),
-    db.user.count({ where: { schoolId, role: Role.STUDENT } }),
-    db.user.count({ where: { schoolId, role: Role.TEACHER } }),
-    db.user.count({ where: { schoolId, role: { in: [Role.ADMIN, Role.SUPERVISOR] } } }),
     db.user.count({ where: { schoolId, isActive: true } }),
+    db.user.count({ where: { schoolId, role: Role.STUDENT, isActive: true } }),
+    db.user.count({ where: { schoolId, role: Role.TEACHER, isActive: true } }),
+    db.user.count({ where: { schoolId, role: { in: [Role.ADMIN, Role.SUPERVISOR] }, isActive: true } }),
 
     // Courses & Cohorts
     db.course.count({ where: { schoolId } }),
@@ -132,12 +130,12 @@ export async function getAdminDashboardData() {
     school,
     activeAcademicYear,
     users: {
-      total: totalUsers,
+      total: activeUserCount,
       students: studentCount,
       teachers: teacherCount,
       staff: staffCount,
       active: activeUserCount,
-      inactive: totalUsers - activeUserCount,
+      inactive: 0,
       studentTeacherRatio,
     },
     academics: {

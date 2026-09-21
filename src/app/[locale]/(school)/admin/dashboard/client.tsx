@@ -115,7 +115,6 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
   const studentPercent = data.users.total > 0 ? Math.round((data.users.students / data.users.total) * 100) : 0;
   const teacherPercent = data.users.total > 0 ? Math.round((data.users.teachers / data.users.total) * 100) : 0;
   const staffPercent = Math.max(0, 100 - studentPercent - teacherPercent);
-  const activeUserPercent = data.users.total > 0 ? Math.round((data.users.active / data.users.total) * 100) : 0;
 
   const handleOpenReview = (req: DashboardData['pendingRequests']['items'][0], action: 'APPROVE' | 'REJECT') => {
     setSelectedRequest(req);
@@ -335,15 +334,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         {/* Left: User Distribution & Health */}
         <Card className="border-gray-200 dark:border-gray-800">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold text-[#002446] dark:text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#FF8928]" />
-                {t('roleDistributionTitle')}
-              </CardTitle>
-              <Badge variant="outline" className="text-xs font-normal">
-                {t('activeAccountBadge', { percent: activeUserPercent })}
-              </Badge>
-            </div>
+            <CardTitle className="text-base font-bold text-[#002446] dark:text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#FF8928]" />
+              {t('roleDistributionTitle')}
+            </CardTitle>
             <CardDescription className="text-xs">
               {t('roleDistributionDesc')}
             </CardDescription>
