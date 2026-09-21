@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,7 @@ export function PlatformSchoolsClient({
 }: {
   initialSchools: any[];
 }) {
+  const t = useTranslations('schools');
   const { showAlert } = useDialog();
   const [schools, setSchools] = useState<SchoolItem[]>(initialSchools);
   const [search, setSearch] = useState('');
@@ -69,10 +71,10 @@ export function PlatformSchoolsClient({
       setName('');
       setCode('');
       setAddress('');
-      await showAlert(`Sekolah "${created.name}" berhasil ditambahkan!`, { type: 'success' });
+      await showAlert(t('schoolAddedSuccess', { name: created.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal menambahkan sekolah', { type: 'error' });
+      await showAlert(err?.message || t('schoolAddFailed'), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -85,12 +87,15 @@ export function PlatformSchoolsClient({
         prev.map((s) => (s.id === school.id ? { ...s, isActive: updated.isActive } : s))
       );
       await showAlert(
-        `Status sekolah ${school.name} berhasil diubah menjadi: ${updated.isActive ? 'Aktif' : 'Nonaktif'}`,
+        t('statusChangedSuccess', {
+          name: school.name,
+          status: updated.isActive ? t('active') : t('inactive'),
+        }),
         { type: 'info' }
       );
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || 'Gagal mengubah status sekolah', { type: 'error' });
+      await showAlert(err?.message || t('statusChangeFailed'), { type: 'error' });
     }
   };
 
@@ -106,7 +111,7 @@ export function PlatformSchoolsClient({
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Cari sekolah atau kode..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 bg-white"
@@ -117,7 +122,7 @@ export function PlatformSchoolsClient({
           onClick={() => setIsCreateOpen(true)}
           className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 w-full sm:w-auto justify-center"
         >
-          <Plus className="h-4 w-4" /> Daftarkan Sekolah Baru
+          <Plus className="h-4 w-4" /> {t('registerNewSchool')}
         </Button>
       </div>
 
@@ -126,18 +131,18 @@ export function PlatformSchoolsClient({
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead>Nama Sekolah</TableHead>
-                <TableHead>Kode Tenant</TableHead>
-                <TableHead>Statistik</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
+                <TableHead>{t('colName')}</TableHead>
+                <TableHead>{t('colTenantCode')}</TableHead>
+                <TableHead>{t('colStats')}</TableHead>
+                <TableHead>{t('colStatus')}</TableHead>
+                <TableHead className="text-right">{t('colActions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-10 text-gray-500">
-                    Tidak ada sekolah terdaftar.
+                    {t('noSchools')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -160,11 +165,11 @@ export function PlatformSchoolsClient({
                       <div className="flex items-center gap-3 text-xs text-gray-600">
                         <span className="flex items-center gap-1">
                           <Users className="h-3.5 w-3.5 text-[#FF8928]" />
-                          {school._count.users} Pengguna
+                          {t('usersCount', { count: school._count.users })}
                         </span>
                         <span className="flex items-center gap-1">
                           <BookOpen className="h-3.5 w-3.5 text-[#002446]" />
-                          {school._count.courses} Course
+                          {t('coursesCount', { count: school._count.courses })}
                         </span>
                       </div>
                     </TableCell>
@@ -177,7 +182,7 @@ export function PlatformSchoolsClient({
                             : 'bg-red-100 text-red-800 hover:bg-red-200'
                         }`}
                       >
-                        {school.isActive ? 'Aktif' : 'Nonaktif'}
+                        {school.isActive ? t('active') : t('inactive')}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -187,7 +192,7 @@ export function PlatformSchoolsClient({
                         onClick={() => handleToggle(school)}
                         className="text-xs text-gray-600"
                       >
-                        {school.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                        {school.isActive ? t('deactivate') : t('activate')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -204,15 +209,15 @@ export function PlatformSchoolsClient({
           <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
-                <School className="h-5 w-5 text-[#FF8928]" /> Daftarkan Sekolah Baru
+                <School className="h-5 w-5 text-[#FF8928]" /> {t('registerNewSchool')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="sName">Nama Sekolah / Lembaga</Label>
+                <Label htmlFor="sName">{t('schoolNameLabel')}</Label>
                 <Input
                   id="sName"
-                  placeholder="misal: SMA Negeri 1 Bandung"
+                  placeholder={t('schoolNamePlaceholder')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -220,24 +225,24 @@ export function PlatformSchoolsClient({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="sCode">Kode Unik Tenant</Label>
+                <Label htmlFor="sCode">{t('tenantCodeLabel')}</Label>
                 <Input
                   id="sCode"
-                  placeholder="misal: SMAN1BDG"
+                  placeholder={t('tenantCodePlaceholder')}
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   required
                 />
                 <p className="text-xs text-gray-500">
-                  Kode ini membedakan isolasi data sekolah di sistem database multi-tenant.
+                  {t('tenantCodeHelp')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="sAddress">Alamat (Opsional)</Label>
+                <Label htmlFor="sAddress">{t('addressLabel')}</Label>
                 <Input
                   id="sAddress"
-                  placeholder="Alamat lengkap sekolah"
+                  placeholder={t('addressPlaceholder')}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                 />
@@ -249,14 +254,14 @@ export function PlatformSchoolsClient({
                 variant="outline"
                 onClick={() => setIsCreateOpen(false)}
               >
-                Batal
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
                 className="bg-[#002446] hover:bg-[#002446]/90 text-white"
               >
-                {loading ? 'Mendaftarkan...' : 'Daftarkan Sekolah'}
+                {loading ? t('submitting') : t('submit')}
               </Button>
             </DialogFooter>
           </form>
