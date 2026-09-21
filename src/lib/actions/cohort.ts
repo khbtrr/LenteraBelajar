@@ -6,10 +6,13 @@ import { generateDefaultPassword } from '@/lib/password-policy';
 import { EnrollmentMethod, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
-export async function getCohorts() {
+export async function getCohorts(options?: { activeOnly?: boolean }) {
   const session = await requireSchool();
   return db.cohort.findMany({
-    where: { schoolId: session.schoolId },
+    where: {
+      schoolId: session.schoolId,
+      ...(options?.activeOnly ? { isActive: true } : {}),
+    },
     include: {
       members: {
         include: {
@@ -50,15 +53,180 @@ export async function createCohort(name: string) {
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
 
+  const trimmedName = name.trim();
+  if (!trimmedName) throw new Error('Cohort name cannot be empty');
+
+  // Check unique name in same school
+  const existing = await db.cohort.findFirst({
+    where: { schoolId, name: { equals: trimmedName, mode: 'insensitive' } },
+  });
+  if (existing) {
+    throw new Error('DUPLICATE_NAME');
+  }
+
   const cohort = await db.cohort.create({
     data: {
-      name,
+      name: trimmedName,
       schoolId,
+      isActive: true,
     },
   });
 
   revalidatePath('/[locale]/admin/cohorts', 'page');
   return cohort;
+}
+
+export async function updateCohort(id: string, name: string) {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('No school selected');
+
+  const trimmedName = name.trim();
+  if (!trimmedName) throw new Error('Cohort name cannot be empty');
+
+  const cohort = await db.cohort.findUnique({
+    where: { id, schoolId },
+  });
+  if (!cohort) {
+    throw new Error('Cohort not found');
+  }
+
+  // Check if another cohort with the same name already exists in this school
+  const existingWithSameName = await db.cohort.findFirst({
+    where: {
+      schoolId,
+      name: { equals: trimmedName, mode: 'insensitive' },
+      id: { not: id },
+    },
+  });
+  if (existingWithSameName) {
+    throw new Error('DUPLICATE_NAME');
+  }
+
+  const updated = await db.cohort.update({
+    where: { id },
+    data: { name: trimmedName },
+  });
+
+  revalidatePath('/[locale]/admin/cohorts', 'page');
+  return updated;
+}
+
+export async function toggleCohortActive(id: string, isActive?: boolean) {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('No school selected');
+
+  const cohort = await db.cohort.findUnique({
+    where: { id, schoolId },
+    select: { id: true, isActive: true },
+  });
+  if (!cohort) {
+    throw new Error('Cohort not found');
+  }
+
+  const newStatus = typeof isActive === 'boolean' ? isActive : !cohort.isActive;
+
+  const updated = await db.cohort.update({
+    where: { id },
+    data: { isActive: newStatus },
+  });
+
+  revalidatePath('/[locale]/admin/cohorts', 'page');
+  return updated;
+}
+
+export async function deleteCohort(id: string) {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('No school selected');
+
+  const cohort = await db.cohort.findUnique({
+    where: { id, schoolId },
+  });
+  if (!cohort) {
+    throw new Error('Cohort not found');
+  }
+
+  await db.$transaction([
+    db.enrollment.updateMany({
+      where: { cohortId: id },
+      data: { cohortId: null },
+    }),
+    db.cohortMember.deleteMany({
+      where: { cohortId: id },
+    }),
+    db.cohort.delete({
+      where: { id },
+    }),
+  ]);
+
+  revalidatePath('/[locale]/admin/cohorts', 'page');
+  return { success: true, id };
+}
+
+export interface BulkCreateCohortResult {
+  createdCount: number;
+  skippedCount: number;
+  createdNames: string[];
+  skippedNames: string[];
+}
+
+export async function bulkCreateCohorts(cohortNames: string[]): Promise<BulkCreateCohortResult> {
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('No school selected');
+
+  // Clean and filter empty / unique names from input
+  const cleanedNames = Array.from(
+    new Set(
+      cohortNames
+        .map((n) => n.trim())
+        .filter((n) => n.length > 0)
+    )
+  );
+
+  if (cleanedNames.length === 0) {
+    return { createdCount: 0, skippedCount: 0, createdNames: [], skippedNames: [] };
+  }
+
+  // Find existing cohorts in the school
+  const existingCohorts = await db.cohort.findMany({
+    where: { schoolId },
+    select: { name: true },
+  });
+  const existingNameSet = new Set(existingCohorts.map((c) => c.name.trim().toLowerCase()));
+
+  const toCreate: string[] = [];
+  const skipped: string[] = [];
+
+  for (const name of cleanedNames) {
+    if (existingNameSet.has(name.toLowerCase())) {
+      skipped.push(name);
+    } else {
+      toCreate.push(name);
+      existingNameSet.add(name.toLowerCase()); // prevent duplicate within the same batch
+    }
+  }
+
+  if (toCreate.length > 0) {
+    await db.cohort.createMany({
+      data: toCreate.map((name) => ({
+        name,
+        schoolId,
+        isActive: true,
+      })),
+    });
+  }
+
+  revalidatePath('/[locale]/admin/cohorts', 'page');
+
+  return {
+    createdCount: toCreate.length,
+    skippedCount: skipped.length,
+    createdNames: toCreate,
+    skippedNames: skipped,
+  };
 }
 
 export async function addStudentToCohort(cohortId: string, userId: string) {

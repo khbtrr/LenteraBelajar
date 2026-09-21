@@ -183,6 +183,57 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
     }
   };
 
+  const handleDownloadUserTemplateXlsx = () => {
+    const sampleRows = [
+      {
+        'Nama': 'Ahmad Fauzi',
+        'Email': 'ahmad.fauzi@sekolah.sch.id',
+        'Role': 'STUDENT',
+        'NIS': '1001',
+        'NIP': '',
+        'Kelas': 'X-1',
+      },
+      {
+        'Nama': 'Siti Rahma',
+        'Email': 'siti.rahma@sekolah.sch.id',
+        'Role': 'STUDENT',
+        'NIS': '1002',
+        'NIP': '',
+        'Kelas': 'X-1',
+      },
+      {
+        'Nama': 'Budi Santoso, S.Pd.',
+        'Email': 'budi.santoso@sekolah.sch.id',
+        'Role': 'TEACHER',
+        'NIS': '',
+        'NIP': '198501012010011001',
+        'Kelas': '',
+      },
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(sampleRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Pengguna');
+    XLSX.writeFile(workbook, 'Template_Impor_Pengguna_Lentera.xlsx');
+  };
+
+  const handleDownloadUserTemplateCsv = () => {
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [
+        'Nama,Email,Role,NIS,NIP,Kelas',
+        'Ahmad Fauzi,ahmad.fauzi@sekolah.sch.id,STUDENT,1001,,X-1',
+        'Siti Rahma,siti.rahma@sekolah.sch.id,STUDENT,1002,,X-1',
+        'Budi Santoso S.Pd.,budi.santoso@sekolah.sch.id,TEACHER,,198501012010011001,',
+      ].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'Template_Impor_Pengguna_Lentera.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -197,13 +248,21 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         const data = XLSX.utils.sheet_to_json<any>(ws);
 
         // Normalize data
-        const parsed = data.map((row: any) => ({
-          name: row.Nama || row.nama || row.Name || row.name || '',
-          email: row.Email || row.email || '',
-          role: (row.Role || row.role || 'STUDENT').toUpperCase() as Role,
-          nis: String(row.NIS || row.nis || ''),
-          nip: String(row.NIP || row.nip || ''),
-        }));
+        const parsed = data.map((row: any) => {
+          const classKey = Object.keys(row).find((k) =>
+            /^(kelas|rombel|kohor(t)?|class|cohort)$/i.test(k.trim()) ||
+            /kelas|rombel|kohor/i.test(k)
+          );
+
+          return {
+            name: row.Nama || row.nama || row.Name || row.name || '',
+            email: row.Email || row.email || '',
+            role: (row.Role || row.role || 'STUDENT').toUpperCase() as Role,
+            nis: String(row.NIS || row.nis || ''),
+            nip: String(row.NIP || row.nip || ''),
+            className: classKey ? String(row[classKey] || '').trim() : '',
+          };
+        });
 
         setPreviewData(parsed.filter((p) => p.email && p.name));
       } catch (err) {
@@ -220,8 +279,12 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
     setImportStatus(null);
     try {
       const res = await bulkImportUsers(previewData);
-      setImportStatus(t('importSuccess', { count: res.count }));
-      await showAlert(t('importSuccessAlert', { count: res.count }), { type: 'success' });
+      const successMsg =
+        res.cohortAssignedCount && res.cohortAssignedCount > 0
+          ? t('importSuccessWithCohort', { count: res.count, cohortCount: res.cohortAssignedCount })
+          : t('importSuccess', { count: res.count });
+      setImportStatus(successMsg);
+      await showAlert(successMsg, { type: 'success' });
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -692,14 +755,28 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                 <p>{t('importFormatCols')}</p>
                 <p className="text-[#FF8928] dark:text-orange-400 font-medium">{t('importFormatHint')}</p>
               </div>
-              <a
-                href="/templates/template-impor-pengguna.xlsx"
-                download="template-impor-pengguna.xlsx"
-                className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-md text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100/50 dark:hover:bg-gray-700 transition-colors shadow-sm"
-              >
-                <Download className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                {t('downloadTemplate')}
-              </a>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadUserTemplateXlsx}
+                  className="text-xs bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100/50 flex items-center gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  .XLSX
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadUserTemplateCsv}
+                  className="text-xs bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100/50 flex items-center gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  .CSV
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -722,6 +799,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                       <TableHead>{t('colEmail')}</TableHead>
                       <TableHead>{t('colRole')}</TableHead>
                       <TableHead>{t('colIdentity')}</TableHead>
+                      <TableHead>{t('colClass')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -732,6 +810,15 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                         <TableCell className="text-xs text-gray-600 dark:text-gray-300">{row.role}</TableCell>
                         <TableCell className="text-xs font-mono text-gray-600 dark:text-gray-400">
                           {row.nis || row.nip || '-'}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {row.className ? (
+                            <Badge variant="outline" className="text-[11px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800">
+                              {row.className}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400 italic">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

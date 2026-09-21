@@ -17,7 +17,7 @@ export default async function CourseEnrollmentsPage({
   }
 
   const [cohorts, students, t] = await Promise.all([
-    getCohorts(),
+    getCohorts({ activeOnly: true }),
     getStudentsInSchool(),
     getTranslations('teacherEnrollments'),
   ]);

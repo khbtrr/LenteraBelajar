@@ -57,20 +57,32 @@ export async function bulkImportUsers(
     role: Role;
     nis?: string;
     nip?: string;
+    className?: string;
+    cohortName?: string;
   }[]
 ) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
 
+  // Preload existing cohorts for this school to avoid redundant queries
+  const existingCohorts = await db.cohort.findMany({
+    where: { schoolId },
+    select: { id: true, name: true },
+  });
+  const cohortCache = new Map<string, string>(); // lowercase name -> cohort id
+  existingCohorts.forEach((c) => cohortCache.set(c.name.trim().toLowerCase(), c.id));
+
   let successCount = 0;
+  let cohortAssignedCount = 0;
+
   for (const item of usersList) {
     if (!item.email || !item.name) continue;
 
     const initialPassword = generateDefaultPassword(item.nis || item.nip);
     const passwordHash = hashPassword(initialPassword);
 
-    await db.user.upsert({
+    const user = await db.user.upsert({
       where: { email: item.email },
       create: {
         name: item.name,
@@ -90,10 +102,47 @@ export async function bulkImportUsers(
       },
     });
     successCount++;
+
+    // Process cohort / class assignment if provided and user is a student
+    const targetCohortName = (item.className || item.cohortName || '').trim();
+    if (targetCohortName && (item.role === Role.STUDENT || !item.role)) {
+      const lowerName = targetCohortName.toLowerCase();
+      let cohortId = cohortCache.get(lowerName);
+
+      if (!cohortId) {
+        // Create new cohort automatically
+        const newCohort = await db.cohort.create({
+          data: {
+            name: targetCohortName,
+            schoolId,
+            isActive: true,
+          },
+        });
+        cohortId = newCohort.id;
+        cohortCache.set(lowerName, cohortId);
+      }
+
+      // Assign student to cohort
+      await db.cohortMember.upsert({
+        where: {
+          cohortId_userId: {
+            cohortId,
+            userId: user.id,
+          },
+        },
+        create: {
+          cohortId,
+          userId: user.id,
+        },
+        update: {},
+      });
+      cohortAssignedCount++;
+    }
   }
 
   revalidatePath('/[locale]/admin/users', 'page');
-  return { success: true, count: successCount };
+  revalidatePath('/[locale]/admin/cohorts', 'page');
+  return { success: true, count: successCount, cohortAssignedCount };
 }
 
 export async function toggleUserActive(userId: string) {

@@ -48,9 +48,17 @@ import {
   Layers,
   HelpCircle,
   Sparkles,
+  Pencil,
+  Eye,
+  EyeOff,
+  Check,
 } from 'lucide-react';
 import {
   createCohort,
+  updateCohort,
+  toggleCohortActive,
+  deleteCohort,
+  bulkCreateCohorts,
   addStudentToCohort,
   removeStudentFromCohort,
   bulkAddStudentsToCohort,
@@ -75,6 +83,7 @@ interface Student {
 interface CohortItem {
   id: string;
   name: string;
+  isActive?: boolean;
   members: { user: Student }[];
   _count: {
     members: number;
@@ -146,10 +155,257 @@ export function CohortsClient({
     (s) => !s.cohortMemberships || s.cohortMemberships.length === 0
   ).length;
 
-  // Filter cohorts by search
-  const filteredCohorts = cohorts.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // 5. Status Filter
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  // 6. Edit Cohort Modal
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingCohort, setEditingCohort] = useState<CohortItem | null>(null);
+  const [editCohortName, setEditCohortName] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // 7. Bulk Upload Cohort Modal
+  interface BulkCohortRow {
+    name: string;
+    note?: string;
+    isDuplicate: boolean;
+  }
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [bulkFileName, setBulkFileName] = useState('');
+  const [bulkParsedRows, setBulkParsedRows] = useState<BulkCohortRow[]>([]);
+
+  // Filter cohorts by search and status
+  const activeCount = cohorts.filter((c) => c.isActive !== false).length;
+  const inactiveCount = cohorts.filter((c) => c.isActive === false).length;
+
+  const filteredCohorts = cohorts.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
+    const isCohortActive = c.isActive !== false;
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'active'
+        ? isCohortActive
+        : !isCohortActive;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Edit Cohort Handlers
+  const handleOpenEdit = (cohort: CohortItem) => {
+    setEditingCohort(cohort);
+    setEditCohortName(cohort.name);
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCohort || !editCohortName.trim()) return;
+    setIsSavingEdit(true);
+    try {
+      await updateCohort(editingCohort.id, editCohortName.trim());
+      setCohorts((prev) =>
+        prev.map((c) =>
+          c.id === editingCohort.id ? { ...c, name: editCohortName.trim() } : c
+        )
+      );
+      setIsEditOpen(false);
+      await showAlert(t('editCohortSuccess'), { type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      if (err?.message === 'DUPLICATE_NAME') {
+        await showAlert(t('editCohortConflict'), { type: 'error' });
+      } else {
+        await showAlert(err?.message || t('editCohortFailed'), { type: 'error' });
+      }
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Toggle Active/Nonactive Handlers
+  const handleToggleActive = async (cohort: CohortItem) => {
+    const willDeactivate = cohort.isActive !== false;
+    const confirmed = await showConfirm(
+      willDeactivate
+        ? t('confirmDeactivateDesc', { name: cohort.name })
+        : t('confirmActivateDesc', { name: cohort.name }),
+      {
+        title: willDeactivate ? t('confirmDeactivateTitle') : t('confirmActivateTitle'),
+        confirmText: willDeactivate ? t('confirmDeactivateBtn') : t('confirmActivateBtn'),
+        cancelText: t('cancelButton'),
+      }
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      await toggleCohortActive(cohort.id, !willDeactivate);
+      setCohorts((prev) =>
+        prev.map((c) => (c.id === cohort.id ? { ...c, isActive: !willDeactivate } : c))
+      );
+      await showAlert(t('toggleStatusSuccess'), { type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || t('toggleStatusFailed'), { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete Cohort Handler
+  const handleDeleteCohort = async (cohort: CohortItem) => {
+    const confirmed = await showConfirm(
+      t('confirmDeleteDesc', { name: cohort.name }),
+      {
+        title: t('confirmDeleteTitle'),
+        confirmText: t('confirmDeleteBtn'),
+        cancelText: t('cancelButton'),
+      }
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      await deleteCohort(cohort.id);
+      setCohorts((prev) => prev.filter((c) => c.id !== cohort.id));
+
+      // Remove cohort memberships from local students state
+      setStudents((prev) =>
+        prev.map((s) => ({
+          ...s,
+          cohortMemberships: (s.cohortMemberships || []).filter(
+            (cm) => cm.cohort.id !== cohort.id
+          ),
+        }))
+      );
+
+      await showAlert(t('deleteCohortSuccess', { name: cohort.name }), { type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || t('deleteCohortFailed'), { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Bulk Upload Handlers
+  const handleOpenBulkUpload = () => {
+    setIsBulkOpen(true);
+    setBulkFileName('');
+    setBulkParsedRows([]);
+  };
+
+  const handleDownloadBulkTemplateXlsx = () => {
+    const sampleRows = [
+      { 'Nama Kohort': 'Kelas 10-A', 'Keterangan': 'Tingkat X' },
+      { 'Nama Kohort': 'Kelas 10-B', 'Keterangan': 'Tingkat X' },
+      { 'Nama Kohort': 'Kelas 11-IPA-1', 'Keterangan': 'Tingkat XI MIPA' },
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(sampleRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Daftar Kohort');
+    XLSX.writeFile(workbook, 'Template_Unggah_Kohort_Lentera.xlsx');
+  };
+
+  const handleDownloadBulkTemplateCsv = () => {
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      ['Nama Kohort,Keterangan', 'Kelas 10-A,Tingkat X', 'Kelas 10-B,Tingkat X', 'Kelas 11-IPA-1,Tingkat XI MIPA'].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'Template_Unggah_Kohort_Lentera.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleUploadBulkFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBulkFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const json = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+
+        if (!json || json.length === 0) {
+          showAlert(t('emptyExcelAlert'), { type: 'error' });
+          return;
+        }
+
+        const existingNames = new Set(cohorts.map((c) => c.name.trim().toLowerCase()));
+        const parsed: BulkCohortRow[] = [];
+        const seenInFile = new Set<string>();
+
+        for (const row of json) {
+          const nameKey =
+            Object.keys(row).find((k) =>
+              /^(nama\s*kohor(t)?|nama\s*kelas|nama\s*rombel|nama|cohort|name|group)$/i.test(k.trim()) ||
+              /kohor|rombel/i.test(k)
+            ) || Object.keys(row)[0];
+
+          const noteKey = Object.keys(row).find((k) =>
+            /^(keterangan|deskripsi|tingkat|catatan|notes|description|grade)$/i.test(k.trim()) ||
+            /ket|note|tingkat/i.test(k)
+          );
+
+          const cohortNameVal = String(row[nameKey || ''] || '').trim();
+          const noteVal = noteKey ? String(row[noteKey] || '').trim() : undefined;
+
+          if (!cohortNameVal) continue;
+
+          const lowerName = cohortNameVal.toLowerCase();
+          const isDup = existingNames.has(lowerName) || seenInFile.has(lowerName);
+          seenInFile.add(lowerName);
+
+          parsed.push({
+            name: cohortNameVal,
+            note: noteVal,
+            isDuplicate: isDup,
+          });
+        }
+
+        setBulkParsedRows(parsed);
+      } catch (err) {
+        console.error(err);
+        showAlert(t('excelReadError'), { type: 'error' });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleExecuteBulkUpload = async () => {
+    const toCreate = bulkParsedRows.filter((r) => !r.isDuplicate);
+    if (toCreate.length === 0) {
+      await showAlert(t('noNewCohortsAlert'), { type: 'error' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await bulkCreateCohorts(toCreate.map((r) => r.name));
+      await showAlert(
+        t('bulkUploadSuccessAlert', {
+          created: res.createdCount,
+          skipped: res.skippedCount + bulkParsedRows.filter((r) => r.isDuplicate).length,
+        }),
+        { type: 'success' }
+      );
+      setIsBulkOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || t('bulkUploadFailedAlert'), { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Export cohort members to Excel (.xlsx)
   const handleExportCohortExcel = (cohort: CohortItem) => {
@@ -194,7 +450,11 @@ export function CohortsClient({
       await showAlert(t('cohortCreatedAlert', { name: created.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
-      await showAlert(err?.message || t('cohortCreateFailedAlert'), { type: 'error' });
+      if (err?.message === 'DUPLICATE_NAME') {
+        await showAlert(t('duplicateCohortNameError'), { type: 'error' });
+      } else {
+        await showAlert(err?.message || t('cohortCreateFailedAlert'), { type: 'error' });
+      }
     } finally {
       setLoading(false);
     }
@@ -705,10 +965,15 @@ export function CohortsClient({
 
     if (!studentSearch.trim()) return true;
     const q = studentSearch.toLowerCase();
+    const hasMatchingCohort = s.cohortMemberships?.some((cm) =>
+      cm.cohort.name.toLowerCase().includes(q)
+    );
+
     return (
       s.name.toLowerCase().includes(q) ||
       (s.nis && s.nis.toLowerCase().includes(q)) ||
-      s.email.toLowerCase().includes(q)
+      s.email.toLowerCase().includes(q) ||
+      Boolean(hasMatchingCohort)
     );
   });
 
@@ -729,43 +994,84 @@ export function CohortsClient({
         </div>
       )}
 
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('searchPlaceholder')}
-            className="pl-9 text-sm"
-          />
+      {/* Status Filter Tabs & Action Bar */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 pb-2 overflow-x-auto">
+          <Button
+            type="button"
+            variant={statusFilter === 'all' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setStatusFilter('all')}
+            className={statusFilter === 'all' ? 'bg-[#002446] hover:bg-[#001b33] text-white text-xs h-8' : 'text-gray-600 dark:text-gray-400 text-xs h-8'}
+          >
+            {t('tabAll', { count: cohorts.length })}
+          </Button>
+          <Button
+            type="button"
+            variant={statusFilter === 'active' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setStatusFilter('active')}
+            className={statusFilter === 'active' ? 'bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8' : 'text-gray-600 dark:text-gray-400 text-xs h-8'}
+          >
+            {t('tabActive', { count: activeCount })}
+          </Button>
+          <Button
+            type="button"
+            variant={statusFilter === 'inactive' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setStatusFilter('inactive')}
+            className={statusFilter === 'inactive' ? 'bg-gray-600 hover:bg-gray-700 text-white text-xs h-8' : 'text-gray-600 dark:text-gray-400 text-xs h-8'}
+          >
+            {t('tabInactive', { count: inactiveCount })}
+          </Button>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <Button
-            onClick={handleOpenPromote}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 text-xs font-semibold"
-          >
-            <TrendingUp className="w-4 h-4" />
-            {t('btnPromote')}
-          </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('searchPlaceholder')}
+              className="pl-9 text-sm"
+            />
+          </div>
 
-          <Button
-            onClick={handleOpenGraduation}
-            variant="outline"
-            className="border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950/30 flex items-center gap-1.5 text-xs font-semibold"
-          >
-            <Award className="w-4 h-4 text-purple-600" />
-            {t('btnGraduation')}
-          </Button>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Button
+              onClick={handleOpenPromote}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <TrendingUp className="w-4 h-4" />
+              {t('btnPromote')}
+            </Button>
 
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5 text-xs font-semibold"
-          >
-            <Plus className="w-4 h-4" />
-            {t('btnCreateCohort')}
-          </Button>
+            <Button
+              onClick={handleOpenGraduation}
+              variant="outline"
+              className="border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-950/30 flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <Award className="w-4 h-4 text-purple-600" />
+              {t('btnGraduation')}
+            </Button>
+
+            <Button
+              onClick={handleOpenBulkUpload}
+              variant="outline"
+              className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-purple-950/30 flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <FileUp className="w-4 h-4 text-blue-600" />
+              {t('btnBulkUpload')}
+            </Button>
+
+            <Button
+              onClick={() => setIsCreateOpen(true)}
+              className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <Plus className="w-4 h-4" />
+              {t('btnCreateCohort')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -783,20 +1089,66 @@ export function CohortsClient({
           filteredCohorts.map((cohort) => (
             <Card
               key={cohort.id}
-              className="hover:shadow-md transition-shadow border-gray-200 dark:border-gray-800 flex flex-col justify-between"
+              className={`hover:shadow-md transition-shadow border-gray-200 dark:border-gray-800 flex flex-col justify-between ${cohort.isActive === false ? 'opacity-80 bg-gray-50/60 dark:bg-gray-900/40' : ''}`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {t('coursesSynced', { count: cohort._count.enrollments })}
-                  </Badge>
-                  <Badge className="bg-[#FF8928] text-white text-xs">
-                    {t('studentsCount', { count: cohort._count.members })}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant="outline" className="text-xs">
+                      {t('coursesSynced', { count: cohort._count.enrollments })}
+                    </Badge>
+                    <Badge className="bg-[#FF8928] text-white text-xs">
+                      {t('studentsCount', { count: cohort._count.members })}
+                    </Badge>
+                  </div>
+                  <div>
+                    {cohort.isActive === false ? (
+                      <Badge variant="outline" className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300 dark:border-gray-700 text-[11px] flex items-center gap-1">
+                        <EyeOff className="w-3 h-3" />
+                        {t('statusInactive')}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 text-[11px] flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        {t('statusActive')}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <CardTitle className="text-lg font-bold text-[#002446] dark:text-white mt-2 truncate">
-                  {cohort.name}
-                </CardTitle>
+                <div className="flex items-center justify-between gap-2 mt-2">
+                  <CardTitle className="text-lg font-bold text-[#002446] dark:text-white truncate" title={cohort.name}>
+                    {cohort.name}
+                  </CardTitle>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-gray-500 hover:text-[#002446] dark:hover:text-white"
+                      onClick={() => handleOpenEdit(cohort)}
+                      title={t('editCohortTooltip')}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={`h-8 w-8 ${cohort.isActive === false ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50' : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50'}`}
+                      onClick={() => handleToggleActive(cohort)}
+                      title={cohort.isActive === false ? t('activateTooltip') : t('deactivateTooltip')}
+                    >
+                      {cohort.isActive === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      onClick={() => handleDeleteCohort(cohort)}
+                      title={t('deleteCohortTooltip')}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
 
               <CardContent className="space-y-4 pt-0">
@@ -888,6 +1240,193 @@ export function CohortsClient({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 1.1 Modal Edit Kohort */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleSaveEdit}>
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-[#002446] dark:text-white">
+                {t('editCohortModalTitle')}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="editChName" className="font-medium">
+                  {t('editCohortNameLabel')} <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="editChName"
+                  value={editCohortName}
+                  onChange={(e) => setEditCohortName(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditOpen(false)}
+              >
+                {t('cancelButton')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSavingEdit || !editCohortName.trim()}
+                className="bg-[#002446] hover:bg-[#001b33] text-white"
+              >
+                {isSavingEdit ? t('saving') : t('btnSave')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 1.2 Modal Unggah Massal Kohort */}
+      <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-[#002446] dark:text-white flex items-center gap-2">
+              <FileUp className="w-5 h-5 text-blue-600" />
+              {t('bulkUploadModalTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              {t('bulkUploadModalDesc')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 overflow-y-auto pr-1">
+            {/* Template Download Buttons */}
+            <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                  Format Berkas Impor
+                </p>
+                <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                  Unduh template panduan untuk format kolom yang sesuai.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadBulkTemplateXlsx}
+                  className="text-xs border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-800 dark:text-blue-200 flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  .XLSX
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadBulkTemplateCsv}
+                  className="text-xs border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-800 dark:text-blue-200 flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  .CSV
+                </Button>
+              </div>
+            </div>
+
+            {/* File Upload Area */}
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-400 rounded-xl p-6 text-center cursor-pointer transition-colors relative bg-gray-50/50 dark:bg-gray-900/50">
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                onChange={handleUploadBulkFile}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <FileSpreadsheet className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                {bulkFileName ? (
+                  <span className="font-semibold text-blue-600">{bulkFileName}</span>
+                ) : (
+                  t('uploadAreaTitle')
+                )}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                {t('uploadAreaHint')}
+              </p>
+            </div>
+
+            {/* Preview Table */}
+            {bulkParsedRows.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">
+                    {t('previewBulkTitle', { count: bulkParsedRows.length })}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 text-[11px]">
+                      {bulkParsedRows.filter((r) => !r.isDuplicate).length} Baru
+                    </Badge>
+                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 text-[11px]">
+                      {bulkParsedRows.filter((r) => r.isDuplicate).length} Duplikat (Skip)
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="border rounded-md overflow-hidden max-h-56 overflow-y-auto">
+                  <Table>
+                    <TableHeader className="bg-gray-50 dark:bg-gray-800 text-[11px]">
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>{t('previewColCohortName')}</TableHead>
+                        <TableHead>{t('previewColNote')}</TableHead>
+                        <TableHead className="text-right">{t('previewBulkStatusCol')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="text-xs">
+                      {bulkParsedRows.map((row, idx) => (
+                        <TableRow key={idx} className={row.isDuplicate ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''}>
+                          <TableCell className="font-mono text-gray-500">{idx + 1}</TableCell>
+                          <TableCell className="font-semibold text-gray-900 dark:text-white">{row.name}</TableCell>
+                          <TableCell className="text-gray-500">{row.note || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            {row.isDuplicate ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                <AlertCircle className="w-3 h-3" />
+                                {t('statusDuplicate')}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="w-3 h-3" />
+                                {t('statusNew')}
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsBulkOpen(false)}
+            >
+              {t('cancelButton')}
+            </Button>
+            <Button
+              type="button"
+              disabled={loading || bulkParsedRows.filter((r) => !r.isDuplicate).length === 0}
+              onClick={handleExecuteBulkUpload}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {loading ? t('processing') : t('btnExecuteBulkUpload', { count: bulkParsedRows.filter((r) => !r.isDuplicate).length })}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1075,7 +1614,33 @@ export function CohortsClient({
                   />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {availableToAdd.length > 0 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const allSelected = availableToAdd.every((s) => selectedToAddStudentIds.has(s.id));
+                        if (allSelected) {
+                          const updated = new Set(selectedToAddStudentIds);
+                          availableToAdd.forEach((s) => updated.delete(s.id));
+                          setSelectedToAddStudentIds(updated);
+                        } else {
+                          const updated = new Set(selectedToAddStudentIds);
+                          availableToAdd.forEach((s) => updated.add(s.id));
+                          setSelectedToAddStudentIds(updated);
+                        }
+                      }}
+                      className="h-8 text-xs border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                      {availableToAdd.every((s) => selectedToAddStudentIds.has(s.id))
+                        ? t('btnDeselectFiltered')
+                        : t('btnSelectAllFiltered', { count: availableToAdd.length })}
+                    </Button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setFilterUnassignedOnly(!filterUnassignedOnly)}
