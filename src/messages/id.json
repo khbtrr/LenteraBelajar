@@ -519,7 +519,13 @@
     "importFailedAlert": "Gagal mengimpor data",
     "closeButton": "Tutup",
     "confirmImport": "Konfirmasi Impor ({count} Pengguna)",
-    "importing": "Mengimpor..."
+    "importing": "Mengimpor...",
+    "showingPagination": "Menampilkan {start} - {end} dari {total} pengguna",
+    "perPage": "per halaman",
+    "prevPage": "Sebelumnya",
+    "nextPage": "Berikutnya",
+    "firstPage": "Pertama",
+    "lastPage": "Terakhir"
   },
   "adminCohorts": {
     "pageTitle": "Manajemen Grup Kohort",

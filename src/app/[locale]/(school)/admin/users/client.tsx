@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,6 +32,10 @@ import {
   Trash2,
   Download,
   Unlock,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import {
   createUser,
@@ -73,6 +77,14 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter, statusFilter, pageSize]);
 
   // Form states (Create)
   const [name, setName] = useState('');
@@ -365,6 +377,29 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
     return matchSearch && matchRole && matchStatus;
   });
 
+  const totalItems = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedUsers = filtered.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (validCurrentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages);
+      } else if (validCurrentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -436,14 +471,14 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
                     {t('emptyUsers')}
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((user) => (
+                paginatedUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium text-[#002446] dark:text-white">
                       {user.name}
@@ -539,6 +574,99 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-gray-200 dark:border-gray-800 text-sm">
+            <div className="flex flex-wrap items-center gap-3 text-gray-500 dark:text-gray-400">
+              <span>
+                {t('showingPagination', {
+                  start: totalItems === 0 ? 0 : startIndex + 1,
+                  end: endIndex,
+                  total: totalItems,
+                })}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="h-8 px-2 rounded-md border border-gray-300 bg-white text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 transition-colors"
+                >
+                  <option value={10}>10 {t('perPage')}</option>
+                  <option value={25}>25 {t('perPage')}</option>
+                  <option value={50}>50 {t('perPage')}</option>
+                  <option value={100}>100 {t('perPage')}</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(1)}
+                disabled={validCurrentPage === 1}
+                className="h-8 w-8 p-0 dark:border-gray-700"
+                title={t('firstPage')}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={validCurrentPage === 1}
+                className="h-8 w-8 p-0 dark:border-gray-700"
+                title={t('prevPage')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex items-center gap-1 mx-1">
+                {getPageNumbers().map((page, idx) =>
+                  typeof page === 'number' ? (
+                    <Button
+                      key={idx}
+                      variant={validCurrentPage === page ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className={`h-8 min-w-[32px] px-2 text-xs ${
+                        validCurrentPage === page
+                          ? 'bg-[#002446] hover:bg-[#002446]/90 text-white dark:bg-brand-600 dark:hover:bg-brand-700'
+                          : 'dark:border-gray-700'
+                      }`}
+                    >
+                      {page}
+                    </Button>
+                  ) : (
+                    <span key={idx} className="px-1 text-gray-400 dark:text-gray-600 text-xs">
+                      {page}
+                    </span>
+                  )
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={validCurrentPage === totalPages || totalItems === 0}
+                className="h-8 w-8 p-0 dark:border-gray-700"
+                title={t('nextPage')}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={validCurrentPage === totalPages || totalItems === 0}
+                className="h-8 w-8 p-0 dark:border-gray-700"
+                title={t('lastPage')}
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

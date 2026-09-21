@@ -519,7 +519,13 @@
     "importFailedAlert": "Failed to import data",
     "closeButton": "Close",
     "confirmImport": "Confirm Import ({count} Users)",
-    "importing": "Importing..."
+    "importing": "Importing...",
+    "showingPagination": "Showing {start} - {end} of {total} users",
+    "perPage": "per page",
+    "prevPage": "Previous",
+    "nextPage": "Next",
+    "firstPage": "First",
+    "lastPage": "Last"
   },
   "adminCohorts": {
     "pageTitle": "Cohort Group Management",
