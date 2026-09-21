@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import {
   getAllUserNotifications,
@@ -44,6 +45,10 @@ export function NotificationsClient({
 }: {
   initialNotifications: NotificationItem[];
 }) {
+  const t = useTranslations('notifications');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const router = useRouter();
   const { showAlert } = useDialog();
 
@@ -74,7 +79,7 @@ export function NotificationsClient({
     try {
       await markAllNotificationsAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      showAlert('Seluruh notifikasi telah ditandai sudah dibaca.', { type: 'success' });
+      showAlert(t('allMarkedReadSuccess'), { type: 'success' });
     } catch (err) {
       console.error(err);
     }
@@ -84,7 +89,7 @@ export function NotificationsClient({
     try {
       await clearReadNotifications();
       setNotifications((prev) => prev.filter((n) => !n.isRead));
-      showAlert('Notifikasi yang sudah dibaca berhasil dibersihkan.', { type: 'success' });
+      showAlert(t('clearReadSuccess'), { type: 'success' });
     } catch (err) {
       console.error(err);
     }
@@ -182,15 +187,15 @@ export function NotificationsClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-[#002446]">Pusat Notifikasi</h1>
+            <h1 className="text-2xl font-bold text-[#002446]">{t('centerTitle')}</h1>
             {unreadCount > 0 && (
               <Badge className="bg-[#FF8928] text-white text-xs font-bold px-2 py-0.5">
-                {unreadCount} Baru
+                {t('newBadge', { count: unreadCount })}
               </Badge>
             )}
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Riwayat seluruh pemberitahuan akademik, tugas, kuis, nilai, dan forum diskusi Anda.
+            {t('centerSubtitle')}
           </p>
         </div>
 
@@ -203,7 +208,7 @@ export function NotificationsClient({
               className="text-xs text-[#002446] border-[#002446]/30 hover:bg-gray-100 flex items-center gap-1.5"
             >
               <CheckCheck className="h-3.5 w-3.5" />
-              <span>Tandai Semua Dibaca</span>
+              <span>{t('markAllRead')}</span>
             </Button>
           )}
           <Button
@@ -213,7 +218,7 @@ export function NotificationsClient({
             className="text-xs text-gray-500 hover:text-rose-700 hover:bg-rose-50 flex items-center gap-1.5"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            <span>Bersihkan Terbaca</span>
+            <span>{t('clearRead')}</span>
           </Button>
         </div>
       </div>
@@ -229,7 +234,7 @@ export function NotificationsClient({
               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
           }`}
         >
-          Semua
+          {t('tabAll')}
         </button>
 
         <button
@@ -241,7 +246,7 @@ export function NotificationsClient({
               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
           }`}
         >
-          <span>Belum Dibaca</span>
+          <span>{t('tabUnread')}</span>
           {unreadCount > 0 && (
             <span className="w-2 h-2 rounded-full bg-[#FF8928]" />
           )}
@@ -256,7 +261,7 @@ export function NotificationsClient({
               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
           }`}
         >
-          Tugas & Kuis
+          {t('tabAssignmentQuiz')}
         </button>
 
         <button
@@ -268,7 +273,7 @@ export function NotificationsClient({
               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
           }`}
         >
-          Nilai & Hasil
+          {t('tabGrade')}
         </button>
 
         <button
@@ -280,7 +285,7 @@ export function NotificationsClient({
               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
           }`}
         >
-          Pengumuman & Forum
+          {t('tabAnnouncementForum')}
         </button>
       </div>
 
@@ -289,14 +294,14 @@ export function NotificationsClient({
         <CardContent className="p-0">
           {loading ? (
             <div className="py-16 text-center text-xs text-gray-500">
-              Memuat notifikasi...
+              {t('loadingNotifications')}
             </div>
           ) : notifications.length === 0 ? (
             <div className="py-16 text-center space-y-2 text-gray-400">
               <Bell className="h-12 w-12 mx-auto text-gray-300" />
-              <div className="text-sm font-bold text-gray-700">Tidak Ada Notifikasi</div>
+              <div className="text-sm font-bold text-gray-700">{t('noNotifications')}</div>
               <p className="text-xs text-gray-400 max-w-sm mx-auto">
-                Anda sudah melihat semua pemberitahuan pada kategori ini.
+                {t('noNotificationsDesc')}
               </p>
             </div>
           ) : (
@@ -327,7 +332,7 @@ export function NotificationsClient({
 
                       <div className="flex items-center gap-3 pt-1">
                         <span className="text-[11px] text-gray-400">
-                          {new Date(item.createdAt).toLocaleString('id-ID', {
+                          {new Date(item.createdAt).toLocaleString(dateLocale, {
                             weekday: 'short',
                             day: 'numeric',
                             month: 'short',
@@ -337,7 +342,7 @@ export function NotificationsClient({
                         </span>
                         {item.link && (
                           <span className="text-[11px] text-[#FF8928] font-semibold flex items-center gap-1">
-                            Buka tautan <ExternalLink className="h-3 w-3" />
+                            {t('openLink')} <ExternalLink className="h-3 w-3" />
                           </span>
                         )}
                       </div>

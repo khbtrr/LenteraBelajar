@@ -268,9 +268,26 @@
   },
   "notifications": {
     "title": "Notifikasi",
+    "centerTitle": "Pusat Notifikasi",
+    "newBadge": "{count} Baru",
+    "newBadgeShort": "({count} baru)",
+    "centerSubtitle": "Riwayat seluruh pemberitahuan akademik, tugas, kuis, nilai, dan forum diskusi Anda.",
     "markAsRead": "Tandai sudah dibaca",
     "markAllAsRead": "Tandai semua sudah dibaca",
-    "noNotifications": "Tidak ada notifikasi"
+    "markAllRead": "Tandai Semua Dibaca",
+    "clearRead": "Bersihkan Terbaca",
+    "allMarkedReadSuccess": "Seluruh notifikasi telah ditandai sudah dibaca.",
+    "clearReadSuccess": "Notifikasi yang sudah dibaca berhasil dibersihkan.",
+    "tabAll": "Semua",
+    "tabUnread": "Belum Dibaca",
+    "tabAssignmentQuiz": "Tugas & Kuis",
+    "tabGrade": "Nilai & Hasil",
+    "tabAnnouncementForum": "Pengumuman & Forum",
+    "loadingNotifications": "Memuat notifikasi...",
+    "noNotifications": "Tidak ada notifikasi",
+    "noNotificationsDesc": "Anda sudah melihat semua pemberitahuan pada kategori ini.",
+    "openLink": "Buka tautan",
+    "viewAllHistory": "Lihat Semua Riwayat Notifikasi →"
   },
   "dashboard": {
     "welcome": "Selamat datang, {name}!",

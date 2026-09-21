@@ -268,9 +268,26 @@
   },
   "notifications": {
     "title": "Notifications",
+    "centerTitle": "Notification Center",
+    "newBadge": "{count} New",
+    "newBadgeShort": "({count} new)",
+    "centerSubtitle": "History of all your academic announcements, assignments, quizzes, grades, and discussion forums.",
     "markAsRead": "Mark as read",
     "markAllAsRead": "Mark all as read",
-    "noNotifications": "No notifications"
+    "markAllRead": "Mark All as Read",
+    "clearRead": "Clear Read",
+    "allMarkedReadSuccess": "All notifications have been marked as read.",
+    "clearReadSuccess": "Read notifications cleared successfully.",
+    "tabAll": "All",
+    "tabUnread": "Unread",
+    "tabAssignmentQuiz": "Assignments & Quizzes",
+    "tabGrade": "Grades & Results",
+    "tabAnnouncementForum": "Announcements & Forums",
+    "loadingNotifications": "Loading notifications...",
+    "noNotifications": "No notifications",
+    "noNotificationsDesc": "You have caught up with all notifications in this category.",
+    "openLink": "Open link",
+    "viewAllHistory": "View All Notification History →"
   },
   "dashboard": {
     "welcome": "Welcome, {name}!",

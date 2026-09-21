@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Bell, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,10 @@ interface NotificationItem {
 }
 
 export function NotificationDropdown() {
+  const t = useTranslations('notifications');
+  const locale = useLocale();
+  const dateLocale = locale === 'id' ? 'id-ID' : 'en-US';
+
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const router = useRouter();
@@ -91,7 +96,7 @@ export function NotificationDropdown() {
       <DropdownMenuContent align="end" className="w-80 sm:w-96 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto p-0">
         <div className="flex items-center justify-between p-3 border-b bg-gray-50/70">
           <DropdownMenuLabel className="p-0 font-bold text-[#002446]">
-            Notifikasi {unreadCount > 0 && `(${unreadCount} baru)`}
+            {t('title')} {unreadCount > 0 && t('newBadgeShort', { count: unreadCount })}
           </DropdownMenuLabel>
           {unreadCount > 0 && (
             <Button
@@ -100,7 +105,7 @@ export function NotificationDropdown() {
               onClick={handleMarkAllRead}
               className="h-7 text-xs text-blue-600 hover:text-blue-800 p-1 flex items-center gap-1"
             >
-              <Check className="h-3 w-3" /> Tandai semua dibaca
+              <Check className="h-3 w-3" /> {t('markAllAsRead')}
             </Button>
           )}
         </div>
@@ -108,7 +113,7 @@ export function NotificationDropdown() {
         <div className="divide-y max-h-96 overflow-y-auto">
           {notifications.length === 0 ? (
             <div className="p-6 text-center text-sm text-gray-500">
-              Tidak ada notifikasi.
+              {t('noNotifications')}
             </div>
           ) : (
             notifications.map((n) => (
@@ -127,7 +132,7 @@ export function NotificationDropdown() {
                     <span>{n.title}</span>
                   </div>
                   <span className="text-[10px] text-gray-400 whitespace-nowrap">
-                    {new Date(n.createdAt).toLocaleDateString('id-ID', {
+                    {new Date(n.createdAt).toLocaleDateString(dateLocale, {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
@@ -140,7 +145,7 @@ export function NotificationDropdown() {
 
                 {n.link && (
                   <span className="inline-flex items-center gap-1 text-[11px] text-[#FF8928] font-medium mt-1">
-                    Buka tautan <ExternalLink className="h-2.5 w-2.5" />
+                    {t('openLink')} <ExternalLink className="h-2.5 w-2.5" />
                   </span>
                 )}
               </div>
@@ -155,7 +160,7 @@ export function NotificationDropdown() {
             onClick={() => router.push('/notifications')}
             className="w-full text-xs text-[#002446] hover:text-[#002446] hover:bg-gray-100 font-bold"
           >
-            Lihat Semua Riwayat Notifikasi &rarr;
+            {t('viewAllHistory')}
           </Button>
         </div>
       </DropdownMenuContent>
