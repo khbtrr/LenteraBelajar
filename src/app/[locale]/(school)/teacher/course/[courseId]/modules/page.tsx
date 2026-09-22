@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { auth } from '@/lib/auth';
 import { getCourseById } from '@/lib/actions/course';
 import { getCourseModules } from '@/lib/actions/module';
 import { TeacherCourseModulesClient } from './client';
@@ -9,6 +10,7 @@ export default async function TeacherCourseModulesPage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
+  const session = await auth();
   const [course, modules] = await Promise.all([
     getCourseById(courseId),
     getCourseModules(courseId),
@@ -17,6 +19,8 @@ export default async function TeacherCourseModulesPage({
   if (!course) {
     notFound();
   }
+
+  const isReadOnly = session?.user?.role === 'SUPERVISOR';
 
   return (
     <div className="space-y-6">
@@ -32,7 +36,11 @@ export default async function TeacherCourseModulesPage({
         </p>
       </div>
 
-      <TeacherCourseModulesClient course={course} initialModules={modules} />
+      <TeacherCourseModulesClient
+        course={course}
+        initialModules={modules}
+        isReadOnly={isReadOnly}
+      />
     </div>
   );
 }

@@ -1217,7 +1217,36 @@
     "teachersDesc": "Total guru terdaftar di sekolah",
     "studentsDesc": "Total siswa terdaftar di sekolah",
     "coursesDesc": "Total kursus pembelajaran",
-    "activeCoursesDesc": "Kursus aktif berjalan"
+    "activeCoursesDesc": "Kursus aktif berjalan",
+    "modulesDesc": "Total bab modul pembelajaran",
+    "cbtEvaluationTitle": "Evaluasi Pembelajaran & CBT",
+    "cbtEvaluationSubtitle": "Ringkasan ketercapaian nilai dan tingkat kelulusan standar KKM sekolah.",
+    "averageScore": "Rata-rata Nilai",
+    "passingRate": "Tingkat Tuntas KKM",
+    "passingThreshold": "Standar KKM: {kkm}",
+    "totalExamsTaken": "{count} pengerjaan kuis dievaluasi",
+    "passedCount": "{count} siswa lulus KKM",
+    "attendanceTitle": "Rekap Kehadiran & Presensi Siswa",
+    "attendanceSubtitle": "Statistik absensi siswa di seluruh sesi pertemuan mata pelajaran aktif.",
+    "present": "Hadir",
+    "sick": "Sakit",
+    "permission": "Izin",
+    "absent": "Alpa",
+    "attendanceRate": "Tingkat Kehadiran",
+    "totalCheckins": "Total {count} presensi tercatat",
+    "topCoursesTitle": "Mata Pelajaran Aktif & Pembelajaran Terbina",
+    "topCoursesSubtitle": "Daftar mata pelajaran dengan bab modul materi terbanyak untuk supervisi pembelajaran.",
+    "viewAllCourses": "Lihat Semua Laporan",
+    "colCourseTitle": "Mata Pelajaran",
+    "colTeacher": "Guru Pengampu",
+    "colModules": "Bab Modul",
+    "colStudents": "Siswa Terdaftar",
+    "colAverageScore": "Rata-rata Nilai",
+    "colAction": "Aksi",
+    "inspectCourse": "Tinjau Modul",
+    "noActiveCourses": "Belum ada mata pelajaran aktif.",
+    "noCbtData": "Belum ada riwayat pengerjaan kuis CBT yang tercatat.",
+    "noAttendanceData": "Belum ada sesi presensi yang dibuat oleh guru."
   },
   "announcementsWidget": {
     "urgentNotice": "PENGUMUMAN MENDESAK",
@@ -2002,6 +2031,7 @@
     "systemErrorWordDesc": "Terjadi kesalahan saat mengunggah dan memproses file."
   },
   "teacherModules": {
+    "readOnlyNotice": "Mode Pratinjau Supervisi: Anda sedang meninjau materi dan struktur pembelajaran ini sebagai Pengawas/Kepsek dalam mode baca (Read-Only).",
     "catPdf": "Dokumen PDF (.pdf)",
     "catImage": "Gambar (.jpg, .png, .jpeg, .webp)",
     "catOffice": "Dokumen Office (.docx, .xlsx, .pptx)",
@@ -2633,7 +2663,11 @@
     "assessmentsDetail": "{quizzes} kuis • {assignments} tugas",
     "statusVeryActive": "Sangat Aktif",
     "statusActive": "Aktif",
-    "statusNoContent": "Belum Ada Konten"
+    "statusNoContent": "Belum Ada Konten",
+    "btnViewCourses": "Lihat Mata Pelajaran",
+    "modalCoursesTitle": "Daftar Mata Pelajaran: {name}",
+    "modalCoursesSubtitle": "Pilih mata pelajaran untuk meninjau materi, bab modul, dan evaluasi guru yang bersangkutan.",
+    "noCourses": "Guru ini belum memiliki mata pelajaran terdaftar."
   },
   "supervisorStudentActivity": {
     "title": "Monitoring Keaktifan Siswa",
@@ -2685,6 +2719,8 @@
     "colRecordedGrades": "Nilai Masuk",
     "colAverageGrade": "Rata-rata Nilai",
     "noReportsFound": "Tidak ada data laporan",
-    "chaptersCount": "{count} bab"
+    "chaptersCount": "{count} bab",
+    "colAction": "Aksi",
+    "viewCourseBtn": "Lihat Pembelajaran"
   }
 }

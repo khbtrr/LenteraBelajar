@@ -4,7 +4,7 @@ import { AdminMessagesClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function AdminMessagesPage() {
-  await requireRole('ADMIN', 'SUPERVISOR', 'SUPER_ADMIN');
+  await requireRole('ADMIN', 'SUPER_ADMIN');
 
   const t = await getTranslations('adminMessages');
   const { conversations, total, totalPages } = await getSchoolConversations();

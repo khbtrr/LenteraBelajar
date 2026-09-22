@@ -46,6 +46,7 @@ import {
   Headphones,
   KeyRound,
   RefreshCw,
+  Eye,
 } from 'lucide-react';
 import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
 import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
@@ -173,9 +174,11 @@ function formatDatetimeLocal(date?: Date | string | null) {
 export function TeacherCourseModulesClient({
   course,
   initialModules,
+  isReadOnly = false,
 }: {
   course: any;
   initialModules: any[];
+  isReadOnly?: boolean;
 }) {
   const t = useTranslations('teacherModules');
   const locale = useLocale();
@@ -1089,24 +1092,38 @@ export function TeacherCourseModulesClient({
 
   return (
     <div className="space-y-6">
+      {isReadOnly && (
+        <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-center gap-3 text-amber-900 text-sm font-medium">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 text-amber-800">
+            <Eye className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="font-bold text-amber-950">Mode Supervisi Kepala Sekolah / Pengawas</div>
+            <div className="text-xs text-amber-800/90">{t('readOnlyNotice')}</div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-600">
           {t('totalModules', { count: modules.length })}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link href={`/teacher/course/${course.id}/question-bank`}>
-            <Button variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-100">
-              {t('bankSoalBtn')}
+        {!isReadOnly && (
+          <div className="flex items-center gap-2">
+            <Link href={`/teacher/course/${course.id}/question-bank`}>
+              <Button variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-100">
+                {t('bankSoalBtn')}
+              </Button>
+            </Link>
+            <Button
+              onClick={() => setIsModuleModalOpen(true)}
+              className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" /> {t('addModuleBtn')}
             </Button>
-          </Link>
-          <Button
-            onClick={() => setIsModuleModalOpen(true)}
-            className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" /> {t('addModuleBtn')}
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
 
       {modules.length === 0 ? (
@@ -1117,12 +1134,14 @@ export function TeacherCourseModulesClient({
             <p className="text-sm text-gray-500 max-w-md mx-auto">
               {t('emptyDesc')}
             </p>
-            <Button
-              onClick={() => setIsModuleModalOpen(true)}
-              className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white"
-            >
-              {t('createFirstBtn')}
-            </Button>
+            {!isReadOnly && (
+              <Button
+                onClick={() => setIsModuleModalOpen(true)}
+                className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white"
+              >
+                {t('createFirstBtn')}
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -1139,60 +1158,62 @@ export function TeacherCourseModulesClient({
                   </CardTitle>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setActiveModuleId(mod.id);
-                      setIsContentModalOpen(true);
-                    }}
-                    className="h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-50 flex items-center gap-1"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> {t('addContentBtn')}
-                  </Button>
+                {!isReadOnly && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setActiveModuleId(mod.id);
+                        setIsContentModalOpen(true);
+                      }}
+                      className="h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-50 flex items-center gap-1"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> {t('addContentBtn')}
+                    </Button>
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setActiveModuleId(mod.id);
-                      setIsQuizModalOpen(true);
-                    }}
-                    className="h-8 text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center gap-1"
-                  >
-                    <HelpCircle className="h-3.5 w-3.5" /> {t('addQuizBtn')}
-                  </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setActiveModuleId(mod.id);
+                        setIsQuizModalOpen(true);
+                      }}
+                      className="h-8 text-xs border-amber-300 text-amber-700 hover:bg-amber-50 flex items-center gap-1"
+                    >
+                      <HelpCircle className="h-3.5 w-3.5" /> {t('addQuizBtn')}
+                    </Button>
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setActiveModuleId(mod.id);
-                      setIsAssignModalOpen(true);
-                    }}
-                    className="h-8 text-xs border-purple-300 text-purple-700 hover:bg-purple-50 flex items-center gap-1"
-                  >
-                    <ClipboardList className="h-3.5 w-3.5" /> {t('addAssignmentBtn')}
-                  </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setActiveModuleId(mod.id);
+                        setIsAssignModalOpen(true);
+                      }}
+                      className="h-8 text-xs border-purple-300 text-purple-700 hover:bg-purple-50 flex items-center gap-1"
+                    >
+                      <ClipboardList className="h-3.5 w-3.5" /> {t('addAssignmentBtn')}
+                    </Button>
 
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setModuleToDelete({
-                        id: mod.id,
-                        title: mod.title,
-                        contentsCount: mod.contents.length,
-                        quizzesCount: mod.quizzes.length,
-                        assignmentsCount: mod.assignments.length,
-                      })
-                    }
-                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 ml-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setModuleToDelete({
+                          id: mod.id,
+                          title: mod.title,
+                          contentsCount: mod.contents.length,
+                          quizzesCount: mod.quizzes.length,
+                          assignmentsCount: mod.assignments.length,
+                        })
+                      }
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 ml-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
 
               <CardContent className="p-5 space-y-4">
@@ -1244,21 +1265,23 @@ export function TeacherCourseModulesClient({
                                 {t('downloadView')}
                               </a>
                             )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                setContentToDelete({
-                                  moduleId: mod.id,
-                                  id: c.id,
-                                  title: c.title,
-                                  type: c.type,
-                                })
-                              }
-                              className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {!isReadOnly && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  setContentToDelete({
+                                    moduleId: mod.id,
+                                    id: c.id,
+                                    title: c.title,
+                                    type: c.type,
+                                  })
+                                }
+                                className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1333,14 +1356,16 @@ export function TeacherCourseModulesClient({
                                 {t('liveProctorBtn')}
                               </Button>
                             </Link>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditQuizClick(q.id)}
-                              className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
-                            >
-                              {t('editBtn')}
-                            </Button>
+                            {!isReadOnly && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditQuizClick(q.id)}
+                                className="h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                              >
+                                {t('editBtn')}
+                              </Button>
+                            )}
                             <Link href={`/teacher/course/${course.id}/quiz-attempts/${q.id}`}>
                               <Button
                                 size="sm"
@@ -1350,21 +1375,23 @@ export function TeacherCourseModulesClient({
                                 {t('historyBtn')}
                               </Button>
                             </Link>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                setQuizToDelete({
-                                  moduleId: mod.id,
-                                  quizId: q.id,
-                                  title: q.title,
-                                  attemptsCount: q._count?.attempts,
-                                })
-                              }
-                              className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {!isReadOnly && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  setQuizToDelete({
+                                    moduleId: mod.id,
+                                    quizId: q.id,
+                                    title: q.title,
+                                    attemptsCount: q._count?.attempts,
+                                  })
+                                }
+                                className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1423,14 +1450,16 @@ export function TeacherCourseModulesClient({
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenEditAssignment(a)}
-                              className="h-7 text-xs border-purple-300 text-purple-700 hover:bg-purple-100 flex items-center gap-1"
-                            >
-                              <Edit className="h-3 w-3" /> {t('editBtn')}
-                            </Button>
+                            {!isReadOnly && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenEditAssignment(a)}
+                                className="h-7 text-xs border-purple-300 text-purple-700 hover:bg-purple-100 flex items-center gap-1"
+                              >
+                                <Edit className="h-3 w-3" /> {t('editBtn')}
+                              </Button>
+                            )}
                             <Link href={`/teacher/course/${course.id}/submissions/${a.id}`}>
                               <Button
                                 size="sm"
@@ -1440,21 +1469,23 @@ export function TeacherCourseModulesClient({
                                 {t('checkSubmissionsBtn')}
                               </Button>
                             </Link>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                setAssignmentToDelete({
-                                  moduleId: mod.id,
-                                  id: a.id,
-                                  title: a.title,
-                                  submissionsCount: a._count.submissions,
-                                })
-                              }
-                              className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {!isReadOnly && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  setAssignmentToDelete({
+                                    moduleId: mod.id,
+                                    id: a.id,
+                                    title: a.title,
+                                    submissionsCount: a._count.submissions,
+                                  })
+                                }
+                                className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}

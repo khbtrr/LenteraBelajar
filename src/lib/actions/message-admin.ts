@@ -37,7 +37,7 @@ export async function getSchoolConversations(
   total: number;
   totalPages: number;
 }> {
-  const session = await requireRole('ADMIN', 'SUPERVISOR', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const role = session.user.role;
   const schoolId = session.user.schoolId;
 
@@ -177,7 +177,7 @@ export async function getConversationMessagesAdmin(
   };
   messages: AdminMessageDetail[];
 }> {
-  const session = await requireRole('ADMIN', 'SUPERVISOR', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const role = session.user.role;
   const schoolId = session.user.schoolId;
 

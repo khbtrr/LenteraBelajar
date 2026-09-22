@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
@@ -78,6 +78,13 @@ export async function getTeacherActivityStats(schoolId: string, academicYearId?:
       totalContents,
       totalQuizzes,
       totalAssignments,
+      courses: teacher.teacherCourses.map((c) => ({
+        id: c.id,
+        title: c.title,
+        status: c.status,
+        enrollmentsCount: c._count.enrollments,
+        modulesCount: c._count.modules,
+      })),
     };
   });
 }

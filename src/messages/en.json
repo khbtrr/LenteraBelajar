@@ -1217,7 +1217,36 @@
     "teachersDesc": "Total registered teachers in school",
     "studentsDesc": "Total registered students in school",
     "coursesDesc": "Total learning courses",
-    "activeCoursesDesc": "Actively running courses"
+    "activeCoursesDesc": "Actively running courses",
+    "modulesDesc": "Total chapter modules created",
+    "cbtEvaluationTitle": "Learning Evaluation & CBT",
+    "cbtEvaluationSubtitle": "Summary of score achievements and school standard passing rate.",
+    "averageScore": "Average Score",
+    "passingRate": "Passing Rate",
+    "passingThreshold": "Passing Grade: {kkm}",
+    "totalExamsTaken": "{count} exam attempts evaluated",
+    "passedCount": "{count} students met standard",
+    "attendanceTitle": "Student Attendance & Participation",
+    "attendanceSubtitle": "Student attendance overview across all active course sessions.",
+    "present": "Present",
+    "sick": "Sick",
+    "permission": "Permission",
+    "absent": "Absent",
+    "attendanceRate": "Attendance Rate",
+    "totalCheckins": "Total {count} check-ins recorded",
+    "topCoursesTitle": "Active Courses & Learning Oversight",
+    "topCoursesSubtitle": "List of courses with comprehensive modules and student participation for supervision.",
+    "viewAllCourses": "View All Reports",
+    "colCourseTitle": "Course",
+    "colTeacher": "Teacher",
+    "colModules": "Modules",
+    "colStudents": "Enrolled Students",
+    "colAverageScore": "Average Grade",
+    "colAction": "Action",
+    "inspectCourse": "Inspect Modules",
+    "noActiveCourses": "No active courses available.",
+    "noCbtData": "No CBT exam attempts recorded yet.",
+    "noAttendanceData": "No attendance sessions created yet."
   },
   "announcementsWidget": {
     "urgentNotice": "URGENT ANNOUNCEMENT",
@@ -2002,6 +2031,7 @@
     "systemErrorWordDesc": "An error occurred while uploading and processing file."
   },
   "teacherModules": {
+    "readOnlyNotice": "Supervisory Preview Mode: You are viewing this course and chapter content as a School Supervisor/Principal in Read-Only mode.",
     "catPdf": "PDF Document (.pdf)",
     "catImage": "Images (.jpg, .png, .jpeg, .webp)",
     "catOffice": "Office Documents (.docx, .xlsx, .pptx)",
@@ -2633,7 +2663,11 @@
     "assessmentsDetail": "{quizzes} quizzes • {assignments} assignments",
     "statusVeryActive": "Very Active",
     "statusActive": "Active",
-    "statusNoContent": "No Content Yet"
+    "statusNoContent": "No Content Yet",
+    "btnViewCourses": "View Courses",
+    "modalCoursesTitle": "Courses Taught by: {name}",
+    "modalCoursesSubtitle": "Select a course to inspect learning materials, chapter modules, and teacher assessments.",
+    "noCourses": "This teacher does not have any registered courses yet."
   },
   "supervisorStudentActivity": {
     "title": "Student Activity Monitoring",
@@ -2685,6 +2719,8 @@
     "colRecordedGrades": "Grades In",
     "colAverageGrade": "Average Grade",
     "noReportsFound": "No report data found",
-    "chaptersCount": "{count} chapters"
+    "chaptersCount": "{count} chapters",
+    "colAction": "Action",
+    "viewCourseBtn": "View Course"
   }
 }
