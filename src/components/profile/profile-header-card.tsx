@@ -131,8 +131,8 @@ export function ProfileHeaderCard({
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs relative overflow-hidden">
-      {/* Decorative gradient banner */}
-      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-r from-brand-500/15 via-accent-500/10 to-brand-500/20 dark:from-brand-500/25 dark:via-accent-500/15 dark:to-brand-500/25" />
+      {/* Profile top cover banner */}
+      <div className="absolute top-0 left-0 right-0 h-24 bg-brand-50/80 dark:bg-brand-950/30 border-b border-brand-100 dark:border-gray-800" />
 
       <div className="relative pt-6 flex flex-col sm:flex-row items-center sm:items-end gap-5">
         {/* Avatar with Camera Action */}

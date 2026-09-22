@@ -97,7 +97,7 @@ export function LeaderboardModal({ courseId, triggerButton }: LeaderboardModalPr
         {first && (
           <div className="flex flex-col items-center flex-1 max-w-[130px] z-10">
             <div className="relative mb-2">
-              <Crown className="h-6 w-6 text-amber-500 absolute -top-5 left-1/2 -translate-x-1/2 animate-bounce" />
+              <Crown className="h-6 w-6 text-amber-500 absolute -top-5 left-1/2 -translate-x-1/2" />
               <Avatar className="h-16 w-16 border-4 border-amber-400 shadow-xl ring-2 ring-amber-200">
                 <AvatarImage src={first.avatar || ''} />
                 <AvatarFallback className="bg-amber-100 text-amber-900 font-bold text-sm">
@@ -170,7 +170,7 @@ export function LeaderboardModal({ courseId, triggerButton }: LeaderboardModalPr
       </DialogTrigger>
 
       <DialogContent className="max-w-md sm:max-w-lg p-0 overflow-hidden max-h-[90vh] flex flex-col">
-        <DialogHeader className="p-5 pb-3 bg-linear-to-r from-[#002446] to-[#013567] text-white">
+        <DialogHeader className="p-5 pb-3 bg-[#002446] dark:bg-[#0a1f36] text-white">
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-amber-400" />
             <DialogTitle className="text-lg font-bold text-white">

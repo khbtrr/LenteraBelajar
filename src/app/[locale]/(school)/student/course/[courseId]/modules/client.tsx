@@ -112,9 +112,9 @@ export function StudentCourseModulesClient({
 
       {/* Active Attendance Session Banner */}
       {activeSession && (
-        <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-white to-blue-50 border-2 border-emerald-500/70 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-600 text-white rounded-lg shadow-sm">
+            <div className="p-2.5 bg-emerald-600 text-white rounded-lg shadow-xs">
               <CalendarCheck className="h-6 w-6" />
             </div>
             <div>
@@ -123,11 +123,11 @@ export function StudentCourseModulesClient({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
-                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
                   {t('activeSessionBadge')}
                 </span>
               </div>
-              <h4 className="text-sm font-bold text-[#002446] mt-0.5">
+              <h4 className="text-sm font-bold text-[#002446] dark:text-white mt-0.5">
                 {activeSession.title}
               </h4>
               <p className="text-xs text-gray-500">

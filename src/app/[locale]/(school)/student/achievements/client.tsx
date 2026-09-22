@@ -109,17 +109,17 @@ export function StudentAchievementsClient({
       </div>
 
       {/* Hero Overview Card */}
-      <Card className="border-0 bg-linear-to-r from-[#002446] via-[#013567] to-[#0a4886] text-white shadow-lg overflow-hidden">
+      <Card className="border border-brand-900/20 dark:border-white/10 bg-[#002446] dark:bg-[#0a1f36] text-white shadow-xs overflow-hidden">
         <CardContent className="p-6 md:p-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Left: Avatar Level Badge & Info */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
               <div className="relative">
-                <div className="w-20 h-20 rounded-3xl bg-linear-to-tr from-amber-400 to-[#FF8928] flex flex-col items-center justify-center font-black shadow-xl ring-4 ring-white/20">
+                <div className="w-20 h-20 rounded-3xl bg-accent-500 flex flex-col items-center justify-center font-black shadow-md ring-4 ring-white/15">
                   <span className="text-[10px] uppercase tracking-wider opacity-90">{t('levelLabel')}</span>
                   <span className="text-3xl leading-none">{profile.level}</span>
                 </div>
-                <div className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-950 rounded-full p-1 shadow">
+                <div className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-950 rounded-full p-1 shadow-xs">
                   <Sparkles className="h-4 w-4" />
                 </div>
               </div>
@@ -140,7 +140,7 @@ export function StudentAchievementsClient({
 
             {/* Right: Key Stats Quick Glance */}
             <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full md:w-auto">
-              <div className="bg-white/10 backdrop-blur-xs border border-white/10 p-3.5 rounded-2xl text-center min-w-[90px]">
+              <div className="bg-white/10 border border-white/10 p-3.5 rounded-2xl text-center min-w-[90px]">
                 <div className="flex items-center justify-center text-amber-400 mb-1">
                   <Sparkles className="h-4 w-4" />
                 </div>
@@ -148,7 +148,7 @@ export function StudentAchievementsClient({
                 <div className="text-[10px] text-blue-200 uppercase font-semibold">{t('totalXp')}</div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-xs border border-white/10 p-3.5 rounded-2xl text-center min-w-[90px]">
+              <div className="bg-white/10 border border-white/10 p-3.5 rounded-2xl text-center min-w-[90px]">
                 <div className="flex items-center justify-center text-orange-400 mb-1">
                   <Flame className="h-4 w-4 fill-orange-400" />
                 </div>
@@ -156,7 +156,7 @@ export function StudentAchievementsClient({
                 <div className="text-[10px] text-blue-200 uppercase font-semibold">{t('fireStreak')}</div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-xs border border-white/10 p-3.5 rounded-2xl text-center min-w-[90px]">
+              <div className="bg-white/10 border border-white/10 p-3.5 rounded-2xl text-center min-w-[90px]">
                 <div className="flex items-center justify-center text-emerald-400 mb-1">
                   <Award className="h-4 w-4" />
                 </div>
@@ -176,7 +176,7 @@ export function StudentAchievementsClient({
             </div>
             <div className="w-full bg-black/30 h-3 rounded-full overflow-hidden p-0.5 border border-white/10">
               <div
-                className="bg-linear-to-r from-amber-400 via-[#FF8928] to-emerald-400 h-full rounded-full transition-all duration-700"
+                className="bg-accent-500 h-full rounded-full transition-all duration-700"
                 style={{ width: `${profile.progressPercent}%` }}
               />
             </div>
@@ -234,7 +234,7 @@ export function StudentAchievementsClient({
                 key={badge.code}
                 className={`relative overflow-hidden transition-all duration-300 border ${
                   badge.unlocked
-                    ? 'border-amber-300/80 bg-linear-to-b from-amber-50/40 via-white to-white dark:from-amber-950/20 dark:via-gray-900 dark:to-gray-900 shadow-sm hover:shadow-md'
+                    ? 'border-amber-300/80 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xs hover:shadow-sm'
                     : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/40 opacity-70 hover:opacity-100'
                 }`}
               >
@@ -254,9 +254,9 @@ export function StudentAchievementsClient({
                 <CardContent className="p-5 flex flex-col items-center text-center space-y-3">
                   {/* Badge Icon */}
                   <div
-                    className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition-transform hover:scale-110 shadow-sm ${
+                    className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition-transform hover:scale-110 shadow-xs ${
                       badge.unlocked
-                        ? 'bg-linear-to-br from-amber-100 to-amber-200 dark:from-amber-900/40 dark:to-amber-800/20 border-2 border-amber-300 ring-2 ring-amber-100'
+                        ? 'bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 ring-2 ring-amber-100 dark:ring-amber-900/30'
                         : 'bg-gray-100 dark:bg-gray-800 grayscale border border-gray-300 dark:border-gray-700'
                     }`}
                   >

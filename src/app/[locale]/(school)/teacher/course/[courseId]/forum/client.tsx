@@ -138,7 +138,6 @@ export function TeacherCourseForumClient({
     };
   }, [selectedThreadId]);
 
-  // --- Handlers Pengumuman ---
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!annTitle.trim() || !annContent.trim()) return;
@@ -232,7 +231,6 @@ export function TeacherCourseForumClient({
     }
   };
 
-  // --- Handlers Forum ---
   const handleCreateThread = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!threadTitle.trim() || !threadContent.trim()) return;
@@ -435,7 +433,6 @@ export function TeacherCourseForumClient({
         </button>
       </div>
 
-      {/* TAB 1: PENGUMUMAN */}
       {activeTab === 'announcements' && (
         <div className="space-y-4">
           {announcements.length === 0 ? (
@@ -596,7 +593,6 @@ export function TeacherCourseForumClient({
         </div>
       )}
 
-      {/* TAB 2: FORUM DISKUSI */}
       {activeTab === 'forum' && (
         <div className="space-y-4">
           {/* Thread Detail View if selected */}

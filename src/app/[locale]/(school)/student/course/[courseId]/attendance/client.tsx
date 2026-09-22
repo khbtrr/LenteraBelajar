@@ -122,7 +122,7 @@ export function StudentAttendanceClient({
 
       {/* Active Session Check-in Box */}
       {activeSession && (
-        <Card className="border-2 border-[#002446] shadow-md bg-gradient-to-r from-blue-50/70 via-white to-amber-50/40 overflow-hidden">
+        <Card className="border-2 border-brand-500 dark:border-brand-400 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2 flex-1">

@@ -63,7 +63,7 @@ export default async function StudentDashboard() {
       <SchoolAnnouncementsWidget announcements={announcements} />
 
       {/* Welcome Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r from-[#002446] to-[#013567] text-white p-6 rounded-2xl shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#002446] dark:bg-[#0a1f36] border border-brand-900/20 dark:border-white/10 text-white p-6 rounded-2xl shadow-xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-[#FF8928]" />
@@ -77,7 +77,7 @@ export default async function StudentDashboard() {
         </div>
 
         <Link href="/student/my-courses">
-          <Button className="bg-[#FF8928] hover:bg-[#ff7b10] text-white font-bold text-xs shrink-0">
+          <Button className="bg-accent-500 hover:bg-accent-600 text-white font-bold text-xs shrink-0">
             {tStudent('viewAllCourses')}
           </Button>
         </Link>
@@ -85,18 +85,18 @@ export default async function StudentDashboard() {
 
       {/* Gamification Progress Widget */}
       {gamificationProfile && (
-        <Card className="border border-amber-200/80 bg-linear-to-r from-amber-50/40 via-white to-orange-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 shadow-sm overflow-hidden">
+        <Card className="border border-amber-200/80 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xs overflow-hidden">
           <CardContent className="p-5">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
               {/* Level & Title */}
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-amber-400 to-[#FF8928] text-white flex flex-col items-center justify-center font-black shadow-md shrink-0">
+                <div className="w-14 h-14 rounded-2xl bg-accent-500 text-white flex flex-col items-center justify-center font-black shadow-xs shrink-0">
                   <span className="text-[10px] uppercase tracking-wider font-bold">{tStudent('level')}</span>
                   <span className="text-xl leading-none">{gamificationProfile.level}</span>
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-[#002446] dark:text-gray-100">
+                    <h2 className="text-lg font-bold text-[#002446] dark:text-white">
                       {gamificationProfile.title}
                     </h2>
                     <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-300 border-amber-300 text-[11px]">
@@ -117,13 +117,13 @@ export default async function StudentDashboard() {
                   <span className="text-gray-600 dark:text-gray-400">
                     {tStudent('level')} {gamificationProfile.level + 1}
                   </span>
-                  <span className="text-[#FF8928] font-bold">
+                  <span className="text-accent-500 font-bold">
                     {gamificationProfile.currentLevelXp} / {gamificationProfile.nextLevelRequiredXp} XP ({gamificationProfile.progressPercent}%)
                   </span>
                 </div>
                 <div className="w-full bg-gray-100 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700">
                   <div
-                    className="bg-linear-to-r from-amber-400 to-[#FF8928] h-full rounded-full transition-all duration-500"
+                    className="bg-accent-500 h-full rounded-full transition-all duration-500"
                     style={{ width: `${gamificationProfile.progressPercent}%` }}
                   />
                 </div>
@@ -132,7 +132,7 @@ export default async function StudentDashboard() {
               {/* Streak Flame & Achievements Link */}
               <div className="flex items-center gap-3 shrink-0">
                 <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400">
-                  <Flame className="h-5 w-5 fill-orange-500 text-orange-500 animate-pulse" />
+                  <Flame className="h-5 w-5 fill-orange-500 text-orange-500" />
                   <div>
                     <div className="text-xs font-black leading-none">{tStudent('days', { count: gamificationProfile.streakDays })}</div>
                     <div className="text-[10px] text-gray-500 dark:text-gray-400">{tStudent('learningStreak')}</div>
@@ -199,15 +199,15 @@ export default async function StudentDashboard() {
 
       {/* WIDGET: UPCOMING DEADLINES (< 48 JAM) */}
       {upcomingDeadlines.length > 0 && (
-        <Card className="border-2 border-amber-300/80 bg-linear-to-b from-amber-50/40 to-white shadow-sm overflow-hidden">
-          <CardHeader className="pb-3 border-b bg-amber-50/60 flex flex-row items-center justify-between">
+        <Card className="border border-amber-300 dark:border-amber-800/60 bg-white dark:bg-gray-900 shadow-xs overflow-hidden">
+          <CardHeader className="pb-3 border-b border-amber-100 dark:border-gray-800 bg-amber-50/50 dark:bg-amber-950/20 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-600 animate-pulse" />
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               <div>
-                <CardTitle className="text-base font-bold text-[#002446]">
+                <CardTitle className="text-base font-bold text-[#002446] dark:text-white">
                   {tStudent('upcomingDeadlines')}
                 </CardTitle>
-                <p className="text-xs text-gray-600 mt-0.5">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                   {tStudent('emptyDeadlinesDesc')}
                 </p>
               </div>

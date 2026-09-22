@@ -89,15 +89,14 @@ export function SchoolAnnouncementsWidget({
 
   return (
     <div className="space-y-4">
-      {/* 1. URGENT Floating Alert Banner */}
       {urgentList.map((item) => (
         <div
           key={item.id}
           onClick={() => setSelectedItem(item)}
-          className="relative overflow-hidden p-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 text-white shadow-md flex items-center justify-between gap-4 cursor-pointer hover:shadow-lg transition-all group"
+          className="relative overflow-hidden p-4 rounded-xl bg-rose-700 dark:bg-rose-900 border border-rose-800 text-white shadow-xs flex items-center justify-between gap-4 cursor-pointer hover:bg-rose-800 dark:hover:bg-rose-800 transition-colors group"
         >
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 animate-pulse">
+            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
               <AlertOctagon className="w-6 h-6 text-white" />
             </div>
             <div className="min-w-0">
@@ -119,7 +118,7 @@ export function SchoolAnnouncementsWidget({
             <Button
               size="sm"
               variant="secondary"
-              className="bg-white text-rose-700 hover:bg-gray-100 font-semibold text-xs h-8 px-3"
+              className="bg-white text-rose-800 hover:bg-gray-100 font-semibold text-xs h-8 px-3"
             >
               {t('readNotice')}
               <ChevronRight className="w-3.5 h-3.5 ml-1" />
@@ -128,12 +127,11 @@ export function SchoolAnnouncementsWidget({
         </div>
       ))}
 
-      {/* 2. Regular & Important Announcements Carousel / Card */}
       {regularList.length > 0 && (
-        <Card className="border-brand-200 dark:border-gray-800 bg-gradient-to-br from-brand-50/40 to-white dark:from-gray-900 dark:to-gray-900/60 shadow-xs">
+        <Card className="border border-brand-200/80 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xs">
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#002446] text-white flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-brand-500 text-white flex items-center justify-center">
                 <Megaphone className="w-4 h-4 text-[#FF8928]" />
               </div>
               <CardTitle className="text-sm font-bold text-[#002446] dark:text-white">

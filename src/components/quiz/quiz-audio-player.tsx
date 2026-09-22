@@ -116,7 +116,7 @@ export function QuizAudioPlayer({
   };
 
   return (
-    <div className="w-full my-3 p-4 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-white shadow-xs">
+    <div className="w-full my-3 p-4 rounded-xl border border-brand-200 dark:border-gray-800 bg-brand-25/60 dark:bg-gray-900 shadow-xs">
       <audio
         ref={audioRef}
         src={src}
@@ -130,10 +130,10 @@ export function QuizAudioPlayer({
       {/* Header Info: Title & Play limit badge */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-[#002446] text-white">
+          <div className="p-1.5 rounded-lg bg-brand-500 text-white">
             <Headphones className="w-4 h-4" />
           </div>
-          <span className="text-xs sm:text-sm font-semibold text-[#002446]">{title}</span>
+          <span className="text-xs sm:text-sm font-semibold text-[#002446] dark:text-white">{title}</span>
         </div>
 
         <div>

@@ -78,7 +78,6 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -86,14 +85,12 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
     setCurrentPage(1);
   }, [search, roleFilter, statusFilter, pageSize]);
 
-  // Form states (Create)
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>(Role.STUDENT);
   const [nis, setNis] = useState('');
   const [nip, setNip] = useState('');
 
-  // Form states (Edit)
   const [editUserId, setEditUserId] = useState('');
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');

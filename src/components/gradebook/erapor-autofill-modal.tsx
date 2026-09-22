@@ -60,10 +60,7 @@ export function EraporAutofillModal({
   const [parsedData, setParsedData] = useState<ParsedEraporTemplate | null>(null);
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
 
-  // Step 2: Mappings
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
-
-  // Step 3: Student matching
   const [matchedStudents, setMatchedStudents] = useState<MatchedStudentResult[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -84,7 +81,6 @@ export function EraporAutofillModal({
     onClose();
   };
 
-  // Step 1: Handle File Upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -303,7 +299,7 @@ export function EraporAutofillModal({
     );
   };
 
-  // Step 3: Manual override for matched student
+  // Override matched student for a specific row
   const handleStudentOverride = (rowIndex: number, lmsStudentId: string) => {
     const student = gradebookData.students.find((s) => s.id === lmsStudentId);
     setMatchedStudents((prev) =>
@@ -331,7 +327,6 @@ export function EraporAutofillModal({
     );
   };
 
-  // Step 3: Execute Export
   const handleExport = () => {
     if (!workbook || !parsedData) return;
 
@@ -378,15 +373,15 @@ export function EraporAutofillModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader className="border-b pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#002446] to-[#013567] text-white flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-xs">
               <Sparkles className="h-5 w-5 text-[#FF8928]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <DialogTitle className="text-xl font-bold text-[#002446]">
+                <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white">
                   Auto-Fill Template Resmi e-Rapor
                 </DialogTitle>
-                <Badge className="bg-[#FF8928] text-white text-[10px] uppercase font-bold">
+                <Badge className="bg-accent-500 text-white text-[10px] uppercase font-bold">
                   Smart Exporter
                 </Badge>
               </div>
@@ -437,7 +432,6 @@ export function EraporAutofillModal({
           </div>
         </DialogHeader>
 
-        {/* ================= STEP 1: UPLOAD TEMPLATE ================= */}
         {step === 1 && (
           <div className="py-4 space-y-5">
             <div
@@ -525,7 +519,6 @@ export function EraporAutofillModal({
           </div>
         )}
 
-        {/* ================= STEP 2: VISUAL COLUMN MAPPER ================= */}
         {step === 2 && parsedData && (
           <div className="py-4 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-blue-50/50 p-3 rounded-xl border border-blue-200 text-xs">
@@ -653,16 +646,15 @@ export function EraporAutofillModal({
           </div>
         )}
 
-        {/* ================= STEP 3: PREVIEW & DOWNLOAD ================= */}
         {step === 3 && (
           <div className="py-4 space-y-4">
             {/* Match Status Card */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl border bg-linear-to-br from-emerald-50 to-white border-emerald-200">
-                <div className="text-xs font-semibold text-emerald-800 uppercase tracking-wider">
+              <div className="p-4 rounded-xl border bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40">
+                <div className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
                   Kecocokan Siswa
                 </div>
-                <div className="text-2xl font-black text-emerald-700 mt-1 flex items-center gap-2">
+                <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-2">
                   <span>
                     {matchedCount} / {totalTemplateStudents} Siswa
                   </span>
@@ -670,19 +662,19 @@ export function EraporAutofillModal({
                     {Math.round((matchedCount / (totalTemplateStudents || 1)) * 100)}%
                   </Badge>
                 </div>
-                <p className="text-[11px] text-emerald-700 mt-1">
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400/80 mt-1">
                   Sistem mencocokkan data secara otomatis melalui nomor NIS/NISN dan kesamaan nama.
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl border bg-linear-to-br from-blue-50 to-white border-blue-200">
-                <div className="text-xs font-semibold text-blue-800 uppercase tracking-wider">
+              <div className="p-4 rounded-xl border bg-brand-50/70 dark:bg-brand-950/20 border-brand-200 dark:border-brand-800/40">
+                <div className="text-xs font-semibold text-brand-800 dark:text-brand-300 uppercase tracking-wider">
                   Kolom yang Akan Diisi
                 </div>
-                <div className="text-2xl font-black text-[#002446] mt-1">
+                <div className="text-2xl font-black text-[#002446] dark:text-white mt-1">
                   {mappings.filter((m) => m.sourceType !== 'IGNORE').length} Kolom Nilai
                 </div>
-                <p className="text-[11px] text-blue-700 mt-1">
+                <p className="text-[11px] text-brand-700 dark:text-brand-300/80 mt-1">
                   Seluruh rumus atau formatting asli pada template e-Rapor akan tetap dipertahankan.
                 </p>
               </div>
@@ -769,7 +761,6 @@ export function EraporAutofillModal({
           </div>
         )}
 
-        {/* ================= MODAL FOOTER ================= */}
         <DialogFooter className="border-t pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             {step > 1 && (

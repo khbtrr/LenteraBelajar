@@ -159,8 +159,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#002446] to-[#013566] text-white p-6 rounded-2xl shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#002446] dark:bg-[#0a1f36] border border-brand-900/10 dark:border-white/10 text-white p-6 rounded-2xl shadow-xs">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
@@ -213,7 +212,6 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         </div>
       </div>
 
-      {/* 2. Top 4 KPI Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         {/* Metric 1: Total Pengguna */}
         <Card className="hover:shadow-md transition-shadow border-gray-200 dark:border-gray-800">
@@ -329,7 +327,6 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         </Card>
       </div>
 
-      {/* 3. Visual Analytics (2 Columns) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: User Distribution & Health */}
         <Card className="border-gray-200 dark:border-gray-800">
@@ -446,7 +443,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               {/* Pass Rate Gauge */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50/50 to-indigo-50/50 dark:from-purple-950/20 dark:to-indigo-950/20 border border-purple-100 dark:border-purple-900/40 flex items-center gap-4">
+              <div className="p-4 rounded-xl bg-brand-50/50 dark:bg-brand-500/[0.1] border border-brand-100 dark:border-brand-500/20 flex items-center gap-4">
                 {/* Simple Circular Meter */}
                 <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
@@ -458,7 +455,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     />
                     <path
-                      className="text-purple-600 transition-all duration-700"
+                      className="text-brand-500 dark:text-brand-400 transition-all duration-700"
                       strokeDasharray={`${data.cbt.passingRate}, 100`}
                       strokeWidth="3.8"
                       strokeLinecap="round"
@@ -467,12 +464,12 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     />
                   </svg>
-                  <span className="absolute text-xs font-bold text-purple-950 dark:text-purple-200">
+                  <span className="absolute text-xs font-bold text-brand-900 dark:text-brand-200">
                     {data.cbt.passingRate}%
                   </span>
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-purple-950 dark:text-purple-100">
+                  <div className="text-xs font-bold text-brand-950 dark:text-brand-100">
                     {t('passingRate')}
                   </div>
                   <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
@@ -545,7 +542,6 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         </Card>
       </div>
 
-      {/* 4. Operational Section (2 Columns) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left (2 cols): Pending Course Requests with Direct Action */}
         <div className="lg:col-span-2">

@@ -89,7 +89,7 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
                 />
               </div>
             ) : (
-              <div className="w-14 h-14 rounded-2xl bg-[#002446] dark:bg-brand-600 flex items-center justify-center shadow-md">
+              <div className="w-14 h-14 rounded-2xl bg-brand-500 dark:bg-brand-400 flex items-center justify-center shadow-xs">
                 <GraduationCap className="h-8 w-8 text-white" />
               </div>
             )}
@@ -144,7 +144,7 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
             </div>
             <Button
               type="submit"
-              className="w-full bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white"
+              className="w-full font-semibold"
               disabled={loading}
             >
               {loading ? '...' : t('loginButton')}

@@ -603,7 +603,6 @@ export function CohortsClient({
     setPromotedStudentIds(new Set());
   };
 
-  // --- TAB 2: EXCEL HANDLERS ---
   const handleDownloadExcelTemplate = () => {
     const selectedCohorts = cohorts.filter((c) =>
       excelDownloadCohortIds.size > 0 ? excelDownloadCohortIds.has(c.id) : true
@@ -832,7 +831,6 @@ export function CohortsClient({
     }
   };
 
-  // --- TAB 3: LINEAR (1 ke 1) HANDLERS ---
   const handleSelectSourceCohort = (cId: string) => {
     setSourceCohortId(cId);
     const sourceCohort = cohorts.find((c) => c.id === cId);
@@ -1197,7 +1195,6 @@ export function CohortsClient({
         )}
       </div>
 
-      {/* 1. Modal Buat Kohort */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleCreateCohort}>
@@ -1243,7 +1240,6 @@ export function CohortsClient({
         </DialogContent>
       </Dialog>
 
-      {/* 1.1 Modal Edit Kohort */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleSaveEdit}>
@@ -1286,7 +1282,6 @@ export function CohortsClient({
         </DialogContent>
       </Dialog>
 
-      {/* 1.2 Modal Unggah Massal Kohort */}
       <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
@@ -1487,7 +1482,6 @@ export function CohortsClient({
             </div>
           </DialogHeader>
 
-          {/* TAB 1: CURRENT MEMBERS */}
           {manageTab === 'current' && (
             <div className="space-y-3 py-2 flex-1 overflow-hidden flex flex-col">
               {selectedCohort && selectedCohort.members.length > 0 && (
@@ -1600,7 +1594,6 @@ export function CohortsClient({
             </div>
           )}
 
-          {/* TAB 2: BULK ADD MEMBERS */}
           {manageTab === 'add' && (
             <div className="space-y-3 py-2 flex-1 overflow-hidden flex flex-col">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl border text-xs">
@@ -1813,10 +1806,8 @@ export function CohortsClient({
             </div>
           </DialogHeader>
 
-          {/* TAB 2: UNGGAH PEMETAAN EXCEL */}
           {promoteTab === 'excel' && (
             <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
-              {/* Step 1: Download Template */}
               <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="font-bold text-sm text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
@@ -1881,7 +1872,6 @@ export function CohortsClient({
                 </div>
               </div>
 
-              {/* Step 2: Upload File */}
               <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
                 <Label className="font-bold text-sm text-[#002446] dark:text-white flex items-center gap-1.5">
                   <FileUp className="w-4 h-4 text-blue-600" />
@@ -1902,7 +1892,6 @@ export function CohortsClient({
                 </div>
               </div>
 
-              {/* Step 3: Live Preview Hasil Parsing Excel */}
               {parsedExcelRows.length > 0 && (
                 <div className="space-y-3">
                   {/* Summary Badges */}
@@ -2080,10 +2069,8 @@ export function CohortsClient({
             </div>
           )}
 
-          {/* TAB 3: KENAIKAN LINIER (1 KE 1) */}
           {promoteTab === 'linear' && (
             <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
-              {/* Step 1: Pilih Kohort Asal */}
               <div className="space-y-1.5">
                 <Label className="font-semibold">
                   {t('step1SourceCohort')} <span className="text-red-500">*</span>
@@ -2102,7 +2089,6 @@ export function CohortsClient({
                 </select>
               </div>
 
-              {/* Step 2: Tentukan Kohort Tujuan */}
               {sourceCohortId && (
                 <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border">
                   <Label className="font-semibold">
@@ -2162,7 +2148,6 @@ export function CohortsClient({
                 </div>
               )}
 
-              {/* Step 3: Seleksi Siswa yang Naik Kelas */}
               {sourceCohortId && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -2235,7 +2220,6 @@ export function CohortsClient({
                 </div>
               )}
 
-              {/* Step 4: Toggle Opsi Keluarkan dari Kohort Asal */}
               {sourceCohortId && (
                 <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl flex items-center gap-3">
                   <input

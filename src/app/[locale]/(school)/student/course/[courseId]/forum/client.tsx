@@ -272,7 +272,6 @@ export function StudentCourseForumClient({
         </button>
       </div>
 
-      {/* TAB 1: PENGUMUMAN SISWA */}
       {activeTab === 'announcements' && (
         <div className="space-y-4">
           {announcements.length === 0 ? (
@@ -391,7 +390,6 @@ export function StudentCourseForumClient({
         </div>
       )}
 
-      {/* TAB 2: FORUM DISKUSI SISWA */}
       {activeTab === 'forum' && (
         <div className="space-y-4">
           {selectedThreadId && activeThreadDetail ? (

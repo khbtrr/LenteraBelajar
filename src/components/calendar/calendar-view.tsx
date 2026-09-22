@@ -371,7 +371,6 @@ export function CalendarView({
         )}
       </div>
 
-      {/* 1. MONTH VIEW */}
       {viewMode === 'MONTH' && (
         <Card className="border shadow-xs bg-white dark:bg-gray-900 overflow-hidden">
           {/* Days Header */}
@@ -497,7 +496,6 @@ export function CalendarView({
         </Card>
       )}
 
-      {/* 2. WEEK VIEW */}
       {viewMode === 'WEEK' && (
         <Card className="border shadow-xs bg-white dark:bg-gray-900 overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-800">

@@ -38,37 +38,43 @@
   --color-white: #ffffff;
   --color-black: #101828;
 
-  /* Tailwind / TailAdmin Modern Brand Palette */
-  --color-brand-25: #f2f7ff;
-  --color-brand-50: #ecf3ff;
-  --color-brand-100: #dde9ff;
-  --color-brand-200: #c2d6ff;
-  --color-brand-300: #9cb9ff;
-  --color-brand-400: #7592ff;
-  --color-brand-500: #465fff;
-  --color-brand-600: #3641f5;
-  --color-brand-700: #2a31d8;
-  --color-brand-800: #252dae;
-  --color-brand-900: #262e89;
-  --color-brand-950: #161950;
+  /* LenteraBelajar Official Brand Palette (Deep Navy: #002446) */
+  --color-brand-25: #f4f7fb;
+  --color-brand-50: #e8f0f7;
+  --color-brand-100: #d1e1ef;
+  --color-brand-200: #a4c4e0;
+  --color-brand-300: #74a4cf;
+  --color-brand-400: #4683bd;
+  --color-brand-500: #002446;
+  --color-brand-600: #001c37;
+  --color-brand-700: #001529;
+  --color-brand-800: #000e1c;
+  --color-brand-900: #000810;
+  --color-brand-950: #000408;
 
-  /* Accent Palette */
+  /* Elevated Navy for Dark Mode Surfaces & Highlights */
+  --color-brand-dark-surface: #0a1f36;
+  --color-brand-dark-elevated: #0f2d4e;
+  --color-brand-dark-button: #13467b;
+  --color-brand-dark-button-hover: #185596;
+
+  /* Accent Palette (Vibrant Orange: #FF8928) */
   --color-accent-25: #fffaf5;
-  --color-accent-50: #fff6ed;
-  --color-accent-100: #ffead5;
-  --color-accent-200: #fddcab;
-  --color-accent-300: #feb273;
-  --color-accent-400: #fd853a;
-  --color-accent-500: #fb6514;
-  --color-accent-600: #ec4a0a;
-  --color-accent-700: #c2320a;
-  --color-accent-800: #9c2a10;
-  --color-accent-900: #7e2410;
-  --color-accent-950: #511c10;
+  --color-accent-50: #fff7ed;
+  --color-accent-100: #ffedd5;
+  --color-accent-200: #fed7aa;
+  --color-accent-300: #fdba74;
+  --color-accent-400: #fb923c;
+  --color-accent-500: #ff8928;
+  --color-accent-600: #ea580c;
+  --color-accent-700: #c2410c;
+  --color-accent-800: #9a3412;
+  --color-accent-900: #7c2d12;
+  --color-accent-950: #431407;
 
   /* Mapped tokens for compatibility */
-  --color-primary: #465fff;
-  --color-accent: #fb6514;
+  --color-primary: #002446;
+  --color-accent: #ff8928;
   --color-background: #f9fafb;
 
   --color-blue-light-25: #f5fbff;
@@ -99,17 +105,17 @@
   --color-gray-dark: #1a2231;
 
   --color-orange-25: #fffaf5;
-  --color-orange-50: #fff6ed;
-  --color-orange-100: #ffead5;
-  --color-orange-200: #fddcab;
-  --color-orange-300: #feb273;
-  --color-orange-400: #fd853a;
-  --color-orange-500: #fb6514;
-  --color-orange-600: #ec4a0a;
-  --color-orange-700: #c2320a;
-  --color-orange-800: #9c2a10;
-  --color-orange-900: #7e2410;
-  --color-orange-950: #511c10;
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #ff8928;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+  --color-orange-800: #9a3412;
+  --color-orange-900: #7c2d12;
+  --color-orange-950: #431407;
 
   --color-success-25: #f6fef9;
   --color-success-50: #ecfdf3;
@@ -300,19 +306,19 @@
   min-height: 0;
 }
 
-/* Dark mode overrides for legacy hardcoded colors */
+/* Dark mode compatibility rules for brand tokens */
 .dark .text-\[\#002446\] {
-  color: #ffffff !important;
+  color: #f8fafc !important;
 }
 .dark .bg-\[\#002446\] {
-  background-color: var(--color-brand-500, #465fff) !important;
+  background-color: var(--color-brand-dark-button, #13467b) !important;
 }
 .dark .hover\:bg-\[\#002446\]\/90:hover {
-  background-color: var(--color-brand-600, #3641f5) !important;
+  background-color: var(--color-brand-dark-button-hover, #185596) !important;
 }
 .dark .border-\[\#002446\]\/20,
 .dark .border-\[\#002446\] {
-  border-color: var(--color-gray-800, #1f2937) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 .dark .bg-\[\#ECEEF0\] {
   background-color: var(--color-gray-950, #0c111d) !important;

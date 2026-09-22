@@ -211,9 +211,9 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
 
       {/* Token Input Box */}
       {isRequireToken && !isInProgress && canAttempt && status.status !== 'EXPIRED' && (
-        <Card className="border-2 border-[#002446]/20 bg-linear-to-b from-blue-50/50 to-white shadow-md p-5 text-center space-y-4">
+        <Card className="border-2 border-brand-500/30 dark:border-brand-500/40 bg-brand-25/50 dark:bg-gray-900 shadow-xs p-5 text-center space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="cbtTokenInput" className="text-sm font-bold text-[#002446] flex items-center justify-center gap-2">
+            <Label htmlFor="cbtTokenInput" className="text-sm font-bold text-[#002446] dark:text-white flex items-center justify-center gap-2">
               <KeyRound className="h-4 w-4 text-[#FF8928]" /> {t('tokenBoxTitle')}
             </Label>
             <p className="text-xs text-gray-500">

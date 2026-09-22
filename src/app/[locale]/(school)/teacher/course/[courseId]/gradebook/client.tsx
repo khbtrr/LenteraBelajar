@@ -83,7 +83,7 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-[#002446]">{t('title')}</h1>
+            <h1 className="text-2xl font-bold text-[#002446] dark:text-white">{t('title')}</h1>
           </div>
           <p className="text-sm text-gray-500 pl-10">
             {data.course.title} • {data.course.academicYear.name}
@@ -93,17 +93,17 @@ export function TeacherGradebookClient({ data }: { data: CourseGradebookData }) 
         <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={() => setIsEraporModalOpen(true)}
-            className="bg-linear-to-r from-[#002446] to-[#013567] hover:from-[#001b33] hover:to-[#002446] text-white flex items-center gap-2 text-sm font-bold shadow-sm border border-[#FF8928]/40"
+            className="bg-brand-500 hover:bg-brand-600 dark:bg-[#13467b] dark:hover:bg-[#185596] text-white flex items-center gap-2 text-sm font-bold shadow-xs border border-accent-500/40"
           >
             <Sparkles className="h-4 w-4 text-[#FF8928]" />
             <span>{t('btnErapor')}</span>
-            <Badge className="bg-[#FF8928] text-white text-[9px] px-1.5 py-0 uppercase">{t('newBadge')}</Badge>
+            <Badge className="bg-accent-500 text-white text-[9px] px-1.5 py-0 uppercase">{t('newBadge')}</Badge>
           </Button>
 
           <Button
             onClick={handleExportExcel}
             variant="outline"
-            className="border-[#002446]/30 text-[#002446] hover:bg-gray-100 flex items-center gap-2 text-sm"
+            className="border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-sm"
           >
             <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
             {t('btnExcel')}

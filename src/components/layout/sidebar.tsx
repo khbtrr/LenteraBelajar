@@ -71,7 +71,7 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
                 className="w-8 h-8 object-contain"
               />
             ) : (
-              <div className="w-full h-full bg-[#002446] flex items-center justify-center">
+              <div className="w-full h-full bg-brand-500 flex items-center justify-center">
                 <GraduationCap className="h-6 w-6 text-white" />
               </div>
             )}

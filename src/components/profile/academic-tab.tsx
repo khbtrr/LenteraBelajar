@@ -31,7 +31,6 @@ export function AcademicTab({ profile }: AcademicTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* STUDENT VIEW */}
       {isStudent && (
         <>
           {/* Gamification Stats Cards */}
@@ -166,7 +165,6 @@ export function AcademicTab({ profile }: AcademicTabProps) {
         </>
       )}
 
-      {/* TEACHER VIEW */}
       {isTeacher && (
         <>
           {/* Teacher Summary Cards */}
@@ -248,7 +246,6 @@ export function AcademicTab({ profile }: AcademicTabProps) {
         </>
       )}
 
-      {/* ADMIN & SUPERVISOR VIEW */}
       {isAdminOrSupervisor && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-xs">
           <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">

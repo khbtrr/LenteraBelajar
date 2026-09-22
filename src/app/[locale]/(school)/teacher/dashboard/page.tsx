@@ -39,7 +39,7 @@ export default async function TeacherDashboard() {
       <SchoolAnnouncementsWidget announcements={announcements} />
 
       {/* Welcome Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-linear-to-r from-[#002446] to-[#013567] text-white p-6 rounded-2xl shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#002446] dark:bg-[#0a1f36] border border-brand-900/20 dark:border-white/10 text-white p-6 rounded-2xl shadow-xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-[#FF8928]" />
@@ -54,7 +54,7 @@ export default async function TeacherDashboard() {
 
         <div className="flex items-center gap-2 shrink-0">
           <Link href="/teacher/courses">
-            <Button className="bg-[#FF8928] hover:bg-[#ff7b10] text-white font-bold text-xs">
+            <Button className="bg-accent-500 hover:bg-accent-600 text-white font-bold text-xs">
               {tTeacher('manageCourses')}
             </Button>
           </Link>

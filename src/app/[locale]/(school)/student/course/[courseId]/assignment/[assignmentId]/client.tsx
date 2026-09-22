@@ -108,7 +108,6 @@ export function StudentAssignmentClient({
     setLoading(true);
     setSuccessMsg('');
     try {
-      // 1. Upload file to server
       const formData = new FormData();
       formData.append('file', file);
       const uploadRes = await fetch('/api/upload', {
@@ -123,7 +122,6 @@ export function StudentAssignmentClient({
 
       const uploadData = await uploadRes.json();
 
-      // 2. Submit assignment record
       const res = await submitAssignment({
         assignmentId: assignment.id,
         fileUrl: uploadData.url,

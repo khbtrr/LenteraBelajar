@@ -362,7 +362,6 @@ export function TeacherQuizAttemptsClient({
         </button>
       </div>
 
-      {/* TAB 1: HASIL & KOREKSI (ATTEMPTS) */}
       {activeTab === 'attempts' && (
         <Card className="bg-white shadow-sm border">
           <CardHeader className="pb-3 border-b">
@@ -467,7 +466,6 @@ export function TeacherQuizAttemptsClient({
         </Card>
       )}
 
-      {/* TAB 2: ANALISIS BUTIR SOAL */}
       {activeTab === 'analysis' && (
         <div className="space-y-6">
           {!analysisData || analysisData.totalParticipants === 0 ? (
@@ -482,36 +480,36 @@ export function TeacherQuizAttemptsClient({
             <>
               {/* Summary Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="border shadow-xs bg-linear-to-br from-blue-50/50 to-white">
+                <Card className="border border-gray-200 dark:border-gray-800 shadow-xs bg-white dark:bg-gray-900">
                   <CardContent className="p-4 space-y-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('totalParticipants')}</div>
-                    <div className="text-2xl font-black text-[#002446]">
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('totalParticipants')}</div>
+                    <div className="text-2xl font-black text-[#002446] dark:text-white">
                       {analysisData.totalParticipants} <span className="text-xs font-normal text-gray-500">{t('studentsSuffix')}</span>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border shadow-xs bg-linear-to-br from-emerald-50/50 to-white">
+                <Card className="border border-gray-200 dark:border-gray-800 shadow-xs bg-white dark:bg-gray-900">
                   <CardContent className="p-4 space-y-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('averageScore')}</div>
-                    <div className="text-2xl font-black text-emerald-700">
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('averageScore')}</div>
+                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                       {analysisData.averageScore} <span className="text-xs font-normal text-gray-500">/ 100</span>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border shadow-xs bg-linear-to-br from-indigo-50/50 to-white">
+                <Card className="border border-gray-200 dark:border-gray-800 shadow-xs bg-white dark:bg-gray-900">
                   <CardContent className="p-4 space-y-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('scoreRange')}</div>
-                    <div className="text-2xl font-black text-[#002446]">
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scoreRange')}</div>
+                    <div className="text-2xl font-black text-[#002446] dark:text-white">
                       {analysisData.lowestScore} - {analysisData.highestScore}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border shadow-xs bg-linear-to-br from-amber-50/50 to-white">
+                <Card className="border border-gray-200 dark:border-gray-800 shadow-xs bg-white dark:bg-gray-900">
                   <CardContent className="p-4 space-y-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('kkmPassing', { passingGrade })}</div>
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('kkmPassing', { passingGrade })}</div>
                     <div className="text-2xl font-black text-[#FF8928]">
                       {analysisData.passPercentage}%{' '}
                       <span className="text-xs font-normal text-gray-500">
@@ -726,11 +724,10 @@ export function TeacherQuizAttemptsClient({
         </div>
       )}
 
-      {/* TAB 3: PROGRAM REMEDIAL */}
       {activeTab === 'remedial' && (
         <div className="space-y-6">
           {/* Header Action Banner */}
-          <div className="p-5 bg-linear-to-r from-[#002446] to-[#013567] text-white rounded-xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-5 bg-[#002446] dark:bg-[#0a1f36] border border-brand-900/20 dark:border-white/10 text-white rounded-xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-6 w-6 text-[#FF8928]" />

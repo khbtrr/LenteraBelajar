@@ -91,7 +91,6 @@ export function AdminSettingsClient({
   const { showAlert } = useDialog();
   const [activeTab, setActiveTab] = useState<'profile' | 'academic' | 'cbt' | 'admin'>('profile');
 
-  // Tab 1: Profile State
   const [schoolName, setSchoolName] = useState(initialSchool.name || '');
   const [schoolCode, setSchoolCode] = useState(initialSchool.code || '');
   const [address, setAddress] = useState(initialSchool.address || '');
@@ -102,11 +101,9 @@ export function AdminSettingsClient({
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Tab 2: Academic State
   const [passingGrade, setPassingGrade] = useState<number>(initialSchool.defaultPassingGrade ?? 75);
   const [savingAcademic, setSavingAcademic] = useState(false);
 
-  // Tab 3: CBT Defaults State
   const [cbtLockdown, setCbtLockdown] = useState<boolean>(initialSchool.cbtLockdownEnabled ?? true);
   const [maxTabSwitches, setMaxTabSwitches] = useState<number>(initialSchool.cbtMaxTabSwitches ?? 3);
   const [requireToken, setRequireToken] = useState<boolean>(initialSchool.cbtRequireToken ?? false);
@@ -114,7 +111,6 @@ export function AdminSettingsClient({
   const [shuffleOptions, setShuffleOptions] = useState<boolean>(initialSchool.cbtShuffleOptions ?? false);
   const [savingCbt, setSavingCbt] = useState(false);
 
-  // Tab 4: Admin Account State
   const [adminName, setAdminName] = useState(adminUser?.name || '');
   const [adminEmail, setAdminEmail] = useState(adminUser?.email || '');
   const [savingAdminProfile, setSavingAdminProfile] = useState(false);
@@ -126,7 +122,6 @@ export function AdminSettingsClient({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
-  // Logo upload handler
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -166,7 +161,6 @@ export function AdminSettingsClient({
     }
   };
 
-  // Profile submit
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingProfile(true);
@@ -189,7 +183,6 @@ export function AdminSettingsClient({
     }
   };
 
-  // Academic submit
   const handleAcademicSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingAcademic(true);
@@ -206,7 +199,6 @@ export function AdminSettingsClient({
     }
   };
 
-  // CBT submit
   const handleCbtSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingCbt(true);
@@ -227,7 +219,6 @@ export function AdminSettingsClient({
     }
   };
 
-  // Admin profile submit
   const handleAdminProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingAdminProfile(true);
@@ -245,7 +236,6 @@ export function AdminSettingsClient({
     }
   };
 
-  // Password change submit
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {

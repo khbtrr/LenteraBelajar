@@ -145,13 +145,13 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
         );
       case 'confirm':
         return (
-          <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-[#002446] dark:text-blue-300">
+          <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-brand-950/50 flex items-center justify-center text-brand-500 dark:text-brand-300">
             <HelpCircle className="w-6 h-6" />
           </div>
         );
       default:
         return (
-          <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-[#002446] dark:text-blue-300">
+          <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-brand-950/50 flex items-center justify-center text-brand-500 dark:text-brand-300">
             <Info className="w-6 h-6" />
           </div>
         );
@@ -208,11 +208,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
               onClick={() => {
                 dialogState.onConfirm?.();
               }}
-              className={`w-full ${isConfirm ? 'sm:w-1/2' : 'sm:w-full'} ${
-                dialogState.confirmVariant === 'default'
-                  ? 'bg-[#002446] hover:bg-[#002446]/90 text-white font-medium'
-                  : ''
-              }`}
+              className={`w-full ${isConfirm ? 'sm:w-1/2' : 'sm:w-full'} font-medium`}
             >
               {dialogState.confirmText}
             </Button>

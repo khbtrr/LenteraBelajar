@@ -77,8 +77,8 @@ export function GamificationChip({ userRole }: GamificationChipProps) {
         {/* Level & XP Chip */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-linear-to-r from-blue-900/10 to-amber-500/10 dark:from-blue-900/40 dark:to-amber-500/20 border border-amber-500/30 text-gray-800 dark:text-gray-100 hover:border-amber-500/60 transition-all cursor-pointer text-xs">
-              <span className="font-bold text-[#002446] dark:text-amber-400 flex items-center gap-1">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-gray-800 dark:text-gray-100 hover:border-amber-500/50 transition-colors cursor-pointer text-xs">
+              <span className="font-bold text-[#002446] dark:text-white flex items-center gap-1">
                 <Sparkles className="h-3 w-3 text-amber-500" />
                 Lv. {profile.level}
               </span>

@@ -363,7 +363,7 @@
   "adminDashboard": {
     "controlCenter": "Pusat Kendali Administrator",
     "welcome": "Selamat Datang, {name}! 👋",
-    "description": "{school} — Pantau operasional, statistik pengguna, dan integritas evaluasi pembelajaran sekolah Anda.",
+    "description": "{school}: Pantau operasional, statistik pengguna, dan integritas evaluasi pembelajaran sekolah Anda.",
     "activeAcademicYear": "Tahun Ajaran Aktif",
     "setupAcademicYear": "Atur Tahun Ajaran",
     "schoolSettings": "Pengaturan Sekolah",
@@ -1313,7 +1313,7 @@
     "yearSuffix": "(Tahun Ajaran)"
   },
   "teacherEnrollments": {
-    "headerTitle": "Enrollment Siswa — {title}",
+    "headerTitle": "Enrollment Siswa: {title}",
     "headerDesc": "Kelola pendaftaran siswa ke course ini menggunakan metode Sinkronisasi Kohort atau pendaftaran manual.",
     "courseFallback": "Course",
     "title": "Pendaftaran Siswa",
@@ -1391,7 +1391,7 @@
     "excelColAverage": "Nilai Rata-rata"
   },
   "teacherAttendance": {
-    "title": "Presensi & Kehadiran Siswa — {title}",
+    "title": "Presensi & Kehadiran Siswa: {title}",
     "subtitle": "Kelola sesi pertemuan, buka kode token/QR check-in, dan tinjau rekapitulasi kehadiran kelas.",
     "backToModules": "Kembali ke Modul",
     "categoryFallback": "Mata Pelajaran",
@@ -1487,7 +1487,7 @@
   "teacherForum": {
     "backToModules": "Kembali ke Modul",
     "categoryFallback": "Mata Pelajaran",
-    "title": "Interaksi Pembelajaran — {title}",
+    "title": "Interaksi Pembelajaran: {title}",
     "subtitle": "Sampaikan pengumuman penting, buka forum tanya-jawab materi, dan diskusikan silabus bersama siswa.",
     "btnNewAnnouncement": "Buat Pengumuman",
     "btnNewThread": "Topik Diskusi Baru",
@@ -1793,7 +1793,7 @@
     "timeUp": "00:00 (Habis)",
     "backToHistory": "Kembali ke Riwayat Nilai",
     "breadcrumbLiveProctor": "Live Proctoring CBT",
-    "headerTitle": "Live Proctoring — {title}",
+    "headerTitle": "Live Proctoring: {title}",
     "duration": "Durasi: {duration}",
     "durationMinutes": "{minutes} Menit",
     "unlimitedDuration": "Tanpa Batas",
@@ -2010,7 +2010,7 @@
     "bankSoalBtn": "Bank Soal",
     "addModuleBtn": "Tambah Bab Modul",
     "emptyTitle": "Belum Ada Modul",
-    "emptyDesc": "Mulai dengan menambahkan bab modul materi (misal: Bab 1 — Pengantar & Konsep Dasar).",
+    "emptyDesc": "Mulai dengan menambahkan bab modul materi (misal: Bab 1: Pengantar & Konsep Dasar).",
     "createFirstBtn": "Buat Bab Pertama",
     "addContentBtn": "Materi",
     "addQuizBtn": "Kuis",
@@ -2039,7 +2039,7 @@
     "checkSubmissionsBtn": "Periksa Pengumpulan",
     "modalModuleTitle": "Tambah Bab Modul Baru",
     "moduleTitleLabel": "Judul Bab Modul",
-    "moduleTitlePlaceholder": "misal: Bab 1 — Konsep dan Pengantar Dasar",
+    "moduleTitlePlaceholder": "misal: Bab 1: Konsep dan Pengantar Dasar",
     "cancelBtn": "Batal",
     "saving": "Menyimpan...",
     "saveModuleBtn": "Simpan Modul",
@@ -2059,7 +2059,7 @@
     "saveContentBtn": "Simpan Materi",
     "modalQuizTitle": "Buat Kuis Baru",
     "quizTitleLabel": "Judul Kuis",
-    "quizTitlePlaceholder": "misal: Kuis 1 — Pemahaman Konsep",
+    "quizTitlePlaceholder": "misal: Kuis 1: Pemahaman Konsep",
     "quizDurationLabel": "Durasi Waktu Pengerjaan (Menit)",
     "quizDurationHelp": "Siswa akan melihat timer hitung mundur (countdown).",
     "quizDeadlineLabel": "Batas Waktu Pengumpulan (Deadline)",
@@ -2406,7 +2406,7 @@
   "studentAttendance": {
     "backToModules": "Kembali ke Modul Pembelajaran",
     "defaultSubject": "Mata Pelajaran",
-    "pageTitle": "Presensi & Kehadiran — {title}",
+    "pageTitle": "Presensi & Kehadiran: {title}",
     "pageSubtitle": "Guru Pengampu: {teacher} • Pantau rekap kehadiran dan masukkan kode token check-in mandiri.",
     "sessionOpenBadge": "Sesi Presensi Sedang Dibuka",
     "moduleBadge": "Modul: {title}",
@@ -2444,7 +2444,7 @@
   "studentForum": {
     "backToModules": "Kembali ke Modul Pembelajaran",
     "defaultSubject": "Mata Pelajaran",
-    "pageTitle": "Forum & Pengumuman — {title}",
+    "pageTitle": "Forum & Pengumuman: {title}",
     "pageSubtitle": "Guru Pengampu: {teacher} • Cek pengumuman penting atau ajukan pertanyaan diskusi seputar materi.",
     "askInForumBtn": "Tanya di Forum",
     "announcementsTab": "Pengumuman Kursus ({count})",
