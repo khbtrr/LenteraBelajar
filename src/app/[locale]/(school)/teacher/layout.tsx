@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth-utils';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
@@ -28,13 +28,13 @@ export default async function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const session = await requireAuth();
   const role = session?.user?.role;
   const isTeacher = role === 'TEACHER';
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
   const isSupervisor = role === 'SUPERVISOR';
 
-  if (!session?.user || (!isTeacher && !isAdmin && !isSupervisor)) {
+  if (!isTeacher && !isAdmin && !isSupervisor) {
     redirect('/login');
   }
 

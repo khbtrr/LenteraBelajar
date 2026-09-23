@@ -84,7 +84,7 @@ export function SchoolSwitcher() {
           variant="outline"
           size="sm"
           disabled={switching}
-          className="flex items-center gap-2 h-9 px-2.5 border-brand-200 dark:border-brand-900 bg-brand-50/60 dark:bg-brand-950/40 text-brand-950 dark:text-brand-100 hover:bg-brand-100/60 dark:hover:bg-brand-900/60 text-xs font-semibold max-w-[230px] transition-colors"
+          className="flex items-center gap-2 h-9 px-2.5 border-brand-200 dark:border-brand-900 bg-brand-50/60 dark:bg-brand-950/40 text-brand-950 dark:text-brand-100 hover:bg-brand-100/60 dark:hover:bg-brand-900/60 text-xs font-semibold max-w-[280px] sm:max-w-[340px] transition-colors"
           title={`Sekolah Aktif: ${currentSchool?.name}`}
         >
           {switching ? (
@@ -96,7 +96,7 @@ export function SchoolSwitcher() {
           <ChevronsUpDown className="h-3 w-3 text-gray-400 shrink-0 ml-auto" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
+      <DropdownMenuContent align="start" className="w-80">
         <DropdownMenuLabel className="text-xs text-gray-500 font-normal">
           Pilih Sekolah / Unit Kerja
         </DropdownMenuLabel>

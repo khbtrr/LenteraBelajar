@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth-utils';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';
@@ -24,8 +24,8 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== 'ADMIN') {
+  const session = await requireAuth();
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
     redirect('/login');
   }
 

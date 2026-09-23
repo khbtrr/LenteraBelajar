@@ -2,6 +2,8 @@ import { hashSync, compareSync } from 'bcryptjs';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import type { Role } from '@prisma/client';
+import { cookies } from 'next/headers';
+import { db } from '@/lib/db';
 
 export function hashPassword(password: string): string {
   return hashSync(password, 12);
@@ -10,25 +12,6 @@ export function hashPassword(password: string): string {
 export function verifyPassword(password: string, hash: string): boolean {
   return compareSync(password, hash);
 }
-
-export async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect('/login');
-  }
-  return session;
-}
-
-export async function requireRole(...roles: Role[]) {
-  const session = await requireAuth();
-  if (!roles.includes(session.user.role)) {
-    redirect('/');
-  }
-  return session;
-}
-
-import { cookies } from 'next/headers';
-import { db } from '@/lib/db';
 
 export async function getActiveSchoolId(): Promise<string | null> {
   const session = await auth();
@@ -78,11 +61,30 @@ export async function getActiveSchoolId(): Promise<string | null> {
   return firstAssignment?.schoolId || null;
 }
 
-export async function requireSchool() {
+export async function requireAuth() {
+  const session = await auth();
+  if (!session?.user) {
+    redirect('/login');
+  }
+  const activeSchoolId = await getActiveSchoolId();
+  if (activeSchoolId) {
+    session.user.schoolId = activeSchoolId;
+  }
+  return session;
+}
+
+export async function requireRole(...roles: Role[]) {
   const session = await requireAuth();
-  const schoolId = await getActiveSchoolId();
-  if (!schoolId) {
+  if (!roles.includes(session.user.role)) {
     redirect('/');
   }
-  return { ...session, schoolId };
+  return session;
+}
+
+export async function requireSchool() {
+  const session = await requireAuth();
+  if (!session.user.schoolId) {
+    redirect('/');
+  }
+  return { ...session, schoolId: session.user.schoolId };
 }
