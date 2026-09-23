@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +46,10 @@ export function AcademicYearsClient({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState<AcademicYear | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setYears(initialYears);
+  }, [initialYears]);
 
   // Form state
   const [name, setName] = useState('');

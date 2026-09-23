@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { auth } from '@/lib/auth';
+import { requireSchool } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,18 +10,26 @@ import { getActiveSchoolAnnouncementsForUser } from '@/lib/actions/school-announ
 import { SchoolAnnouncementsWidget } from '@/components/announcements/school-announcements-widget';
 
 export default async function TeacherDashboard() {
-  const session = await auth();
+  const session = await requireSchool();
   const t = await getTranslations('dashboard');
   const tTeacher = await getTranslations('teacherDashboard');
 
   if (!session?.user) return null;
 
+  const schoolFilter = {
+    teacherId: session.user.id,
+    OR: [
+      { schoolId: session.schoolId },
+      { isCrossSchool: true },
+    ],
+  };
+
   const [courseCount, activeCourseCount, studentCount, recentCourses, announcements] = await Promise.all([
-    db.course.count({ where: { teacherId: session.user.id } }),
-    db.course.count({ where: { teacherId: session.user.id, status: 'ACTIVE' } }),
-    db.enrollment.count({ where: { course: { teacherId: session.user.id } } }),
+    db.course.count({ where: schoolFilter }),
+    db.course.count({ where: { ...schoolFilter, status: 'ACTIVE' } }),
+    db.enrollment.count({ where: { course: schoolFilter } }),
     db.course.findMany({
-      where: { teacherId: session.user.id },
+      where: schoolFilter,
       include: {
         category: { select: { name: true } },
         academicYear: { select: { name: true } },

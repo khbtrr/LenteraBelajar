@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { School, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import {
@@ -22,6 +22,7 @@ interface SchoolItem {
 
 export function SchoolSwitcher() {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [schools, setSchools] = useState<SchoolItem[]>([]);
   const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null);
   const [canSwitch, setCanSwitch] = useState(false);
@@ -55,15 +56,18 @@ export function SchoolSwitcher() {
     return null;
   }
 
+  const isBusy = switching || isPending;
   const currentSchool = schools.find((s) => s.id === currentSchoolId) || schools[0];
 
   const handleSelect = async (schoolId: string) => {
-    if (schoolId === currentSchoolId || switching) return;
+    if (schoolId === currentSchoolId || isBusy) return;
     try {
       setSwitching(true);
       setCurrentSchoolId(schoolId);
       await switchActiveSchool(schoolId);
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err) {
       console.error('Failed to switch school:', err);
     } finally {
@@ -86,11 +90,11 @@ export function SchoolSwitcher() {
         <Button
           variant="outline"
           size="sm"
-          disabled={switching}
+          disabled={isBusy}
           className="flex items-center gap-2 h-9 px-2.5 border-brand-200 dark:border-brand-900 bg-brand-50/60 dark:bg-brand-950/40 text-brand-950 dark:text-brand-100 hover:bg-brand-100/60 dark:hover:bg-brand-900/60 text-xs font-semibold max-w-[280px] sm:max-w-[340px] transition-colors"
           title={`Sekolah Aktif: ${currentSchool?.name}`}
         >
-          {switching ? (
+          {isBusy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-600" />
           ) : (
             <School className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400 shrink-0" />

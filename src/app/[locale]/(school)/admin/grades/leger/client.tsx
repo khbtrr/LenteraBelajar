@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -66,6 +66,11 @@ export function AdminLegerClient({
   const [selectedCohortId, setSelectedCohortId] = useState(initialCohortId);
   const [selectedYearId, setSelectedYearId] = useState(initialAcademicYearId);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    setSelectedCohortId(initialCohortId);
+    setSelectedYearId(initialAcademicYearId);
+  }, [initialCohortId, initialAcademicYearId]);
 
   const legerData = initialLegerData;
 

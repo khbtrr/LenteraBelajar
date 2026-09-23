@@ -1,10 +1,12 @@
 import { getCourses, getTeachersInSchool } from '@/lib/actions/course';
 import { getAcademicYears } from '@/lib/actions/academic-year';
 import { getCategories } from '@/lib/actions/category';
+import { requireSchool } from '@/lib/auth-utils';
 import { AdminCoursesClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function AdminCoursesPage() {
+  const session = await requireSchool();
   const t = await getTranslations('adminCourses');
   const [courses, academicYears, categories, teachers] = await Promise.all([
     getCourses(),
@@ -23,6 +25,7 @@ export default async function AdminCoursesPage() {
       </div>
 
       <AdminCoursesClient
+        key={session.schoolId}
         initialCourses={courses}
         academicYears={academicYears}
         categories={categories}

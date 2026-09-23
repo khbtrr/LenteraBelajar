@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,6 +50,10 @@ export function CourseRequestsClient({
   const [reviewAction, setReviewAction] = useState<'APPROVE' | 'REJECT' | null>(null);
   const [adminNote, setAdminNote] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setRequests(initialRequests);
+  }, [initialRequests]);
 
   const handleReview = async () => {
     if (!selectedRequest || !reviewAction) return;

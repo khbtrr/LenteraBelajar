@@ -1,8 +1,10 @@
 import { getAcademicYears } from '@/lib/actions/academic-year';
+import { requireSchool } from '@/lib/auth-utils';
 import { AcademicYearsClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function AcademicYearsPage() {
+  const session = await requireSchool();
   const t = await getTranslations('adminAcademicYears');
   const academicYears = await getAcademicYears();
 
@@ -15,7 +17,7 @@ export default async function AcademicYearsPage() {
         </p>
       </div>
 
-      <AcademicYearsClient initialYears={academicYears} />
+      <AcademicYearsClient key={session.schoolId} initialYears={academicYears} />
     </div>
   );
 }

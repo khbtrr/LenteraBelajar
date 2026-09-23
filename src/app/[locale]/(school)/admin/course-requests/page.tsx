@@ -1,8 +1,10 @@
 import { getCourseRequests } from '@/lib/actions/course';
+import { requireSchool } from '@/lib/auth-utils';
 import { CourseRequestsClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function AdminCourseRequestsPage() {
+  const session = await requireSchool();
   const t = await getTranslations('adminCourseRequests');
   const requests = await getCourseRequests();
 
@@ -15,7 +17,7 @@ export default async function AdminCourseRequestsPage() {
         </p>
       </div>
 
-      <CourseRequestsClient initialRequests={requests} />
+      <CourseRequestsClient key={session.schoolId} initialRequests={requests} />
     </div>
   );
 }

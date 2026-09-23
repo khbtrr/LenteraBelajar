@@ -1,11 +1,11 @@
-import { auth } from '@/lib/auth';
+import { requireSchool } from '@/lib/auth-utils';
 import { getCourses } from '@/lib/actions/course';
 import { getAcademicYears } from '@/lib/actions/academic-year';
 import { getCategories } from '@/lib/actions/category';
 import { TeacherCoursesClient } from './client';
 
 export default async function TeacherMyCoursesPage() {
-  const session = await auth();
+  const session = await requireSchool();
   if (!session?.user) return null;
 
   const [courses, academicYears, categories] = await Promise.all([
@@ -24,6 +24,7 @@ export default async function TeacherMyCoursesPage() {
       </div>
 
       <TeacherCoursesClient
+        key={session.schoolId}
         initialCourses={courses}
         academicYears={academicYears}
         categories={categories}

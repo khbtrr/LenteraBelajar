@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -111,6 +111,10 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
   const [reviewAction, setReviewAction] = useState<'APPROVE' | 'REJECT'>('APPROVE');
   const [adminNote, setAdminNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
 
   const studentPercent = data.users.total > 0 ? Math.round((data.users.students / data.users.total) * 100) : 0;
   const teacherPercent = data.users.total > 0 ? Math.round((data.users.teachers / data.users.total) * 100) : 0;

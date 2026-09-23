@@ -1,8 +1,10 @@
 import { getSchoolAnnouncements } from '@/lib/actions/school-announcement';
+import { requireSchool } from '@/lib/auth-utils';
 import { AdminAnnouncementsClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function AdminAnnouncementsPage() {
+  const session = await requireSchool();
   const t = await getTranslations('adminAnnouncements');
   const announcements = await getSchoolAnnouncements();
 
@@ -17,7 +19,7 @@ export default async function AdminAnnouncementsPage() {
         </p>
       </div>
 
-      <AdminAnnouncementsClient initialAnnouncements={announcements} />
+      <AdminAnnouncementsClient key={session.schoolId} initialAnnouncements={announcements} />
     </div>
   );
 }

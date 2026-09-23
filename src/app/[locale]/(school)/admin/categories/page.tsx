@@ -1,8 +1,10 @@
 import { getCategoryTree, getCategories } from '@/lib/actions/category';
+import { requireSchool } from '@/lib/auth-utils';
 import { CategoriesClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function CategoriesPage() {
+  const session = await requireSchool();
   const t = await getTranslations('adminCategories');
   const [tree, allCategories] = await Promise.all([
     getCategoryTree(),
@@ -18,7 +20,7 @@ export default async function CategoriesPage() {
         </p>
       </div>
 
-      <CategoriesClient initialTree={tree} flatCategories={allCategories} />
+      <CategoriesClient key={session.schoolId} initialTree={tree} flatCategories={allCategories} />
     </div>
   );
 }

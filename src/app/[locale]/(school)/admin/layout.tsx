@@ -66,7 +66,9 @@ export default async function AdminLayout({
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >
-      {children}
+      <div key={session.user.schoolId} className="w-full">
+        {children}
+      </div>
     </AppLayout>
   );
 }

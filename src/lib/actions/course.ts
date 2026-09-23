@@ -17,7 +17,6 @@ export async function getCourses(filters?: {
       OR: [
         { schoolId: session.schoolId },
         { isCrossSchool: true },
-        ...(filters?.teacherId ? [{ teacherId: filters.teacherId }] : []),
       ],
       ...(filters?.status && { status: filters.status }),
       ...(filters?.teacherId && { teacherId: filters.teacherId }),

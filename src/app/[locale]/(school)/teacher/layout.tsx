@@ -99,7 +99,9 @@ export default async function TeacherLayout({
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >
-      {children}
+      <div key={session.user.schoolId} className="w-full">
+        {children}
+      </div>
     </AppLayout>
   );
 }

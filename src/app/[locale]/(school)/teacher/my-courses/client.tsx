@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +61,10 @@ export function TeacherCoursesClient({
   const [courses, setCourses] = useState<CourseItem[]>(initialCourses);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setCourses(initialCourses);
+  }, [initialCourses]);
 
   // Form
   const [title, setTitle] = useState('');

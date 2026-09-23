@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -110,6 +110,22 @@ export function AdminSettingsClient({
   const [shuffleQuestions, setShuffleQuestions] = useState<boolean>(initialSchool.cbtShuffleQuestions ?? false);
   const [shuffleOptions, setShuffleOptions] = useState<boolean>(initialSchool.cbtShuffleOptions ?? false);
   const [savingCbt, setSavingCbt] = useState(false);
+
+  useEffect(() => {
+    setSchoolName(initialSchool.name || '');
+    setSchoolCode(initialSchool.code || '');
+    setAddress(initialSchool.address || '');
+    setPhone(initialSchool.phone || '');
+    setEmail(initialSchool.email || '');
+    setWebsite(initialSchool.website || '');
+    setLogo(initialSchool.logo);
+    setPassingGrade(initialSchool.defaultPassingGrade ?? 75);
+    setCbtLockdown(initialSchool.cbtLockdownEnabled ?? true);
+    setMaxTabSwitches(initialSchool.cbtMaxTabSwitches ?? 3);
+    setRequireToken(initialSchool.cbtRequireToken ?? false);
+    setShuffleQuestions(initialSchool.cbtShuffleQuestions ?? false);
+    setShuffleOptions(initialSchool.cbtShuffleOptions ?? false);
+  }, [initialSchool]);
 
   const [adminName, setAdminName] = useState(adminUser?.name || '');
   const [adminEmail, setAdminEmail] = useState(adminUser?.email || '');

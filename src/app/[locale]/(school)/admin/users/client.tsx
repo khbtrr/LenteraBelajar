@@ -98,6 +98,10 @@ export function AdminUsersClient({
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
+    setUsers(initialUsers);
+  }, [initialUsers]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [search, roleFilter, statusFilter, pageSize]);
 

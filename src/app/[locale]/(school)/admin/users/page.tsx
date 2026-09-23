@@ -1,9 +1,11 @@
 import { getUsersInSchool } from '@/lib/actions/user';
 import { getAllActiveSchools } from '@/lib/actions/school';
+import { requireSchool } from '@/lib/auth-utils';
 import { AdminUsersClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function AdminUsersPage() {
+  const session = await requireSchool();
   const t = await getTranslations('adminUsers');
   const [users, availableSchools] = await Promise.all([
     getUsersInSchool(),
@@ -19,7 +21,7 @@ export default async function AdminUsersPage() {
         </p>
       </div>
 
-      <AdminUsersClient initialUsers={users} availableSchools={availableSchools} />
+      <AdminUsersClient key={session.schoolId} initialUsers={users} availableSchools={availableSchools} />
     </div>
   );
 }

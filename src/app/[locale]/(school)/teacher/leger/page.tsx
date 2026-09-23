@@ -1,4 +1,5 @@
-﻿import { getLegerFilterOptions, getCohortLegerData } from '@/lib/actions/leger';
+import { getLegerFilterOptions, getCohortLegerData } from '@/lib/actions/leger';
+import { requireSchool } from '@/lib/auth-utils';
 import { AdminLegerClient } from '@/app/[locale]/(school)/admin/grades/leger/client';
 
 export default async function TeacherLegerPage({
@@ -6,6 +7,7 @@ export default async function TeacherLegerPage({
 }: {
   searchParams: Promise<{ cohortId?: string; academicYearId?: string }>;
 }) {
+  const session = await requireSchool();
   const { cohortId, academicYearId } = await searchParams;
   const { cohorts, academicYears } = await getLegerFilterOptions();
 
@@ -22,6 +24,7 @@ export default async function TeacherLegerPage({
   return (
     <div className="space-y-6">
       <AdminLegerClient
+        key={session.schoolId}
         cohorts={cohorts}
         academicYears={academicYears}
         initialCohortId={activeCohortId}

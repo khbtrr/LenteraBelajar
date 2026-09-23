@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,6 +44,11 @@ export function CategoriesClient({
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setTree(initialTree);
+    setCategories(flatCategories);
+  }, [initialTree, flatCategories]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

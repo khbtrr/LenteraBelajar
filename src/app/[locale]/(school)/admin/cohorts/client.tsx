@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
@@ -104,6 +104,11 @@ export function CohortsClient({
   const [students, setStudents] = useState<Student[]>(availableStudents);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setCohorts(initialCohorts);
+    setStudents(availableStudents);
+  }, [initialCohorts, availableStudents]);
 
   // 1. Create Cohort Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);

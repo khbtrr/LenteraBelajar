@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -78,6 +78,10 @@ export function AdminAnnouncementsClient({
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+
+  useEffect(() => {
+    setAnnouncements(initialAnnouncements);
+  }, [initialAnnouncements]);
 
   // Modal form states
   const [isModalOpen, setIsModalOpen] = useState(false);
