@@ -16,6 +16,7 @@ export async function getCourses(filters?: {
     where: {
       OR: [
         { schoolId: session.schoolId },
+        { isCrossSchool: true },
         ...(filters?.teacherId ? [{ teacherId: filters.teacherId }] : []),
       ],
       ...(filters?.status && { status: filters.status }),
@@ -42,9 +43,12 @@ export async function getTeachersInSchool() {
   const session = await requireSchool();
   return db.user.findMany({
     where: {
-      schoolId: session.schoolId,
       role: Role.TEACHER,
       isActive: true,
+      OR: [
+        { schoolId: session.schoolId },
+        { assignedSchools: { some: { schoolId: session.schoolId } } },
+      ],
     },
     select: {
       id: true,

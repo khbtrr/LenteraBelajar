@@ -396,10 +396,10 @@ export function EraporAutofillModal({
             <div
               className={`p-2.5 rounded-lg border text-center transition-all ${
                 step === 1
-                  ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold shadow-xs'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-900 dark:text-blue-300 font-bold shadow-xs'
                   : step > 1
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                  : 'bg-gray-50 border-gray-200 text-gray-400'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
               }`}
             >
               <div className="text-[11px] uppercase tracking-wider">Langkah 1</div>
@@ -409,10 +409,10 @@ export function EraporAutofillModal({
             <div
               className={`p-2.5 rounded-lg border text-center transition-all ${
                 step === 2
-                  ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold shadow-xs'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-900 dark:text-blue-300 font-bold shadow-xs'
                   : step > 2
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                  : 'bg-gray-50 border-gray-200 text-gray-400'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
               }`}
             >
               <div className="text-[11px] uppercase tracking-wider">Langkah 2</div>
@@ -422,8 +422,8 @@ export function EraporAutofillModal({
             <div
               className={`p-2.5 rounded-lg border text-center transition-all ${
                 step === 3
-                  ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold shadow-xs'
-                  : 'bg-gray-50 border-gray-200 text-gray-400'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-900 dark:text-blue-300 font-bold shadow-xs'
+                  : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
               }`}
             >
               <div className="text-[11px] uppercase tracking-wider">Langkah 3</div>
@@ -436,7 +436,7 @@ export function EraporAutofillModal({
           <div className="py-4 space-y-5">
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#002446]/30 hover:border-[#002446] bg-blue-50/20 hover:bg-blue-50/50 rounded-2xl p-8 text-center cursor-pointer transition-all space-y-3"
+              className="border-2 border-dashed border-[#002446]/30 dark:border-white/20 hover:border-[#002446] dark:hover:border-white/40 bg-blue-50/20 dark:bg-blue-950/20 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 rounded-2xl p-8 text-center cursor-pointer transition-all space-y-3"
             >
               <input
                 ref={fileInputRef}
@@ -445,55 +445,55 @@ export function EraporAutofillModal({
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <div className="w-14 h-14 bg-white rounded-full shadow-md text-[#002446] mx-auto flex items-center justify-center">
+              <div className="w-14 h-14 bg-white dark:bg-gray-800 rounded-full shadow-md text-[#002446] dark:text-white mx-auto flex items-center justify-center">
                 <FileSpreadsheet className="h-7 w-7 text-[#FF8928]" />
               </div>
               <div>
-                <div className="font-bold text-sm text-[#002446]">
+                <div className="font-bold text-sm text-[#002446] dark:text-white">
                   {file ? file.name : 'Klik atau Tarik File Template Excel e-Rapor ke Sini'}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Format file: <strong>.xlsx</strong> atau <strong>.xls</strong> (Template unduhan dari aplikasi e-Rapor resmi sekolah)
                 </p>
               </div>
             </div>
 
             {parsedData && (
-              <div className="p-4 bg-emerald-50/70 border border-emerald-300 rounded-xl space-y-3 text-xs text-emerald-900">
-                <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl space-y-3 text-xs text-emerald-900 dark:text-emerald-200">
+                <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300 text-sm">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   Template Berhasil Dibaca
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div className="p-2 bg-white rounded-lg border border-emerald-200">
-                    <span className="text-gray-500 block">Pilihan Lembar (Sheet):</span>
+                  <div className="p-2 bg-white dark:bg-gray-900 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                    <span className="text-gray-500 dark:text-gray-400 block">Pilihan Lembar (Sheet):</span>
                     {parsedData.sheetNames.length > 1 ? (
                       <select
                         value={parsedData.activeSheetName}
                         onChange={(e) => handleSheetChange(e.target.value)}
-                        className="mt-1 font-bold text-[#002446] bg-transparent border-none focus:ring-0 p-0 text-xs w-full"
+                        className="mt-1 font-bold text-[#002446] dark:text-white bg-transparent border-none focus:ring-0 p-0 text-xs w-full"
                       >
                         {parsedData.sheetNames.map((s) => (
-                          <option key={s} value={s}>
+                          <option key={s} value={s} className="dark:bg-gray-900">
                             {s}
                           </option>
                         ))}
                       </select>
                     ) : (
-                      <strong className="text-[#002446]">{parsedData.activeSheetName}</strong>
+                      <strong className="text-[#002446] dark:text-white">{parsedData.activeSheetName}</strong>
                     )}
                   </div>
 
-                  <div className="p-2 bg-white rounded-lg border border-emerald-200">
-                    <span className="text-gray-500 block">Baris Siswa Terdeteksi:</span>
-                    <strong className="text-lg text-[#002446]">
+                  <div className="p-2 bg-white dark:bg-gray-900 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                    <span className="text-gray-500 dark:text-gray-400 block">Baris Siswa Terdeteksi:</span>
+                    <strong className="text-lg text-[#002446] dark:text-white">
                       {parsedData.templateStudents.length} siswa
                     </strong>
                   </div>
 
-                  <div className="p-2 bg-white rounded-lg border border-emerald-200">
-                    <span className="text-gray-500 block">Kolom Nilai Terbaca:</span>
-                    <strong className="text-lg text-[#002446]">
+                  <div className="p-2 bg-white dark:bg-gray-900 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                    <span className="text-gray-500 dark:text-gray-400 block">Kolom Nilai Terbaca:</span>
+                    <strong className="text-lg text-[#002446] dark:text-white">
                       {parsedData.gradeColumns.length} kolom
                     </strong>
                   </div>
@@ -502,12 +502,12 @@ export function EraporAutofillModal({
             )}
 
             {/* Quick Tips */}
-            <div className="p-3.5 bg-gray-50 rounded-xl border text-xs text-gray-600 space-y-1.5">
-              <div className="font-bold text-[#002446] flex items-center gap-1.5">
-                <HelpCircle className="h-4 w-4 text-blue-600" />
+            <div className="p-3.5 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-300 space-y-1.5">
+              <div className="font-bold text-[#002446] dark:text-white flex items-center gap-1.5">
+                <HelpCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 Petunjuk Template e-Rapor:
               </div>
-              <ul className="list-disc pl-5 space-y-1 text-gray-500">
+              <ul className="list-disc pl-5 space-y-1 text-gray-500 dark:text-gray-400">
                 <li>
                   Gunakan file template impor yang langsung diunduh dari aplikasi e-Rapor resmi (Kurikulum Merdeka atau K13).
                 </li>
@@ -521,12 +521,12 @@ export function EraporAutofillModal({
 
         {step === 2 && parsedData && (
           <div className="py-4 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-blue-50/50 p-3 rounded-xl border border-blue-200 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-blue-50/50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200 dark:border-blue-900/50 text-xs">
               <div>
-                <span className="font-bold text-[#002446] block">
+                <span className="font-bold text-[#002446] dark:text-white block">
                   Petakan Kolom Nilai Excel dengan Data di LenteraBelajar
                 </span>
-                <span className="text-gray-500">
+                <span className="text-gray-500 dark:text-gray-400">
                   Tentukan kuis, tugas, atau rata-rata modul yang akan dimasukkan ke masing-masing kolom template.
                 </span>
               </div>
@@ -536,7 +536,7 @@ export function EraporAutofillModal({
                   size="sm"
                   variant="outline"
                   onClick={handleApplyAutoMap}
-                  className="text-xs bg-white text-blue-700 border-blue-300 hover:bg-blue-50 font-semibold"
+                  className="text-xs bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50 font-semibold"
                 >
                   <Sparkles className="h-3.5 w-3.5 mr-1 text-[#FF8928]" />
                   Auto-Map Cerdas
@@ -546,7 +546,7 @@ export function EraporAutofillModal({
                   size="sm"
                   variant="ghost"
                   onClick={handleResetMappings}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 >
                   Reset
                 </Button>
@@ -554,17 +554,17 @@ export function EraporAutofillModal({
             </div>
 
             {/* Columns Table */}
-            <div className="border rounded-xl overflow-hidden bg-white shadow-xs">
+            <div className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900 shadow-xs">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[550px] text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-gray-50 text-gray-600 border-b uppercase font-semibold">
+                    <tr className="bg-gray-50 dark:bg-gray-800/90 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-800 uppercase font-semibold">
                       <th className="py-3 px-4 w-24 text-center">Kolom</th>
                       <th className="py-3 px-4">Nama Kolom di Template e-Rapor</th>
                       <th className="py-3 px-4 w-80">Sumber Nilai di LenteraBelajar</th>
                     </tr>
                   </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {mappings.map((mapping) => {
                     const selectValue =
                       mapping.sourceType === 'IGNORE'
@@ -584,13 +584,13 @@ export function EraporAutofillModal({
                     return (
                       <tr
                         key={mapping.colIndex}
-                        className={`transition-colors ${isMapped ? 'bg-blue-50/20' : 'hover:bg-gray-50/50'}`}
+                        className={`transition-colors ${isMapped ? 'bg-blue-50/20 dark:bg-blue-950/20' : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/40'}`}
                       >
-                        <td className="py-3 px-4 text-center font-mono font-bold text-[#002446]">
+                        <td className="py-3 px-4 text-center font-mono font-bold text-[#002446] dark:text-brand-300">
                           {mapping.colLetter}
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-gray-900">{mapping.headerText}</div>
+                          <div className="font-semibold text-gray-900 dark:text-white">{mapping.headerText}</div>
                         </td>
                         <td className="py-3 px-4">
                           <select
@@ -598,8 +598,8 @@ export function EraporAutofillModal({
                             onChange={(e) => handleMappingChange(mapping.colIndex, e.target.value)}
                             className={`w-full p-2 text-xs rounded-lg border transition-all ${
                               isMapped
-                                ? 'border-[#002446] bg-white font-semibold text-[#002446]'
-                                : 'border-gray-200 bg-gray-50 text-gray-500'
+                                ? 'border-brand-500 dark:border-brand-400 bg-white dark:bg-gray-800 font-semibold text-[#002446] dark:text-white'
+                                : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400'
                             }`}
                           >
                             <option value="IGNORE">-- Lewati (Jangan Diisi) --</option>
@@ -681,19 +681,19 @@ export function EraporAutofillModal({
             </div>
 
             {/* Students Matching Table */}
-            <div className="border rounded-xl overflow-hidden bg-white shadow-xs">
-              <div className="p-3 bg-gray-50 border-b flex items-center justify-between text-xs">
-                <span className="font-bold text-[#002446]">
+            <div className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900 shadow-xs">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs">
+                <span className="font-bold text-[#002446] dark:text-white">
                   Pratinjau Data Siswa & Pengisian Nilai ({matchedStudents.length})
                 </span>
-                <span className="text-gray-500">
+                <span className="text-gray-500 dark:text-gray-400">
                   Periksa nama siswa di bawah. Anda dapat mengubah pilihan siswa secara manual jika diperlukan.
                 </span>
               </div>
 
               <div className="max-h-72 overflow-y-auto overflow-x-auto">
                 <table className="w-full min-w-[600px] text-left text-xs border-collapse">
-                  <thead className="sticky top-0 bg-gray-100/90 backdrop-blur-xs text-gray-600 border-b">
+                  <thead className="sticky top-0 bg-gray-100/90 dark:bg-gray-800 backdrop-blur-xs text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
                     <tr>
                       <th className="py-2.5 px-3 w-12 text-center">Baris</th>
                       <th className="py-2.5 px-3">Nama di Template Excel</th>
@@ -702,22 +702,22 @@ export function EraporAutofillModal({
                       <th className="py-2.5 px-3 text-center w-28">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {matchedStudents.map((match) => {
                       const isMatched = match.lmsStudentId !== null;
 
                       return (
                         <tr
                           key={match.rowIndex}
-                          className={`hover:bg-gray-50/80 ${!isMatched ? 'bg-rose-50/30' : ''}`}
+                          className={`hover:bg-gray-50/80 dark:hover:bg-gray-800/50 ${!isMatched ? 'bg-rose-50/30 dark:bg-rose-950/20' : ''}`}
                         >
-                          <td className="py-2.5 px-3 text-center font-mono text-gray-500">
+                          <td className="py-2.5 px-3 text-center font-mono text-gray-500 dark:text-gray-400">
                             #{match.rowNumber}
                           </td>
-                          <td className="py-2.5 px-3 font-semibold text-gray-900">
+                          <td className="py-2.5 px-3 font-semibold text-gray-900 dark:text-white">
                             {match.templateName}
                           </td>
-                          <td className="py-2.5 px-3 text-center font-mono text-gray-500">
+                          <td className="py-2.5 px-3 text-center font-mono text-gray-500 dark:text-gray-400">
                             {match.templateNis || '-'}
                           </td>
                           <td className="py-2 px-3">
@@ -728,8 +728,8 @@ export function EraporAutofillModal({
                               }
                               className={`w-full p-1.5 text-xs rounded border ${
                                 isMatched
-                                  ? 'border-gray-200 bg-white text-gray-800'
-                                  : 'border-rose-300 bg-rose-50 text-rose-800 font-bold'
+                                  ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100'
+                                  : 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 font-bold'
                               }`}
                             >
                               <option value="">-- Tidak Terhubung / Kosongkan --</option>
@@ -742,11 +742,11 @@ export function EraporAutofillModal({
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             {isMatched ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold text-[10px]">
+                              <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded font-semibold text-[10px]">
                                 <CheckCircle2 className="h-3 w-3" /> Cocok
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-semibold text-[10px]">
+                              <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded font-semibold text-[10px]">
                                 <AlertTriangle className="h-3 w-3" /> Belum Cocok
                               </span>
                             )}
@@ -761,7 +761,7 @@ export function EraporAutofillModal({
           </div>
         )}
 
-        <DialogFooter className="border-t pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <DialogFooter className="border-t border-gray-100 dark:border-gray-800 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             {step > 1 && (
               <Button

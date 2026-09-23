@@ -16,6 +16,7 @@ import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { NotificationDropdown } from '@/components/layout/notification-dropdown';
 import { ThemeToggleButton } from '@/components/common/ThemeToggleButton';
 import { GamificationChip } from '@/components/layout/gamification-chip';
+import { SchoolSwitcher } from '@/components/layout/school-switcher';
 import { useSidebar } from '@/context/SidebarContext';
 import { signOut } from 'next-auth/react';
 import { Link } from '@/i18n/navigation';
@@ -54,7 +55,7 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors">
-      {/* Left side: Hamburger menu + mobile brand */}
+      {/* Left side: Hamburger menu + mobile brand + School Switcher */}
       <div className="flex items-center gap-3">
         {/* Mobile Hamburger toggle */}
         <button
@@ -80,6 +81,9 @@ export function Header({
             LenteraBelajar
           </span>
         </Link>
+
+        {/* Multi-School Switcher */}
+        <SchoolSwitcher />
       </div>
 
       {/* Right side: Tools, Switcher, Theme, Notifications & User */}

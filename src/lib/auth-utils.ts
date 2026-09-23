@@ -27,10 +27,62 @@ export async function requireRole(...roles: Role[]) {
   return session;
 }
 
+import { cookies } from 'next/headers';
+import { db } from '@/lib/db';
+
+export async function getActiveSchoolId(): Promise<string | null> {
+  const session = await auth();
+  if (!session?.user) return null;
+
+  let cookieSchoolId: string | null = null;
+  try {
+    const cookieStore = await cookies();
+    cookieSchoolId = cookieStore.get('active_school_id')?.value || null;
+  } catch {
+    // cookies() unavailable in non-request contexts
+  }
+
+  if (cookieSchoolId) {
+    if (session.user.role === 'SUPER_ADMIN') {
+      return cookieSchoolId;
+    }
+    if (cookieSchoolId === session.user.schoolId) {
+      return cookieSchoolId;
+    }
+    const hasAssignment = await db.userSchool.findUnique({
+      where: {
+        userId_schoolId: {
+          userId: session.user.id,
+          schoolId: cookieSchoolId,
+        },
+      },
+    });
+    if (hasAssignment) {
+      return cookieSchoolId;
+    }
+  }
+
+  if (session.user.schoolId) {
+    return session.user.schoolId;
+  }
+
+  if (session.user.role === 'SUPER_ADMIN') {
+    const firstSchool = await db.school.findFirst({ select: { id: true } });
+    return firstSchool?.id || null;
+  }
+
+  const firstAssignment = await db.userSchool.findFirst({
+    where: { userId: session.user.id },
+    select: { schoolId: true },
+  });
+  return firstAssignment?.schoolId || null;
+}
+
 export async function requireSchool() {
   const session = await requireAuth();
-  if (!session.user.schoolId) {
+  const schoolId = await getActiveSchoolId();
+  if (!schoolId) {
     redirect('/');
   }
-  return { ...session, schoolId: session.user.schoolId };
+  return { ...session, schoolId };
 }

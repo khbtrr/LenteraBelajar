@@ -10,8 +10,19 @@ export async function getUsersInSchool(role?: Role) {
   const session = await requireSchool();
   return db.user.findMany({
     where: {
-      schoolId: session.schoolId,
+      OR: [
+        { schoolId: session.schoolId },
+        { assignedSchools: { some: { schoolId: session.schoolId } } },
+      ],
       ...(role && { role }),
+    },
+    include: {
+      school: { select: { id: true, name: true, code: true } },
+      assignedSchools: {
+        include: {
+          school: { select: { id: true, name: true, code: true } },
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -23,6 +34,7 @@ export async function createUser(data: {
   role: Role;
   nis?: string;
   nip?: string;
+  assignedSchoolIds?: string[];
 }) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
@@ -45,6 +57,19 @@ export async function createUser(data: {
       isActive: true,
     },
   });
+
+  // Hubungkan ke sekolah yang dipilih atau default ke schoolId saat ini
+  const targetSchoolIds = data.assignedSchoolIds && data.assignedSchoolIds.length > 0
+    ? Array.from(new Set([...data.assignedSchoolIds, schoolId]))
+    : [schoolId];
+
+  for (const sId of targetSchoolIds) {
+    await db.userSchool.upsert({
+      where: { userId_schoolId: { userId: user.id, schoolId: sId } },
+      update: {},
+      create: { userId: user.id, schoolId: sId },
+    });
+  }
 
   revalidatePath('/[locale]/admin/users', 'page');
   return user;
@@ -194,14 +219,23 @@ export async function updateUser(
     nis?: string | null;
     nip?: string | null;
     isActive?: boolean;
+    assignedSchoolIds?: string[];
   }
 ) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
 
-  const user = await db.user.findUnique({ where: { id: userId, schoolId } });
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    include: { assignedSchools: true },
+  });
   if (!user) throw new Error('Pengguna tidak ditemukan');
+
+  if (session.user.role !== 'SUPER_ADMIN') {
+    const isRelated = user.schoolId === schoolId || user.assignedSchools.some((as) => as.schoolId === schoolId);
+    if (!isRelated) throw new Error('Anda tidak memiliki akses ke pengguna ini');
+  }
 
   if (data.email !== user.email) {
     const existing = await db.user.findUnique({ where: { email: data.email } });
@@ -220,7 +254,32 @@ export async function updateUser(
       nip: data.nip !== undefined ? (data.nip || null) : user.nip,
       ...(data.isActive !== undefined && { isActive: data.isActive }),
     },
+    include: {
+      school: { select: { id: true, name: true, code: true } },
+      assignedSchools: {
+        include: {
+          school: { select: { id: true, name: true, code: true } },
+        },
+      },
+    },
   });
+
+  if (data.assignedSchoolIds) {
+    await db.userSchool.deleteMany({
+      where: {
+        userId,
+        schoolId: { notIn: data.assignedSchoolIds },
+      },
+    });
+
+    for (const sId of data.assignedSchoolIds) {
+      await db.userSchool.upsert({
+        where: { userId_schoolId: { userId, schoolId: sId } },
+        update: {},
+        create: { userId, schoolId: sId },
+      });
+    }
+  }
 
   revalidatePath('/[locale]/admin/users', 'page');
   return updated;

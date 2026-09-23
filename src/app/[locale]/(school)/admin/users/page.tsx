@@ -1,10 +1,14 @@
 import { getUsersInSchool } from '@/lib/actions/user';
+import { getAllActiveSchools } from '@/lib/actions/school';
 import { AdminUsersClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function AdminUsersPage() {
   const t = await getTranslations('adminUsers');
-  const users = await getUsersInSchool();
+  const [users, availableSchools] = await Promise.all([
+    getUsersInSchool(),
+    getAllActiveSchools(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -15,7 +19,7 @@ export default async function AdminUsersPage() {
         </p>
       </div>
 
-      <AdminUsersClient initialUsers={users} />
+      <AdminUsersClient initialUsers={users} availableSchools={availableSchools} />
     </div>
   );
 }

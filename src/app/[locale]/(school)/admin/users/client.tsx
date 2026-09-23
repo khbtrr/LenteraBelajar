@@ -51,6 +51,12 @@ import { Role } from '@prisma/client';
 import * as XLSX from 'xlsx';
 import { useDialog } from '@/context/DialogContext';
 
+interface UserSchoolItem {
+  id: string;
+  schoolId: string;
+  school: { id: string; name: string; code: string };
+}
+
 interface UserItem {
   id: string;
   name: string;
@@ -63,9 +69,18 @@ interface UserItem {
   failedLoginAttempts?: number;
   lockedUntil?: Date | string | null;
   createdAt: Date;
+  schoolId?: string | null;
+  school?: { id: string; name: string; code: string } | null;
+  assignedSchools?: UserSchoolItem[];
 }
 
-export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
+export function AdminUsersClient({
+  initialUsers,
+  availableSchools = [],
+}: {
+  initialUsers: any[];
+  availableSchools?: { id: string; name: string; code: string }[];
+}) {
   const t = useTranslations('adminUsers');
   const { showAlert, showConfirm } = useDialog();
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
@@ -91,6 +106,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
   const [role, setRole] = useState<Role>(Role.STUDENT);
   const [nis, setNis] = useState('');
   const [nip, setNip] = useState('');
+  const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([]);
 
   const [editUserId, setEditUserId] = useState('');
   const [editName, setEditName] = useState('');
@@ -99,6 +115,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
   const [editNis, setEditNis] = useState('');
   const [editNip, setEditNip] = useState('');
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editSelectedSchoolIds, setEditSelectedSchoolIds] = useState<string[]>([]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,14 +127,16 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         role,
         nis: role === Role.STUDENT ? nis : undefined,
         nip: role === Role.TEACHER ? nip : undefined,
+        assignedSchoolIds: (role === Role.TEACHER || role === Role.ADMIN) ? selectedSchoolIds : undefined,
       });
 
-      setUsers((prev) => [created, ...prev]);
+      setUsers((prev) => [created as any, ...prev]);
       setIsCreateOpen(false);
       setName('');
       setEmail('');
       setNis('');
       setNip('');
+      setSelectedSchoolIds([]);
       await showAlert(t('userAddedAlert', { name: created.name }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
@@ -135,6 +154,12 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
     setEditNis(user.nis || '');
     setEditNip(user.nip || '');
     setEditIsActive(user.isActive);
+
+    const userSchools = (user.assignedSchools || []).map((as) => as.schoolId);
+    if (user.schoolId && !userSchools.includes(user.schoolId)) {
+      userSchools.push(user.schoolId);
+    }
+    setEditSelectedSchoolIds(userSchools);
     setIsEditOpen(true);
   };
 
@@ -149,6 +174,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
         nis: editRole === Role.STUDENT ? editNis : null,
         nip: editRole === Role.TEACHER ? editNip : null,
         isActive: editIsActive,
+        assignedSchoolIds: (editRole === Role.TEACHER || editRole === Role.ADMIN) ? editSelectedSchoolIds : undefined,
       });
 
       setUsers((prev) =>
@@ -478,8 +504,22 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
               ) : (
                 paginatedUsers.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium text-[#002446] dark:text-white">
-                      {user.name}
+                    <TableCell>
+                      <div className="font-medium text-[#002446] dark:text-white">
+                        {user.name}
+                      </div>
+                      {user.assignedSchools && user.assignedSchools.length > 1 ? (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {user.assignedSchools.map((as) => (
+                            <span
+                              key={as.schoolId}
+                              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900"
+                            >
+                              {as.school?.code?.startsWith('REG') ? 'Reguler' : 'Plus'}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600 dark:text-gray-300">
                       {user.email}
@@ -741,6 +781,39 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                   />
                 </div>
               )}
+
+              {(role === Role.TEACHER || role === Role.ADMIN) && availableSchools.length > 0 && (
+                <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                  <Label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Penugasan Unit Sekolah (Multi-School):
+                  </Label>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Centang sekolah tempat guru/admin ini ditugaskan mengajar/bertugas.
+                  </p>
+                  <div className="space-y-2 pt-1">
+                    {availableSchools.map((s) => {
+                      const checked = selectedSchoolIds.includes(s.id);
+                      return (
+                        <label key={s.id} className="flex items-center gap-2 text-xs text-gray-800 dark:text-gray-200 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSchoolIds((prev) => [...prev, s.id]);
+                              } else {
+                                setSelectedSchoolIds((prev) => prev.filter((id) => id !== s.id));
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                          />
+                          <span>{s.name} ({s.code})</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button
@@ -844,6 +917,39 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
                   <option value="INACTIVE">{t('statusInactiveOption')}</option>
                 </select>
               </div>
+
+              {(editRole === Role.TEACHER || editRole === Role.ADMIN) && availableSchools.length > 0 && (
+                <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                  <Label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Penugasan Unit Sekolah (Multi-School):
+                  </Label>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Centang sekolah tempat guru/admin ini ditugaskan mengajar/bertugas.
+                  </p>
+                  <div className="space-y-2 pt-1">
+                    {availableSchools.map((s) => {
+                      const checked = editSelectedSchoolIds.includes(s.id);
+                      return (
+                        <label key={s.id} className="flex items-center gap-2 text-xs text-gray-800 dark:text-gray-200 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditSelectedSchoolIds((prev) => [...prev, s.id]);
+                              } else {
+                                setEditSelectedSchoolIds((prev) => prev.filter((id) => id !== s.id));
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                          />
+                          <span>{s.name} ({s.code})</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button

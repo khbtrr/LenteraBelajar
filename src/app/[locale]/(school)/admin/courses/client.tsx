@@ -50,6 +50,7 @@ interface CourseItem {
   description: string | null;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ARCHIVED';
   isCrossSchool?: boolean;
+  school?: { id: string; name: string; code: string } | null;
   teacher: { id: string; name: string; email: string };
   category: { id: string; name: string } | null;
   academicYear: { id: string; name: string; status: string };
@@ -357,6 +358,11 @@ export function AdminCoursesClient({
                         <span className="font-semibold text-[#002446] dark:text-white">
                           {course.title}
                         </span>
+                        {course.school && (
+                          <Badge variant="secondary" className="text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                            {course.school.code.startsWith('REG') ? 'Reguler' : 'SMA Plus'}
+                          </Badge>
+                        )}
                         {course.isCrossSchool && (
                           <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-[10px] font-bold">
                             Student Day

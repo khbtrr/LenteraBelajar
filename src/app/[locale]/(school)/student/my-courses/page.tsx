@@ -112,13 +112,13 @@ export default async function StudentMyCoursesPage() {
                   </div>
                 </CardContent>
 
-                <CardFooter className="pt-3 border-t bg-gray-50/50 flex flex-col gap-2">
+                <CardFooter className="pt-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 flex flex-col gap-2">
                   <Link
                     href={`/student/course/${course.id}/modules`}
                     className="w-full"
                   >
                     <Button
-                      className="w-full bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center justify-center gap-1.5"
+                      className="w-full bg-[#002446] hover:bg-[#002446]/90 dark:bg-[#13467b] dark:hover:bg-[#185596] text-white flex items-center justify-center gap-1.5"
                       size="sm"
                     >
                       <BookOpen className="h-4 w-4" /> {t('enterModulesBtn')}
@@ -133,9 +133,9 @@ export default async function StudentMyCoursesPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full flex items-center justify-center gap-1 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                        className="w-full flex items-center justify-center gap-1 text-xs border border-emerald-300 dark:border-emerald-600/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-400 dark:hover:border-emerald-500 font-semibold transition-colors"
                       >
-                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600" /> {t('attendanceBtn')}
+                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> {t('attendanceBtn')}
                       </Button>
                     </Link>
 
@@ -146,9 +146,9 @@ export default async function StudentMyCoursesPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full flex items-center justify-center gap-1 text-xs border-[#002446] text-[#002446] hover:bg-blue-50"
+                        className="w-full flex items-center justify-center gap-1 text-xs border border-blue-300 dark:border-blue-600/50 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-400 dark:hover:border-blue-500 font-semibold transition-colors"
                       >
-                        <MessageSquare className="h-3.5 w-3.5 text-[#002446]" /> {t('forumBtn')}
+                        <MessageSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /> {t('forumBtn')}
                       </Button>
                     </Link>
                   </div>

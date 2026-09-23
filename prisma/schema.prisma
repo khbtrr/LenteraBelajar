@@ -36,6 +36,7 @@ model School {
   cohorts        Cohort[]
   courseRequests CourseRequest[]
   schoolAnnouncements SchoolAnnouncement[]
+  userAssignments     UserSchool[]
 }
 
 model User {
@@ -65,6 +66,7 @@ model User {
   lastActiveDate   DateTime?
 
   school                School?              @relation(fields: [schoolId], references: [id])
+  assignedSchools       UserSchool[]
   teacherCourses        Course[]             @relation("CourseTeacher")
   enrollments           Enrollment[]
   quizAttempts          QuizAttempt[]
@@ -89,6 +91,20 @@ model User {
 
   @@index([schoolId])
   @@index([email])
+}
+
+model UserSchool {
+  id        String   @id @default(cuid())
+  userId    String
+  schoolId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, schoolId])
+  @@index([userId])
+  @@index([schoolId])
 }
 
 enum Role {

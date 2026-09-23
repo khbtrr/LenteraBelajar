@@ -25,6 +25,7 @@ interface CourseItem {
   description: string | null;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ARCHIVED';
   isCrossSchool?: boolean;
+  school?: { id: string; name: string; code: string } | null;
   category: { id: string; name: string } | null;
   academicYear: { id: string; name: string; status: string };
   _count: { enrollments: number; modules: number };
@@ -175,6 +176,11 @@ export function TeacherCoursesClient({
                       <Badge variant="outline" className="text-xs">
                         {course.category?.name || t('generalCategory')}
                       </Badge>
+                      {course.school && (
+                        <Badge variant="secondary" className="text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                          {course.school.code.startsWith('REG') ? 'Reguler' : 'SMA Plus'}
+                        </Badge>
+                      )}
                       {course.isCrossSchool && (
                         <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-[10px] font-bold">
                           Student Day
@@ -265,11 +271,11 @@ export function TeacherCoursesClient({
                       className="w-full"
                     >
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="w-full flex items-center justify-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-medium"
+                        className="w-full border border-emerald-300 dark:border-emerald-600/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-400 dark:hover:border-emerald-500 flex items-center justify-center gap-1 text-xs font-semibold transition-colors"
                       >
-                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600" /> {t('btnAttendance')}
+                        <CalendarCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> {t('btnAttendance')}
                       </Button>
                     </Link>
 
@@ -278,11 +284,11 @@ export function TeacherCoursesClient({
                       className="w-full"
                     >
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="w-full flex items-center justify-center gap-1 text-xs text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-medium"
+                        className="w-full border border-blue-300 dark:border-blue-600/50 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-400 dark:hover:border-blue-500 flex items-center justify-center gap-1 text-xs font-semibold transition-colors"
                       >
-                        <MessageSquare className="h-3.5 w-3.5 text-blue-600" /> {t('btnForum')}
+                        <MessageSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /> {t('btnForum')}
                       </Button>
                     </Link>
                   </div>
