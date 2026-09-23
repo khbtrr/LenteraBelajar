@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { School, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ interface SchoolItem {
 }
 
 export function SchoolSwitcher() {
+  const router = useRouter();
   const [schools, setSchools] = useState<SchoolItem[]>([]);
   const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null);
   const [canSwitch, setCanSwitch] = useState(false);
@@ -59,11 +61,12 @@ export function SchoolSwitcher() {
     if (schoolId === currentSchoolId || switching) return;
     try {
       setSwitching(true);
+      setCurrentSchoolId(schoolId);
       await switchActiveSchool(schoolId);
-      // Hard reload to refresh all active server components and school-scoped layout contexts
-      window.location.reload();
+      router.refresh();
     } catch (err) {
       console.error('Failed to switch school:', err);
+    } finally {
       setSwitching(false);
     }
   };

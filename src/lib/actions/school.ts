@@ -138,7 +138,6 @@ export async function switchActiveSchool(schoolId: string) {
     sameSite: 'lax',
   });
 
-  revalidatePath('/', 'layout');
   return { success: true, schoolId };
 }
 

@@ -18,6 +18,7 @@ export default async function AdminSettingsPage() {
       </div>
 
       <AdminSettingsClient
+        key={school.id}
         initialSchool={school}
         activeAcademicYear={activeAcademicYear}
         adminUser={adminUser}
