@@ -16,9 +16,11 @@ export default async function CourseEnrollmentsPage({
     notFound();
   }
 
+  const isCrossSchool = Boolean(course.isCrossSchool);
+
   const [cohorts, students, t] = await Promise.all([
-    getCohorts({ activeOnly: true }),
-    getStudentsInSchool(),
+    getCohorts({ activeOnly: true, allSchools: isCrossSchool }),
+    getStudentsInSchool({ allSchools: isCrossSchool }),
     getTranslations('teacherEnrollments'),
   ]);
 

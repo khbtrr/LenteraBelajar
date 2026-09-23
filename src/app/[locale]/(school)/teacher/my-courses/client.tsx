@@ -24,6 +24,7 @@ interface CourseItem {
   title: string;
   description: string | null;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ARCHIVED';
+  isCrossSchool?: boolean;
   category: { id: string; name: string } | null;
   academicYear: { id: string; name: string; status: string };
   _count: { enrollments: number; modules: number };
@@ -63,6 +64,7 @@ export function TeacherCoursesClient({
   // Form
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [isCrossSchool, setIsCrossSchool] = useState(false);
   const [academicYearId, setAcademicYearId] = useState(
     academicYears.find((y) => y.status === 'ACTIVE')?.id || academicYears[0]?.id || ''
   );
@@ -82,6 +84,7 @@ export function TeacherCoursesClient({
         academicYearId,
         categoryId: categoryId || undefined,
         teacherId: currentUserId,
+        isCrossSchool,
       });
 
       const selectedYear = academicYears.find((y) => y.id === academicYearId);
@@ -90,6 +93,7 @@ export function TeacherCoursesClient({
       setCourses((prev) => [
         {
           ...created,
+          isCrossSchool: created.isCrossSchool,
           category: selectedCategory || null,
           academicYear: selectedYear || { id: '', name: '-', status: 'ACTIVE' },
           _count: { enrollments: 0, modules: 0 },
@@ -100,6 +104,7 @@ export function TeacherCoursesClient({
       setIsCreateOpen(false);
       setTitle('');
       setDescription('');
+      setIsCrossSchool(false);
       await showAlert(t('successCreated', { title: created.title }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
@@ -166,9 +171,16 @@ export function TeacherCoursesClient({
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {course.category?.name || t('generalCategory')}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className="text-xs">
+                        {course.category?.name || t('generalCategory')}
+                      </Badge>
+                      {course.isCrossSchool && (
+                        <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-[10px] font-bold">
+                          Student Day
+                        </Badge>
+                      )}
+                    </div>
                     <Badge
                       className={
                         isActive
@@ -345,6 +357,24 @@ export function TeacherCoursesClient({
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3 p-3 rounded-lg border border-purple-200 bg-purple-50/50 dark:border-purple-900/50 dark:bg-purple-950/20">
+                <input
+                  type="checkbox"
+                  id="tCourseCrossSchool"
+                  checked={isCrossSchool}
+                  onChange={(e) => setIsCrossSchool(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="tCourseCrossSchool" className="text-sm font-semibold text-gray-900 dark:text-gray-100 cursor-pointer">
+                    Program Student Day (Lintas Sekolah)
+                  </Label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Buka pendaftaran siswa gabungan dari SMA Plus PGRI Cibinong & Reguler untuk kelas vokasi hari Sabtu.
+                  </p>
                 </div>
               </div>
             </div>

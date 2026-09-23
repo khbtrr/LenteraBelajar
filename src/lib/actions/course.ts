@@ -14,7 +14,10 @@ export async function getCourses(filters?: {
   const session = await requireSchool();
   return db.course.findMany({
     where: {
-      schoolId: session.schoolId,
+      OR: [
+        { schoolId: session.schoolId },
+        ...(filters?.teacherId ? [{ teacherId: filters.teacherId }] : []),
+      ],
       ...(filters?.status && { status: filters.status }),
       ...(filters?.teacherId && { teacherId: filters.teacherId }),
       ...(filters?.academicYearId && { academicYearId: filters.academicYearId }),
@@ -23,6 +26,7 @@ export async function getCourses(filters?: {
       teacher: { select: { id: true, name: true, email: true } },
       category: { select: { id: true, name: true } },
       academicYear: { select: { id: true, name: true, status: true } },
+      school: { select: { id: true, name: true, code: true } },
       _count: {
         select: {
           enrollments: true,
@@ -89,6 +93,7 @@ export async function createCourse(data: {
   categoryId?: string;
   academicYearId: string;
   teacherId?: string;
+  isCrossSchool?: boolean;
 }) {
   const session = await requireSchool();
   const teacherId = data.teacherId || session.user.id;
@@ -101,6 +106,7 @@ export async function createCourse(data: {
       academicYearId: data.academicYearId,
       teacherId,
       schoolId: session.schoolId,
+      isCrossSchool: Boolean(data.isCrossSchool),
       status: CourseStatus.ACTIVE,
     },
   });
@@ -258,6 +264,7 @@ export async function updateCourse(
     academicYearId: string;
     teacherId: string;
     status: CourseStatus;
+    isCrossSchool?: boolean;
   }
 ) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
@@ -278,6 +285,7 @@ export async function updateCourse(
       academicYearId: data.academicYearId,
       teacherId: data.teacherId,
       status: data.status,
+      ...(data.isCrossSchool !== undefined && { isCrossSchool: Boolean(data.isCrossSchool) }),
     },
     include: {
       teacher: { select: { id: true, name: true, email: true } },

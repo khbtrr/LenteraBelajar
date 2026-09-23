@@ -6,14 +6,17 @@ import { generateDefaultPassword } from '@/lib/password-policy';
 import { EnrollmentMethod, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
-export async function getCohorts(options?: { activeOnly?: boolean }) {
+export async function getCohorts(options?: { activeOnly?: boolean; allSchools?: boolean }) {
   const session = await requireSchool();
   return db.cohort.findMany({
     where: {
-      schoolId: session.schoolId,
+      ...(options?.allSchools ? {} : { schoolId: session.schoolId }),
       ...(options?.activeOnly ? { isActive: true } : {}),
     },
     include: {
+      school: {
+        select: { id: true, name: true, code: true },
+      },
       members: {
         include: {
           user: {
@@ -266,11 +269,11 @@ export async function removeStudentFromCohort(cohortId: string, userId: string) 
   return deleted;
 }
 
-export async function getStudentsInSchool() {
+export async function getStudentsInSchool(options?: { allSchools?: boolean }) {
   const session = await requireSchool();
   return db.user.findMany({
     where: {
-      schoolId: session.schoolId,
+      ...(options?.allSchools ? {} : { schoolId: session.schoolId }),
       role: Role.STUDENT,
       isActive: true,
     },
@@ -279,6 +282,10 @@ export async function getStudentsInSchool() {
       name: true,
       email: true,
       nis: true,
+      schoolId: true,
+      school: {
+        select: { id: true, name: true, code: true },
+      },
       cohortMemberships: {
         select: {
           cohort: { select: { id: true, name: true } },

@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { db } from '@/lib/db';
 import { requireSchool } from '@/lib/auth-utils';
@@ -130,29 +130,31 @@ export async function getCohortLegerData({
     });
   }
 
-  // 3. Cari Course yang diikuti oleh siswa di kohort ini
-  const courseFilter: any = {
-    schoolId,
-    status: { in: ['ACTIVE', 'ARCHIVED'] },
-  };
-
-  if (selectedAcademicYear) {
-    courseFilter.academicYearId = selectedAcademicYear.id;
-  }
-
+  // 3. Cari Course yang diikuti oleh siswa di kohort ini (termasuk kursus lintas sekolah seperti Student Day)
   const courses = await db.course.findMany({
     where: {
-      ...courseFilter,
-      OR: [
+      status: { in: ['ACTIVE', 'ARCHIVED'] },
+      ...(selectedAcademicYear ? { academicYearId: selectedAcademicYear.id } : {}),
+      AND: [
         {
-          enrollments: {
-            some: { cohortId: cohort.id },
-          },
+          OR: [
+            { schoolId },
+            { isCrossSchool: true },
+          ],
         },
         {
-          enrollments: {
-            some: { userId: { in: studentIds } },
-          },
+          OR: [
+            {
+              enrollments: {
+                some: { cohortId: cohort.id },
+              },
+            },
+            {
+              enrollments: {
+                some: { userId: { in: studentIds } },
+              },
+            },
+          ],
         },
       ],
     },

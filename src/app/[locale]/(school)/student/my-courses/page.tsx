@@ -65,9 +65,16 @@ export default async function StudentMyCoursesPage() {
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {course.category?.name || t('generalCategory')}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className="text-xs">
+                        {course.category?.name || t('generalCategory')}
+                      </Badge>
+                      {course.isCrossSchool && (
+                        <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-[10px] font-bold">
+                          Student Day
+                        </Badge>
+                      )}
+                    </div>
                     <Badge
                       className={
                         !isArchived

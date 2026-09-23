@@ -35,6 +35,7 @@ interface EnrolledUser {
   name: string;
   email: string;
   nis: string | null;
+  school?: { id: string; name: string; code: string } | null;
 }
 
 interface EnrollmentItem {
@@ -48,6 +49,7 @@ interface EnrollmentItem {
 interface CohortOption {
   id: string;
   name: string;
+  school?: { id: string; name: string; code: string } | null;
   _count: { members: number };
 }
 
@@ -56,6 +58,7 @@ interface StudentOption {
   name: string;
   email: string;
   nis: string | null;
+  school?: { id: string; name: string; code: string } | null;
 }
 
 export function CourseEnrollmentsClient({
@@ -215,19 +218,27 @@ export function CourseEnrollmentsClient({
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-bold text-[#002446] flex items-center gap-2">
-            <Users className="h-5 w-5 text-[#FF8928]" />
-            {t('totalEnrolled', { count: enrollments.length })}
-          </CardTitle>
+      <Card className="border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg font-bold text-[#002446] dark:text-white flex items-center gap-2">
+              <Users className="h-5 w-5 text-[#FF8928]" />
+              {t('totalEnrolled', { count: enrollments.length })}
+            </CardTitle>
+            {course.isCrossSchool && (
+              <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-2.5 py-0.5">
+                Student Day (Lintas Sekolah)
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow className="bg-gray-50/80 dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-700/60">
                 <TableHead>{t('thNis')}</TableHead>
                 <TableHead>{t('thName')}</TableHead>
+                {course.isCrossSchool && <TableHead>Asal Sekolah</TableHead>}
                 <TableHead>{t('thEmail')}</TableHead>
                 <TableHead>{t('thMethod')}</TableHead>
                 <TableHead>{t('thEnrolledAt')}</TableHead>
@@ -237,24 +248,31 @@ export function CourseEnrollmentsClient({
             <TableBody>
               {filteredEnrollments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                    <Users className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+                  <TableCell colSpan={course.isCrossSchool ? 7 : 6} className="text-center py-12 text-gray-500 dark:text-slate-400">
+                    <Users className="h-10 w-10 mx-auto text-gray-300 dark:text-slate-600 mb-2" />
                     {t('emptyState')}
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
                       {t('emptyStateHint')}
                     </p>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredEnrollments.map((enr) => (
-                  <TableRow key={enr.id}>
-                    <TableCell className="font-mono text-xs">
+                  <TableRow key={enr.id} className="hover:bg-gray-50/80 dark:hover:bg-slate-800/40">
+                    <TableCell className="font-mono text-xs text-gray-600 dark:text-slate-400">
                       {enr.user.nis || '-'}
                     </TableCell>
-                    <TableCell className="font-medium text-[#002446]">
+                    <TableCell className="font-medium text-[#002446] dark:text-white">
                       {enr.user.name}
                     </TableCell>
-                    <TableCell className="text-xs text-gray-500">
+                    {course.isCrossSchool && (
+                      <TableCell>
+                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40">
+                          {enr.user.school?.name || course.school?.name || 'Sekolah'}
+                        </span>
+                      </TableCell>
+                    )}
+                    <TableCell className="text-xs text-gray-500 dark:text-slate-400">
                       {enr.user.email}
                     </TableCell>
                     <TableCell>
@@ -263,12 +281,12 @@ export function CourseEnrollmentsClient({
                           {t('methodCohortSync', { name: enr.cohort?.name || '' })}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs font-normal">
+                        <Badge variant="outline" className="text-xs font-normal border-gray-300 dark:border-slate-700">
                           {t('methodManual')}
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-gray-600">
+                    <TableCell className="text-xs text-gray-600 dark:text-slate-400">
                       {new Date(enr.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', {
                         day: 'numeric',
                         month: 'short',
@@ -315,11 +333,11 @@ export function CourseEnrollmentsClient({
                 id="cohortSelect"
                 value={selectedCohortId}
                 onChange={(e) => setSelectedCohortId(e.target.value)}
-                className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                className="w-full h-10 px-3 rounded-md border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
               >
                 {availableCohorts.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} {t('studentCountTag', { count: c._count.members })}
+                    {c.name} {c.school?.name ? `[${c.school.name}]` : ''} ({c._count.members} siswa)
                   </option>
                 ))}
               </select>
@@ -331,6 +349,7 @@ export function CourseEnrollmentsClient({
               type="button"
               variant="outline"
               onClick={() => setIsCohortSyncOpen(false)}
+              className="border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-200"
             >
               {t('cancel')}
             </Button>
@@ -348,31 +367,31 @@ export function CourseEnrollmentsClient({
 
       {/* Dialog Pendaftaran Manual */}
       <Dialog open={isManualOpen} onOpenChange={setIsManualOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-900 dark:text-slate-100">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#002446] flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-[#002446]" />
+            <DialogTitle className="text-xl font-bold text-[#002446] dark:text-white flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-[#002446] dark:text-sky-400" />
               {t('modalManualTitle')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-slate-400">
               {t('modalManualDesc')}
             </p>
 
             <div className="space-y-2">
-              <Label htmlFor="manualStudentSelect">{t('selectStudentLabel')}</Label>
+              <Label htmlFor="manualStudentSelect" className="text-gray-700 dark:text-slate-300">{t('selectStudentLabel')}</Label>
               <select
                 id="manualStudentSelect"
                 value={selectedStudentId}
                 onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
+                className="w-full h-10 px-3 rounded-md border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-[#002446]"
               >
                 <option value="">{t('selectStudentPlaceholder')}</option>
                 {unenrolledStudents.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} {s.nis ? `(${t('thNis')}: ${s.nis})` : ''} - {s.email}
+                    {s.name} {s.school?.name ? `[${s.school.name}]` : ''} {s.nis ? `(${t('thNis')}: ${s.nis})` : ''} - {s.email}
                   </option>
                 ))}
               </select>

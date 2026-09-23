@@ -49,6 +49,7 @@ interface CourseItem {
   title: string;
   description: string | null;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ARCHIVED';
+  isCrossSchool?: boolean;
   teacher: { id: string; name: string; email: string };
   category: { id: string; name: string } | null;
   academicYear: { id: string; name: string; status: string };
@@ -96,6 +97,7 @@ export function AdminCoursesClient({
   // Form states (Create)
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [isCrossSchool, setIsCrossSchool] = useState(false);
   const [academicYearId, setAcademicYearId] = useState(
     academicYears.find((y) => y.status === 'ACTIVE')?.id || academicYears[0]?.id || ''
   );
@@ -106,6 +108,7 @@ export function AdminCoursesClient({
   const [editingCourseId, setEditingCourseId] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editIsCrossSchool, setEditIsCrossSchool] = useState(false);
   const [editAcademicYearId, setEditAcademicYearId] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
   const [editTeacherId, setEditTeacherId] = useState('');
@@ -125,6 +128,7 @@ export function AdminCoursesClient({
         academicYearId,
         categoryId: categoryId || undefined,
         teacherId: teacherId || undefined,
+        isCrossSchool,
       });
 
       const selectedYear = academicYears.find((y) => y.id === academicYearId);
@@ -134,6 +138,7 @@ export function AdminCoursesClient({
       setCourses((prev) => [
         {
           ...created,
+          isCrossSchool: created.isCrossSchool,
           teacher: selectedTeacher || { id: '', name: '-', email: '' },
           category: selectedCategory || null,
           academicYear: selectedYear || { id: '', name: '-', status: 'ACTIVE' },
@@ -145,6 +150,7 @@ export function AdminCoursesClient({
       setIsCreateOpen(false);
       setTitle('');
       setDescription('');
+      setIsCrossSchool(false);
       await showAlert(t('courseCreatedAlert', { title: created.title }), { type: 'success' });
     } catch (err: any) {
       console.error(err);
@@ -158,6 +164,7 @@ export function AdminCoursesClient({
     setEditingCourseId(course.id);
     setEditTitle(course.title);
     setEditDescription(course.description || '');
+    setEditIsCrossSchool(Boolean(course.isCrossSchool));
     setEditAcademicYearId(course.academicYear.id || academicYears[0]?.id || '');
     setEditCategoryId(course.category?.id || '');
     setEditTeacherId(course.teacher.id || teachers[0]?.id || '');
@@ -180,6 +187,7 @@ export function AdminCoursesClient({
         categoryId: editCategoryId || undefined,
         teacherId: editTeacherId,
         status: editStatus,
+        isCrossSchool: editIsCrossSchool,
       });
 
       setCourses((prev) =>
@@ -188,6 +196,7 @@ export function AdminCoursesClient({
             ? {
                 ...c,
                 ...updated,
+                isCrossSchool: updated.isCrossSchool,
                 status: updated.status as any,
                 academicYear: {
                   ...c.academicYear,
@@ -344,8 +353,15 @@ export function AdminCoursesClient({
                 filtered.map((course) => (
                   <TableRow key={course.id}>
                     <TableCell>
-                      <div className="font-semibold text-[#002446] dark:text-white">
-                        {course.title}
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[#002446] dark:text-white">
+                          {course.title}
+                        </span>
+                        {course.isCrossSchool && (
+                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-[10px] font-bold">
+                            Student Day
+                          </Badge>
+                        )}
                       </div>
                       {course.description && (
                         <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
@@ -551,6 +567,24 @@ export function AdminCoursesClient({
                   </select>
                 </div>
               </div>
+
+              <div className="flex items-start space-x-3 p-3 rounded-lg border border-purple-200 bg-purple-50/50 dark:border-purple-900/50 dark:bg-purple-950/20">
+                <input
+                  type="checkbox"
+                  id="editCrossSchool"
+                  checked={editIsCrossSchool}
+                  onChange={(e) => setEditIsCrossSchool(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="editCrossSchool" className="text-sm font-semibold text-gray-900 dark:text-gray-100 cursor-pointer">
+                    Program Student Day (Lintas Sekolah)
+                  </Label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Buka pendaftaran siswa gabungan dari SMA Plus PGRI Cibinong & Reguler untuk kelas vokasi hari Sabtu.
+                  </p>
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button
@@ -654,6 +688,24 @@ export function AdminCoursesClient({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="flex items-start space-x-3 p-3 rounded-lg border border-purple-200 bg-purple-50/50 dark:border-purple-900/50 dark:bg-purple-950/20">
+                <input
+                  type="checkbox"
+                  id="cCrossSchool"
+                  checked={isCrossSchool}
+                  onChange={(e) => setIsCrossSchool(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="cCrossSchool" className="text-sm font-semibold text-gray-900 dark:text-gray-100 cursor-pointer">
+                    Program Student Day (Lintas Sekolah)
+                  </Label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Buka pendaftaran siswa gabungan dari SMA Plus PGRI Cibinong & Reguler untuk kelas vokasi hari Sabtu.
+                  </p>
+                </div>
               </div>
             </div>
             <DialogFooter>
