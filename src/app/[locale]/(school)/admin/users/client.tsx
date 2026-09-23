@@ -46,6 +46,7 @@ import {
   resetUserPassword,
 } from '@/lib/actions/user';
 import { unlockUserAccount } from '@/lib/actions/auth-lockout';
+import { generateDefaultPassword } from '@/lib/password-policy';
 import { Role } from '@prisma/client';
 import * as XLSX from 'xlsx';
 import { useDialog } from '@/context/DialogContext';
@@ -318,7 +319,7 @@ export function AdminUsersClient({ initialUsers }: { initialUsers: any[] }) {
   };
 
   const handleResetPassword = async (user: UserItem) => {
-    const defaultText = user.role === Role.STUDENT && user.nis ? `NIS (${user.nis})` : 'Lentera123!';
+    const defaultText = generateDefaultPassword(user.nis || user.nip);
     const confirmed = await showConfirm(
       t('resetConfirmDesc', { name: user.name, defaultText }),
       { title: t('resetConfirmTitle'), confirmText: t('confirmReset'), cancelText: t('cancelButton') }
