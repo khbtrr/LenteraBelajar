@@ -17,6 +17,9 @@ export async function getCohorts(options?: { activeOnly?: boolean; allSchools?: 
       school: {
         select: { id: true, name: true, code: true },
       },
+      homeroomTeacher: {
+        select: { id: true, name: true, email: true },
+      },
       members: {
         include: {
           user: {
@@ -40,6 +43,9 @@ export async function getCohortById(id: string) {
   return db.cohort.findUnique({
     where: { id, schoolId: session.schoolId },
     include: {
+      homeroomTeacher: {
+        select: { id: true, name: true, email: true },
+      },
       members: {
         include: {
           user: {
@@ -51,7 +57,32 @@ export async function getCohortById(id: string) {
   });
 }
 
-export async function createCohort(name: string) {
+export async function getAvailableTeachersForCohort() {
+  const session = await requireSchool();
+  const schoolId = session.schoolId;
+
+  return db.user.findMany({
+    where: {
+      role: 'TEACHER',
+      OR: [
+        { schoolId },
+        { assignedSchools: { some: { schoolId } } },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      homeroomCohorts: {
+        where: { schoolId, isActive: true },
+        select: { id: true, name: true },
+      },
+    },
+    orderBy: { name: 'asc' },
+  });
+}
+
+export async function createCohort(name: string, homeroomTeacherId?: string | null) {
   const session = await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
@@ -67,10 +98,26 @@ export async function createCohort(name: string) {
     throw new Error('DUPLICATE_NAME');
   }
 
+  // Check 1-to-1 homeroom teacher constraint
+  if (homeroomTeacherId) {
+    const existingHomeroom = await db.cohort.findFirst({
+      where: {
+        schoolId,
+        homeroomTeacherId,
+        isActive: true,
+      },
+      select: { name: true },
+    });
+    if (existingHomeroom) {
+      throw new Error(`Guru tersebut sudah ditugaskan sebagai wali kelas di rombel ${existingHomeroom.name}`);
+    }
+  }
+
   const cohort = await db.cohort.create({
     data: {
       name: trimmedName,
       schoolId,
+      homeroomTeacherId: homeroomTeacherId || null,
       isActive: true,
     },
   });
@@ -79,7 +126,7 @@ export async function createCohort(name: string) {
   return cohort;
 }
 
-export async function updateCohort(id: string, name: string) {
+export async function updateCohort(id: string, name: string, homeroomTeacherId?: string | null) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
@@ -106,9 +153,28 @@ export async function updateCohort(id: string, name: string) {
     throw new Error('DUPLICATE_NAME');
   }
 
+  // Check 1-to-1 homeroom teacher constraint
+  if (homeroomTeacherId) {
+    const existingHomeroom = await db.cohort.findFirst({
+      where: {
+        schoolId,
+        homeroomTeacherId,
+        id: { not: id },
+        isActive: true,
+      },
+      select: { name: true },
+    });
+    if (existingHomeroom) {
+      throw new Error(`Guru tersebut sudah ditugaskan sebagai wali kelas di rombel ${existingHomeroom.name}`);
+    }
+  }
+
   const updated = await db.cohort.update({
     where: { id },
-    data: { name: trimmedName },
+    data: {
+      name: trimmedName,
+      ...(homeroomTeacherId !== undefined ? { homeroomTeacherId: homeroomTeacherId || null } : {}),
+    },
   });
 
   revalidatePath('/[locale]/admin/cohorts', 'page');

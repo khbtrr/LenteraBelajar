@@ -80,10 +80,23 @@ interface Student {
   }[];
 }
 
+interface TeacherItem {
+  id: string;
+  name: string;
+  email: string;
+  homeroomCohorts?: { id: string; name: string }[];
+}
+
 interface CohortItem {
   id: string;
   name: string;
   isActive?: boolean;
+  homeroomTeacherId?: string | null;
+  homeroomTeacher?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   members: { user: Student }[];
   _count: {
     members: number;
@@ -94,9 +107,11 @@ interface CohortItem {
 export function CohortsClient({
   initialCohorts,
   availableStudents,
+  availableTeachers = [],
 }: {
   initialCohorts: CohortItem[];
   availableStudents: Student[];
+  availableTeachers?: TeacherItem[];
 }) {
   const t = useTranslations('adminCohorts');
   const { showAlert, showConfirm } = useDialog();
@@ -113,6 +128,7 @@ export function CohortsClient({
   // 1. Create Cohort Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [cohortName, setCohortName] = useState('');
+  const [homeroomTeacherId, setHomeroomTeacherId] = useState('');
 
   // 2. Manage Members Modal
   const [selectedCohort, setSelectedCohort] = useState<CohortItem | null>(null);
@@ -167,6 +183,7 @@ export function CohortsClient({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingCohort, setEditingCohort] = useState<CohortItem | null>(null);
   const [editCohortName, setEditCohortName] = useState('');
+  const [editHomeroomTeacherId, setEditHomeroomTeacherId] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // 7. Bulk Upload Cohort Modal
@@ -199,6 +216,7 @@ export function CohortsClient({
   const handleOpenEdit = (cohort: CohortItem) => {
     setEditingCohort(cohort);
     setEditCohortName(cohort.name);
+    setEditHomeroomTeacherId(cohort.homeroomTeacher?.id || cohort.homeroomTeacherId || '');
     setIsEditOpen(true);
   };
 
@@ -207,10 +225,20 @@ export function CohortsClient({
     if (!editingCohort || !editCohortName.trim()) return;
     setIsSavingEdit(true);
     try {
-      await updateCohort(editingCohort.id, editCohortName.trim());
+      await updateCohort(editingCohort.id, editCohortName.trim(), editHomeroomTeacherId || null);
+      const selectedTeacher = availableTeachers.find((t) => t.id === editHomeroomTeacherId);
       setCohorts((prev) =>
         prev.map((c) =>
-          c.id === editingCohort.id ? { ...c, name: editCohortName.trim() } : c
+          c.id === editingCohort.id
+            ? {
+                ...c,
+                name: editCohortName.trim(),
+                homeroomTeacherId: editHomeroomTeacherId || null,
+                homeroomTeacher: selectedTeacher
+                  ? { id: selectedTeacher.id, name: selectedTeacher.name, email: selectedTeacher.email }
+                  : null,
+              }
+            : c
         )
       );
       setIsEditOpen(false);
@@ -441,16 +469,21 @@ export function CohortsClient({
     if (!cohortName.trim()) return;
     setLoading(true);
     try {
-      const created = await createCohort(cohortName.trim());
+      const created = await createCohort(cohortName.trim(), homeroomTeacherId || null);
+      const selectedTeacher = availableTeachers.find((t) => t.id === homeroomTeacherId);
       setCohorts((prev) => [
         {
           ...created,
+          homeroomTeacher: selectedTeacher
+            ? { id: selectedTeacher.id, name: selectedTeacher.name, email: selectedTeacher.email }
+            : null,
           members: [],
           _count: { members: 0, enrollments: 0 },
         },
         ...prev,
       ]);
       setCohortName('');
+      setHomeroomTeacherId('');
       setIsCreateOpen(false);
       await showAlert(t('cohortCreatedAlert', { name: created.name }), { type: 'success' });
     } catch (err: any) {
@@ -1154,7 +1187,15 @@ export function CohortsClient({
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-4 pt-0">
+              <CardContent className="space-y-3 pt-0">
+                <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/60 px-2.5 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                  <UserCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span className="text-gray-500 dark:text-gray-400">{t('homeroomTeacher')}:</span>
+                  <span className={cohort.homeroomTeacher ? 'font-semibold text-gray-900 dark:text-gray-100 truncate' : 'italic text-gray-400'}>
+                    {cohort.homeroomTeacher?.name || t('noHomeroomTeacher')}
+                  </span>
+                </div>
+
                 <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 min-h-[32px]">
                   {cohort.members.length > 0 ? (
                     cohort.members.map((m) => m.user.name).join(', ')
@@ -1208,7 +1249,7 @@ export function CohortsClient({
                 {t('createModalTitle')}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 py-3">
+            <div className="space-y-4 py-3">
               <div className="space-y-1.5">
                 <Label htmlFor="chName" className="font-medium">
                   {t('cohortNameLabel')} <span className="text-red-500">*</span>
@@ -1224,6 +1265,36 @@ export function CohortsClient({
                   {t('cohortNameHint')}
                 </p>
               </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="homeroomSelect" className="font-medium">
+                  {t('homeroomTeacher')}
+                </Label>
+                <select
+                  id="homeroomSelect"
+                  value={homeroomTeacherId}
+                  onChange={(e) => setHomeroomTeacherId(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">{t('noHomeroomOption')}</option>
+                  {availableTeachers.map((tch) => {
+                    const existingCohort = tch.homeroomCohorts?.[0];
+                    const isAlreadyHomeroom = !!existingCohort;
+                    return (
+                      <option
+                        key={tch.id}
+                        value={tch.id}
+                        disabled={isAlreadyHomeroom}
+                      >
+                        {tch.name} {isAlreadyHomeroom ? `(Wali Kelas ${existingCohort.name})` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                <p className="text-xs text-gray-500">
+                  Satu guru hanya dapat ditugaskan sebagai wali kelas di satu rombel aktif.
+                </p>
+              </div>
             </div>
             <DialogFooter>
               <Button
@@ -1231,14 +1302,14 @@ export function CohortsClient({
                 variant="outline"
                 onClick={() => setIsCreateOpen(false)}
               >
-                Batal
+                {t('cancelButton')}
               </Button>
               <Button
                 type="submit"
                 disabled={loading}
                 className="bg-[#002446] hover:bg-[#001b33] text-white"
               >
-                {loading ? 'Menyimpan...' : 'Simpan Kohort'}
+                {loading ? t('saving') : t('saveCohortButton')}
               </Button>
             </DialogFooter>
           </form>
@@ -1253,7 +1324,7 @@ export function CohortsClient({
                 {t('editCohortModalTitle')}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3 py-3">
+            <div className="space-y-4 py-3">
               <div className="space-y-1.5">
                 <Label htmlFor="editChName" className="font-medium">
                   {t('editCohortNameLabel')} <span className="text-red-500">*</span>
@@ -1265,6 +1336,36 @@ export function CohortsClient({
                   required
                   autoFocus
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="editHomeroomSelect" className="font-medium">
+                  {t('homeroomTeacher')}
+                </Label>
+                <select
+                  id="editHomeroomSelect"
+                  value={editHomeroomTeacherId}
+                  onChange={(e) => setEditHomeroomTeacherId(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">{t('noHomeroomOption')}</option>
+                  {availableTeachers.map((tch) => {
+                    const otherCohort = tch.homeroomCohorts?.find((c) => c.id !== editingCohort?.id);
+                    const isAlreadyHomeroom = !!otherCohort;
+                    return (
+                      <option
+                        key={tch.id}
+                        value={tch.id}
+                        disabled={isAlreadyHomeroom}
+                      >
+                        {tch.name} {isAlreadyHomeroom ? `(Wali Kelas ${otherCohort.name})` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                <p className="text-xs text-gray-500">
+                  Satu guru hanya dapat ditugaskan sebagai wali kelas di satu rombel aktif.
+                </p>
               </div>
             </div>
             <DialogFooter className="gap-2">

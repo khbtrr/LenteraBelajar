@@ -748,7 +748,9 @@ export function AdminLegerClient({
                   {t('homeroomTeacher')}
                 </p>
                 <div>
-                  <p className="font-bold underline">_________________________</p>
+                  <p className="font-bold underline">
+                    {legerData.cohort.homeroomTeacher?.name || '_________________________'}
+                  </p>
                   <p className="text-[11px] text-gray-500">NIP. -</p>
                 </div>
               </div>
@@ -759,10 +761,10 @@ export function AdminLegerClient({
         <Card className="border-dashed border-2 p-8 text-center text-gray-400">
           <GraduationCap className="w-12 h-12 mx-auto text-gray-300 mb-2" />
           <p className="font-medium text-gray-600 dark:text-gray-300">
-            {t('emptyCohortPrompt')}
+            {cohorts.length === 0 ? t('notHomeroomTeacherTitle') : t('emptyCohortPrompt')}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {t('emptyCohortPromptSub')}
+          <p className="text-xs text-gray-400 mt-1 max-w-md mx-auto">
+            {cohorts.length === 0 ? t('notHomeroomTeacherDesc') : t('emptyCohortPromptSub')}
           </p>
         </Card>
       )}

@@ -51,6 +51,10 @@ export interface CohortLegerReportData {
     id: string;
     name: string;
     totalStudents: number;
+    homeroomTeacher: {
+      id: string;
+      name: string;
+    } | null;
   };
   academicYear: {
     id: string;
@@ -74,6 +78,8 @@ export async function getCohortLegerData({
 }): Promise<CohortLegerReportData | null> {
   const session = await requireSchool();
   const schoolId = session.schoolId;
+  const userRole = session.user.role;
+  const userId = session.user.id;
 
   // 1. Ambil data sekolah & kohort
   const [school, cohort] = await Promise.all([
@@ -91,6 +97,12 @@ export async function getCohortLegerData({
     db.cohort.findUnique({
       where: { id: cohortId, schoolId },
       include: {
+        homeroomTeacher: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         members: {
           include: {
             user: {
@@ -111,6 +123,11 @@ export async function getCohortLegerData({
   ]);
 
   if (!school || !cohort) return null;
+
+  // Otorisasi guru: hanya wali kelas yang dapat mengakses data rombel ini
+  if (userRole === 'TEACHER' && cohort.homeroomTeacherId !== userId) {
+    return null;
+  }
 
   const passingGrade = school.defaultPassingGrade ?? 75;
   const studentMembers = cohort.members.map((m) => m.user);
@@ -465,6 +482,12 @@ export async function getCohortLegerData({
       id: cohort.id,
       name: cohort.name,
       totalStudents: studentMembers.length,
+      homeroomTeacher: cohort.homeroomTeacher
+        ? {
+            id: cohort.homeroomTeacher.id,
+            name: cohort.homeroomTeacher.name,
+          }
+        : null,
     },
     academicYear: selectedAcademicYear,
     subjects,
@@ -480,10 +503,17 @@ export async function getCohortLegerData({
 export async function getLegerFilterOptions() {
   const session = await requireSchool();
   const schoolId = session.schoolId;
+  const userRole = session.user.role;
+  const userId = session.user.id;
+
+  const cohortWhere: { schoolId: string; homeroomTeacherId?: string } = { schoolId };
+  if (userRole === 'TEACHER') {
+    cohortWhere.homeroomTeacherId = userId;
+  }
 
   const [cohorts, academicYears] = await Promise.all([
     db.cohort.findMany({
-      where: { schoolId },
+      where: cohortWhere,
       select: {
         id: true,
         name: true,

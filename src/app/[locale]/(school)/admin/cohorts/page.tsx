@@ -1,4 +1,4 @@
-import { getCohorts, getStudentsInSchool } from '@/lib/actions/cohort';
+import { getCohorts, getStudentsInSchool, getAvailableTeachersForCohort } from '@/lib/actions/cohort';
 import { requireSchool } from '@/lib/auth-utils';
 import { CohortsClient } from './client';
 import { getTranslations } from 'next-intl/server';
@@ -6,9 +6,10 @@ import { getTranslations } from 'next-intl/server';
 export default async function AdminCohortsPage() {
   const session = await requireSchool();
   const t = await getTranslations('adminCohorts');
-  const [cohorts, students] = await Promise.all([
+  const [cohorts, students, teachers] = await Promise.all([
     getCohorts(),
     getStudentsInSchool(),
+    getAvailableTeachersForCohort(),
   ]);
 
   return (
@@ -20,7 +21,12 @@ export default async function AdminCohortsPage() {
         </p>
       </div>
 
-      <CohortsClient key={session.schoolId} initialCohorts={cohorts} availableStudents={students} />
+      <CohortsClient
+        key={session.schoolId}
+        initialCohorts={cohorts}
+        availableStudents={students}
+        availableTeachers={teachers}
+      />
     </div>
   );
 }

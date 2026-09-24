@@ -85,6 +85,7 @@ model User {
   xpLogs                XpLog[]
   lessonProgresses      LessonProgress[]
   calendarEvents        CalendarEvent[]
+  homeroomCohorts       Cohort[]                  @relation("CohortHomeroomTeacher")
   schoolAnnouncements   SchoolAnnouncement[]
   conversationParticipants ConversationParticipant[]
   sentDirectMessages      DirectMessage[]           @relation("DirectMessageSender")
@@ -222,18 +223,21 @@ enum CourseRequestStatus {
 }
 
 model Cohort {
-  id        String   @id @default(cuid())
-  name      String
-  schoolId  String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  name              String
+  schoolId          String
+  homeroomTeacherId String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  school      School         @relation(fields: [schoolId], references: [id])
-  members     CohortMember[]
-  enrollments Enrollment[]
+  school          School         @relation(fields: [schoolId], references: [id])
+  homeroomTeacher User?          @relation("CohortHomeroomTeacher", fields: [homeroomTeacherId], references: [id], onDelete: SetNull)
+  members         CohortMember[]
+  enrollments     Enrollment[]
 
   @@index([schoolId])
+  @@index([homeroomTeacherId])
 }
 
 model CohortMember {
