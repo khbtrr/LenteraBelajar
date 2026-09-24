@@ -1,14 +1,10 @@
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireAuth } from '@/lib/auth-utils';
 import { getTranslations } from 'next-intl/server';
 import { getCalendarEvents, getUserCoursesForCalendar } from '@/lib/actions/calendar';
 import { CalendarView } from '@/components/calendar/calendar-view';
 
 export default async function CalendarPage() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect('/login');
-  }
+  const session = await requireAuth();
 
   const t = await getTranslations('calendar');
 
@@ -32,6 +28,7 @@ export default async function CalendarPage() {
       </div>
 
       <CalendarView
+        key={session.user.schoolId || 'calendar'}
         userRole={session.user.role}
         courses={courses}
         initialEvents={initialEvents}

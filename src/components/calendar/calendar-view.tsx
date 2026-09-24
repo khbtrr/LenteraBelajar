@@ -95,6 +95,10 @@ export function CalendarView({
   };
 
   useEffect(() => {
+    setEvents(initialEvents);
+  }, [initialEvents]);
+
+  useEffect(() => {
     loadEvents();
   }, [currentDate.getMonth(), currentDate.getFullYear(), courseFilter, categoryFilter]);
 

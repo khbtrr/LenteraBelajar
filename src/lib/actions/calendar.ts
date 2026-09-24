@@ -37,6 +37,7 @@ export async function getCalendarEvents(filters?: {
   const session = await requireAuth();
   const userId = session.user.id;
   const userRole = session.user.role;
+  const activeSchoolId = session.user.schoolId;
 
   // Compute date range window: default to +/- 45 days around target date
   const targetYear = filters?.year ?? new Date().getFullYear();
@@ -44,29 +45,61 @@ export async function getCalendarEvents(filters?: {
   const startWindow = new Date(targetYear, targetMonth - 1, 1);
   const endWindow = new Date(targetYear, targetMonth + 2, 0, 23, 59, 59);
 
-  // 1. Identify relevant course IDs for user
+  const courseSchoolFilter = activeSchoolId
+    ? [{ schoolId: activeSchoolId }, { isCrossSchool: true }]
+    : [{ isCrossSchool: true }];
+
+  // 1. Identify relevant course IDs for user (scoped to active school & enrolled courses)
   let relevantCourseIds: string[] = [];
 
-  if (filters?.courseId && filters.courseId !== 'ALL') {
-    relevantCourseIds = [filters.courseId];
-  } else if (userRole === 'STUDENT') {
+  if (userRole === 'STUDENT') {
     const enrollments = await db.enrollment.findMany({
-      where: { userId },
+      where: {
+        userId,
+        course: {
+          OR: courseSchoolFilter,
+        },
+      },
       select: { courseId: true },
     });
-    relevantCourseIds = enrollments.map((e) => e.courseId);
+    const enrolledIds = enrollments.map((e) => e.courseId);
+
+    // If student specifies a course filter, ONLY allow if they are actually enrolled in it
+    if (filters?.courseId && filters.courseId !== 'ALL') {
+      relevantCourseIds = enrolledIds.includes(filters.courseId) ? [filters.courseId] : [];
+    } else {
+      relevantCourseIds = enrolledIds;
+    }
   } else if (userRole === 'TEACHER') {
     const courses = await db.course.findMany({
-      where: { teacherId: userId },
+      where: {
+        teacherId: userId,
+        OR: courseSchoolFilter,
+      },
       select: { id: true },
     });
-    relevantCourseIds = courses.map((c) => c.id);
+    const teacherCourseIds = courses.map((c) => c.id);
+
+    if (filters?.courseId && filters.courseId !== 'ALL') {
+      relevantCourseIds = teacherCourseIds.includes(filters.courseId) ? [filters.courseId] : [];
+    } else {
+      relevantCourseIds = teacherCourseIds;
+    }
   } else {
-    // Admin, Super Admin, Supervisor sees all active courses if not filtered
+    // Admin, Super Admin, Supervisor: scoped to active school or cross-school courses
     const allCourses = await db.course.findMany({
+      where: {
+        OR: courseSchoolFilter,
+      },
       select: { id: true },
     });
-    relevantCourseIds = allCourses.map((c) => c.id);
+    const schoolCourseIds = allCourses.map((c) => c.id);
+
+    if (filters?.courseId && filters.courseId !== 'ALL') {
+      relevantCourseIds = schoolCourseIds.includes(filters.courseId) ? [filters.courseId] : [];
+    } else {
+      relevantCourseIds = schoolCourseIds;
+    }
   }
 
   const items: CalendarItem[] = [];
@@ -74,8 +107,8 @@ export async function getCalendarEvents(filters?: {
   // Helper for links based on role
   const isStudent = userRole === 'STUDENT';
 
-  // 2. Fetch Assignments
-  if (!filters?.category || filters.category === 'ALL' || filters.category === 'TUGAS') {
+  // 2. Fetch Assignments (only if user has relevant courses)
+  if (relevantCourseIds.length > 0 && (!filters?.category || filters.category === 'ALL' || filters.category === 'TUGAS')) {
     const assignments = await db.assignment.findMany({
       where: {
         deadline: {
@@ -117,8 +150,8 @@ export async function getCalendarEvents(filters?: {
     }
   }
 
-  // 3. Fetch Quizzes
-  if (!filters?.category || filters.category === 'ALL' || filters.category === 'KUIS') {
+  // 3. Fetch Quizzes (only if user has relevant courses)
+  if (relevantCourseIds.length > 0 && (!filters?.category || filters.category === 'ALL' || filters.category === 'KUIS')) {
     const quizzes = await db.quiz.findMany({
       where: {
         deadline: {
@@ -160,8 +193,8 @@ export async function getCalendarEvents(filters?: {
     }
   }
 
-  // 4. Fetch Attendance Sessions
-  if (!filters?.category || filters.category === 'ALL' || filters.category === 'PRESENSI') {
+  // 4. Fetch Attendance Sessions (only if user has relevant courses)
+  if (relevantCourseIds.length > 0 && (!filters?.category || filters.category === 'ALL' || filters.category === 'PRESENSI')) {
     const attendanceSessions = await db.attendanceSession.findMany({
       where: {
         date: {
@@ -223,22 +256,43 @@ export async function getCalendarEvents(filters?: {
   };
 
   // Scope permissions filter
-  const scopeConditions: any[] = [
-    { scope: CalendarEventScope.SCHOOL },
-    { creatorId: userId },
-  ];
-
-  if (relevantCourseIds.length > 0) {
-    scopeConditions.push({
-      scope: CalendarEventScope.COURSE,
-      courseId: { in: relevantCourseIds },
-    });
-  }
-
-  customEventWhere.AND = [{ OR: scopeConditions }];
-
   if (filters?.courseId && filters.courseId !== 'ALL') {
-    customEventWhere.courseId = filters.courseId;
+    // If filtering by a specific course, only show that course's events if permitted
+    if (relevantCourseIds.includes(filters.courseId)) {
+      customEventWhere.courseId = filters.courseId;
+      customEventWhere.scope = CalendarEventScope.COURSE;
+    } else {
+      // User is not authorized to see events for this course
+      customEventWhere.id = '__NO_ACCESS__';
+    }
+  } else {
+    // Default view: Personal + School (active school only) + Course (enrolled/teaching courses only)
+    const scopeConditions: any[] = [
+      { creatorId: userId, scope: CalendarEventScope.PERSONAL },
+    ];
+
+    if (activeSchoolId) {
+      scopeConditions.push({
+        scope: CalendarEventScope.SCHOOL,
+        OR: [
+          { schoolId: activeSchoolId },
+          { schoolId: null },
+        ],
+      });
+    } else {
+      scopeConditions.push({
+        scope: CalendarEventScope.SCHOOL,
+      });
+    }
+
+    if (relevantCourseIds.length > 0) {
+      scopeConditions.push({
+        scope: CalendarEventScope.COURSE,
+        courseId: { in: relevantCourseIds },
+      });
+    }
+
+    customEventWhere.AND = [{ OR: scopeConditions }];
   }
 
   const customEvents = await db.calendarEvent.findMany({
@@ -301,10 +355,20 @@ export async function getUserCoursesForCalendar() {
   const session = await requireAuth();
   const userId = session.user.id;
   const userRole = session.user.role;
+  const activeSchoolId = session.user.schoolId;
+
+  const courseSchoolFilter = activeSchoolId
+    ? [{ schoolId: activeSchoolId }, { isCrossSchool: true }]
+    : [{ isCrossSchool: true }];
 
   if (userRole === 'STUDENT') {
     const enrollments = await db.enrollment.findMany({
-      where: { userId },
+      where: {
+        userId,
+        course: {
+          OR: courseSchoolFilter,
+        },
+      },
       include: {
         course: { select: { id: true, title: true } },
       },
@@ -314,12 +378,18 @@ export async function getUserCoursesForCalendar() {
 
   if (userRole === 'TEACHER') {
     return db.course.findMany({
-      where: { teacherId: userId },
+      where: {
+        teacherId: userId,
+        OR: courseSchoolFilter,
+      },
       select: { id: true, title: true },
     });
   }
 
   return db.course.findMany({
+    where: {
+      OR: courseSchoolFilter,
+    },
     select: { id: true, title: true },
   });
 }
@@ -342,6 +412,7 @@ export async function createCalendarEvent(data: {
   const session = await requireAuth();
   const userRole = session.user.role;
   const userId = session.user.id;
+  const activeSchoolId = session.user.schoolId;
 
   if (!data.title || !data.title.trim()) {
     throw new Error('Judul agenda tidak boleh kosong');
@@ -378,6 +449,7 @@ export async function createCalendarEvent(data: {
       color: data.color || null,
       location: data.location?.trim() || null,
       courseId: data.courseId || null,
+      schoolId: activeSchoolId || null,
       creatorId: userId,
     },
   });

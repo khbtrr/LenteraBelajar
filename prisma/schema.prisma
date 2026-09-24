@@ -37,6 +37,7 @@ model School {
   courseRequests CourseRequest[]
   schoolAnnouncements SchoolAnnouncement[]
   userAssignments     UserSchool[]
+  calendarEvents      CalendarEvent[]
 }
 
 model User {
@@ -720,6 +721,9 @@ model CalendarEvent {
   color       String?                // e.g. blue, emerald, amber, rose, purple
   location    String?
 
+  schoolId    String?
+  school      School?                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   courseId    String?
   course      Course?                @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
@@ -731,6 +735,7 @@ model CalendarEvent {
 
   @@index([startDate, endDate])
   @@index([scope, courseId])
+  @@index([schoolId])
   @@index([creatorId])
 }
 
