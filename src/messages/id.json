@@ -1218,7 +1218,10 @@
     "assignmentsHeading": "Penugasan",
     "maxScore": "Max Skor: {score}",
     "deadline": "Deadline: {date}",
-    "submitAssignmentBtn": "Kumpulkan Tugas"
+    "submitAssignmentBtn": "Kumpulkan Tugas",
+    "formatInteractive": "Konten Interaktif / Embed",
+    "btnFullscreen": "Layar Penuh",
+    "btnOpenNewTab": "Buka di Tab Baru"
   },
   "supervisorDashboard": {
     "teachersDesc": "Total guru terdaftar di sekolah",
@@ -2087,6 +2090,13 @@
     "formatText": "Rich Text (TipTap)",
     "formatFile": "Berkas Dokumen (PDF/DOCX)",
     "formatVideo": "Video",
+    "formatInteractive": "Konten Interaktif / Embed",
+    "interactiveInputLabel": "Kode Embed Iframe atau Tautan URL",
+    "interactiveInputPlaceholder": "Tempelkan kode <iframe>...</iframe> atau tautan https://...",
+    "interactiveHelpText": "Mendukung materi belajar interaktif dan game edukasi dari berbagai platform populer.",
+    "supportedPlatformsTitle": "Platform Populer yang Didukung:",
+    "missingInteractiveTitle": "Konten Interaktif Belum Diisi",
+    "missingInteractiveDesc": "Harap masukkan kode embed iframe atau tautan URL materi interaktif.",
     "wysiwygLabel": "Isi Teks Materi (WYSIWYG Editor)",
     "chooseFileLabel": "Pilih Berkas Materi (PDF, DOCX, PPTX)",
     "fileHelpText": "Berkas tersimpan aman di server lokal LMS.",
@@ -2114,6 +2124,7 @@
     "passingGradePlaceholder": "Kosongkan jika tidak ada",
     "passingGradeHelp": "Opsional. Nilai 0-100.",
     "securityHeading": "Keamanan Ujian & CBT",
+    "cbtAccordionTitle": "Pengaturan Tambahan: Mode CBT & Keamanan (Opsional)",
     "requireTokenLabel": "Wajibkan Token Masuk",
     "randomTokenBtn": "Acak",
     "tokenPlaceholder": "misal: PAS2026",

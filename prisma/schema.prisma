@@ -317,6 +317,7 @@ enum ContentType {
   TEXT
   FILE
   VIDEO
+  INTERACTIVE
 }
 
 model Quiz {

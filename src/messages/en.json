@@ -1218,7 +1218,10 @@
     "assignmentsHeading": "Assignments",
     "maxScore": "Max Score: {score}",
     "deadline": "Deadline: {date}",
-    "submitAssignmentBtn": "Submit Assignment"
+    "submitAssignmentBtn": "Submit Assignment",
+    "formatInteractive": "Interactive / Embed Content",
+    "btnFullscreen": "Fullscreen",
+    "btnOpenNewTab": "Open in New Tab"
   },
   "supervisorDashboard": {
     "teachersDesc": "Total registered teachers in school",
@@ -2087,6 +2090,13 @@
     "formatText": "Rich Text (TipTap)",
     "formatFile": "Document File (PDF/DOCX)",
     "formatVideo": "Video",
+    "formatInteractive": "Interactive / Embed Content",
+    "interactiveInputLabel": "Iframe Embed Code or URL Link",
+    "interactiveInputPlaceholder": "Paste <iframe>...</iframe> code or https://... link",
+    "interactiveHelpText": "Supports interactive learning content and educational games from various popular platforms.",
+    "supportedPlatformsTitle": "Supported Popular Platforms:",
+    "missingInteractiveTitle": "Interactive Content Empty",
+    "missingInteractiveDesc": "Please enter an iframe embed code or URL link for the interactive content.",
     "wysiwygLabel": "Material Text Body (WYSIWYG Editor)",
     "chooseFileLabel": "Choose Material File (PDF, DOCX, PPTX)",
     "fileHelpText": "Files are stored securely on the local LMS server.",
@@ -2114,6 +2124,7 @@
     "passingGradePlaceholder": "Leave empty if none",
     "passingGradeHelp": "Optional. Score 0-100.",
     "securityHeading": "Exam Security & CBT",
+    "cbtAccordionTitle": "Additional Settings: CBT & Security Mode (Optional)",
     "requireTokenLabel": "Require Access Token",
     "randomTokenBtn": "Randomize",
     "tokenPlaceholder": "e.g.: PAS2026",

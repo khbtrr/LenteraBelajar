@@ -48,10 +48,12 @@ import {
   RefreshCw,
   Eye,
   Users,
+  Sparkles,
 } from 'lucide-react';
 import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
 import { createModule, deleteModule, createContent, deleteContent, getCourseModules } from '@/lib/actions/module';
 import { ModuleCohortAccessModal } from '@/components/course/module-cohort-access-modal';
+import { parseInteractiveContent } from '@/lib/interactive-utils';
 
 function extractMediaFromText(text: string) {
   if (!text) return { type: 'NONE' as const, url: '', maxPlay: null, cleanText: '' };
@@ -204,6 +206,7 @@ export function TeacherCourseModulesClient({
   const [contentBody, setContentBody] = useState('');
   const [contentFile, setContentFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState('');
+  const [interactiveInput, setInteractiveInput] = useState('');
 
   // Quiz Modal State
   const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
@@ -220,6 +223,7 @@ export function TeacherCourseModulesClient({
   const [quizToken, setQuizToken] = useState('');
   const [enableLockdown, setEnableLockdown] = useState(false);
   const [maxTabSwitches, setMaxTabSwitches] = useState('3');
+  const [isCbtSettingsOpen, setIsCbtSettingsOpen] = useState(false);
 
   // Question builder inside quiz creation
   const [questions, setQuestions] = useState<
@@ -385,6 +389,7 @@ export function TeacherCourseModulesClient({
       let fileUrl: string | undefined = undefined;
       let fileName: string | undefined = undefined;
       let fileSize: number | undefined = undefined;
+      let body: string | undefined = undefined;
 
       if (contentType === ContentType.FILE) {
         if (!contentFile) {
@@ -412,13 +417,28 @@ export function TeacherCourseModulesClient({
         fileSize = uploadRes.fileSize;
       } else if (contentType === ContentType.VIDEO) {
         fileUrl = videoUrl;
+      } else if (contentType === ContentType.TEXT) {
+        body = contentBody;
+      } else if (contentType === ContentType.INTERACTIVE) {
+        if (!interactiveInput.trim()) {
+          setNoticeModal({
+            title: t('missingInteractiveTitle'),
+            message: t('missingInteractiveDesc'),
+            type: 'warning',
+          });
+          setLoading(false);
+          return;
+        }
+        const parsed = parseInteractiveContent(interactiveInput);
+        fileUrl = parsed.url;
+        body = parsed.embedCode;
       }
 
       const created = await createContent({
         moduleId: activeModuleId,
         title: contentTitle,
         type: contentType,
-        body: contentType === ContentType.TEXT ? contentBody : undefined,
+        body,
         fileUrl,
         fileName,
         fileSize,
@@ -437,6 +457,7 @@ export function TeacherCourseModulesClient({
       setContentBody('');
       setContentFile(null);
       setVideoUrl('');
+      setInteractiveInput('');
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
@@ -759,6 +780,7 @@ export function TeacherCourseModulesClient({
       setQuizToken('');
       setEnableLockdown(false);
       setMaxTabSwitches('3');
+      setIsCbtSettingsOpen(false);
     } catch (err: any) {
       console.error(err);
       setNoticeModal({
@@ -1256,8 +1278,10 @@ export function TeacherCourseModulesClient({
                               <FileText className="h-5 w-5 text-blue-600" />
                             ) : c.type === 'FILE' ? (
                               <FileDown className="h-5 w-5 text-emerald-600" />
-                            ) : (
+                            ) : c.type === 'VIDEO' ? (
                               <Video className="h-5 w-5 text-red-600" />
+                            ) : (
+                              <Sparkles className="h-5 w-5 text-[#FF8928]" />
                             )}
                             <div>
                               <div className="font-semibold text-sm text-gray-800">
@@ -1265,7 +1289,7 @@ export function TeacherCourseModulesClient({
                               </div>
                               <div className="text-[11px] text-gray-500 flex items-center gap-2">
                                 <Badge variant="outline" className="text-[10px] py-0">
-                                  {c.type}
+                                  {c.type === 'INTERACTIVE' ? t('formatInteractive') : c.type}
                                 </Badge>
                                 {c.cohortAccess && c.cohortAccess.length > 0 && (
                                   <Badge variant="outline" className="text-[10px] py-0 bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 font-medium">
@@ -1590,7 +1614,7 @@ export function TeacherCourseModulesClient({
 
               <div className="space-y-2">
                 <Label>{t('contentFormatLabel')}</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     size="sm"
@@ -1617,6 +1641,15 @@ export function TeacherCourseModulesClient({
                     className={contentType === ContentType.VIDEO ? 'bg-[#002446] text-white' : ''}
                   >
                     <Video className="h-4 w-4 mr-1.5" /> {t('formatVideo')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={contentType === ContentType.INTERACTIVE ? 'default' : 'outline'}
+                    onClick={() => setContentType(ContentType.INTERACTIVE)}
+                    className={contentType === ContentType.INTERACTIVE ? 'bg-[#002446] text-white' : ''}
+                  >
+                    <Sparkles className="h-4 w-4 mr-1.5 text-[#FF8928]" /> {t('formatInteractive')}
                   </Button>
                 </div>
               </div>
@@ -1655,6 +1688,43 @@ export function TeacherCourseModulesClient({
                   />
                 </div>
               )}
+
+              {contentType === ContentType.INTERACTIVE && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="interactiveCode">{t('interactiveInputLabel')}</Label>
+                    <Textarea
+                      id="interactiveCode"
+                      placeholder={t('interactiveInputPlaceholder')}
+                      value={interactiveInput}
+                      onChange={(e) => setInteractiveInput(e.target.value)}
+                      rows={4}
+                      className="font-mono text-xs"
+                      required
+                    />
+                    <p className="text-[11px] text-gray-500">
+                      {t('interactiveHelpText')}
+                    </p>
+                  </div>
+
+                  {/* Supported Platform Badges */}
+                  <div className="p-3 rounded-lg bg-slate-50 dark:bg-gray-800/60 border border-slate-200 dark:border-gray-700 space-y-2">
+                    <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 block">
+                      {t('supportedPlatformsTitle')}
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['H5P / Lumi', 'Kahoot!', 'Quizizz', 'Wordwall', 'Canva', 'PhET Interactive', 'GeoGebra', 'Google Slides / Forms', 'Padlet'].map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter>
@@ -1670,7 +1740,15 @@ export function TeacherCourseModulesClient({
       </Dialog>
 
       {/* Modal 3: Buat Kuis & Soal */}
-      <Dialog open={isQuizModalOpen} onOpenChange={setIsQuizModalOpen}>
+      <Dialog
+        open={isQuizModalOpen}
+        onOpenChange={(open) => {
+          setIsQuizModalOpen(open);
+          if (!open) {
+            setIsCbtSettingsOpen(false);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
           <form onSubmit={handleSaveQuiz} className="flex flex-col flex-1 overflow-hidden">
             <DialogHeader>
@@ -1791,102 +1869,118 @@ export function TeacherCourseModulesClient({
                 </div>
               </div>
 
-              {/* CBT & Keamanan Ujian Lanjutan (Token & Lockdown) */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-[#002446]" />
-                  <span className="text-xs font-bold text-[#002446] uppercase tracking-wider">
-                    {t('securityHeading')}
-                  </span>
-                </div>
+              {/* CBT & Keamanan Ujian Lanjutan (Accordion/Collapsible Opsional) */}
+              <div className="rounded-xl border border-slate-200 dark:border-gray-800 bg-slate-50/60 dark:bg-gray-900/40 overflow-hidden transition-all">
+                <button
+                  type="button"
+                  onClick={() => setIsCbtSettingsOpen((prev) => !prev)}
+                  aria-expanded={isCbtSettingsOpen}
+                  className="w-full flex items-center justify-between p-3.5 text-left transition-colors hover:bg-slate-100/70 dark:hover:bg-gray-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002446]"
+                >
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-[#002446] dark:text-blue-400" />
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                      {t('cbtAccordionTitle')}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                      isCbtSettingsOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Token Akses */}
-                  <div className="space-y-2 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="qzRequireToken"
-                          checked={requireToken}
-                          onChange={(e) => {
-                            setRequireToken(e.target.checked);
-                            if (e.target.checked && !quizToken) {
-                              setQuizToken(Math.random().toString(36).substring(2, 8).toUpperCase());
-                            }
-                          }}
-                          className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
-                        />
-                        <Label htmlFor="qzRequireToken" className="text-xs font-bold cursor-pointer text-gray-800">
-                          {t('requireTokenLabel')}
-                        </Label>
+                {isCbtSettingsOpen && (
+                  <div className="px-3.5 pb-3.5 pt-1 border-t border-slate-200/70 dark:border-gray-800 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      {/* Token Akses */}
+                      <div className="space-y-2 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="qzRequireToken"
+                              checked={requireToken}
+                              onChange={(e) => {
+                                setRequireToken(e.target.checked);
+                                if (e.target.checked && !quizToken) {
+                                  setQuizToken(Math.random().toString(36).substring(2, 8).toUpperCase());
+                                }
+                              }}
+                              className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                            />
+                            <Label htmlFor="qzRequireToken" className="text-xs font-bold cursor-pointer text-gray-800 dark:text-gray-200">
+                              {t('requireTokenLabel')}
+                            </Label>
+                          </div>
+                          {requireToken && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setQuizToken(Math.random().toString(36).substring(2, 8).toUpperCase())}
+                              className="h-6 px-2 text-[10px] text-[#FF8928] hover:bg-amber-50 dark:hover:bg-gray-700"
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" /> {t('randomTokenBtn')}
+                            </Button>
+                          )}
+                        </div>
+
+                        {requireToken && (
+                          <div className="pt-1">
+                            <Input
+                              placeholder={t('tokenPlaceholder')}
+                              value={quizToken}
+                              onChange={(e) => setQuizToken(e.target.value.toUpperCase())}
+                              maxLength={8}
+                              className="font-mono text-center text-sm font-bold tracking-widest uppercase h-9 bg-gray-50 dark:bg-gray-900"
+                              required={requireToken}
+                            />
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                              {t('tokenHelp')}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      {requireToken && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setQuizToken(Math.random().toString(36).substring(2, 8).toUpperCase())}
-                          className="h-6 px-2 text-[10px] text-[#FF8928] hover:bg-amber-50"
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" /> {t('randomTokenBtn')}
-                        </Button>
-                      )}
-                    </div>
 
-                    {requireToken && (
-                      <div className="pt-1">
-                        <Input
-                          placeholder={t('tokenPlaceholder')}
-                          value={quizToken}
-                          onChange={(e) => setQuizToken(e.target.value.toUpperCase())}
-                          maxLength={8}
-                          className="font-mono text-center text-sm font-bold tracking-widest uppercase h-9 bg-gray-50"
-                          required={requireToken}
-                        />
-                        <p className="text-[10px] text-gray-500 mt-1">
-                          {t('tokenHelp')}
+                      {/* Lockdown CBT & Anti-Curang */}
+                      <div className="space-y-2 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="qzEnableLockdown"
+                            checked={enableLockdown}
+                            onChange={(e) => setEnableLockdown(e.target.checked)}
+                            className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
+                          />
+                          <Label htmlFor="qzEnableLockdown" className="text-xs font-bold cursor-pointer text-gray-800 dark:text-gray-200">
+                            {t('lockdownModeLabel')}
+                          </Label>
+                        </div>
+
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                          {t('lockdownHelp')}
                         </p>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Lockdown CBT & Anti-Curang */}
-                  <div className="space-y-2 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="qzEnableLockdown"
-                        checked={enableLockdown}
-                        onChange={(e) => setEnableLockdown(e.target.checked)}
-                        className="rounded border-gray-300 text-[#002446] focus:ring-[#002446]"
-                      />
-                      <Label htmlFor="qzEnableLockdown" className="text-xs font-bold cursor-pointer text-gray-800">
-                        {t('lockdownModeLabel')}
-                      </Label>
+                        {enableLockdown && (
+                          <div className="pt-1 flex items-center justify-between gap-2 border-t border-gray-100 dark:border-gray-700">
+                            <span className="text-[11px] text-gray-600 dark:text-gray-300 font-medium">{t('tabSwitchLimitLabel')}</span>
+                            <select
+                              value={maxTabSwitches}
+                              onChange={(e) => setMaxTabSwitches(e.target.value)}
+                              className="h-7 px-2 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-bold"
+                            >
+                              <option value="1">{t('tabSwitchStrict')}</option>
+                              <option value="2">{t('tabSwitchTimes', { count: 2 })}</option>
+                              <option value="3">{t('tabSwitchStandard')}</option>
+                              <option value="5">{t('tabSwitchRelaxed')}</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     </div>
-
-                    <p className="text-[10px] text-gray-500">
-                      {t('lockdownHelp')}
-                    </p>
-
-                    {enableLockdown && (
-                      <div className="pt-1 flex items-center justify-between gap-2 border-t border-gray-100">
-                        <span className="text-[11px] text-gray-600 font-medium">{t('tabSwitchLimitLabel')}</span>
-                        <select
-                          value={maxTabSwitches}
-                          onChange={(e) => setMaxTabSwitches(e.target.value)}
-                          className="h-7 px-2 text-xs border border-gray-300 rounded bg-white text-gray-800 font-bold"
-                        >
-                          <option value="1">{t('tabSwitchStrict')}</option>
-                          <option value="2">{t('tabSwitchTimes', { count: 2 })}</option>
-                          <option value="3">{t('tabSwitchStandard')}</option>
-                          <option value="5">{t('tabSwitchRelaxed')}</option>
-                        </select>
-                      </div>
-                    )}
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Mode Selector Tabs: Manual vs Bank Soal */}

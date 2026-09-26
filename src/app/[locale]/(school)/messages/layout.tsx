@@ -70,7 +70,6 @@ export default async function MessagesLayout({
       { label: t('dashboard'), href: '/teacher/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
       { label: t('myCourses'), href: '/teacher/my-courses', icon: <BookOpen className="h-5 w-5" /> },
       { label: t('messages'), href: '/messages', icon: <MessageSquare className="h-5 w-5" /> },
-      { label: t('cohortGrades'), href: '/teacher/leger', icon: <FileSpreadsheet className="h-5 w-5" /> },
       { label: t('requestCourse'), href: '/teacher/request-course', icon: <PlusCircle className="h-5 w-5" /> },
       { label: t('calendar'), href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
     ];
@@ -86,7 +85,6 @@ export default async function MessagesLayout({
       { label: t('categories'), href: '/admin/categories', icon: <FolderTree className="h-5 w-5" /> },
       { label: t('courses'), href: '/admin/courses', icon: <BookOpen className="h-5 w-5" /> },
       { label: t('cohorts'), href: '/admin/cohorts', icon: <UsersRound className="h-5 w-5" /> },
-      { label: t('cohortGrades'), href: '/admin/grades/leger', icon: <FileSpreadsheet className="h-5 w-5" /> },
       { label: t('users'), href: '/admin/users', icon: <Users className="h-5 w-5" /> },
       { label: t('courseRequests'), href: '/admin/course-requests', icon: <FileCheck className="h-5 w-5" /> },
       { label: t('calendar'), href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },

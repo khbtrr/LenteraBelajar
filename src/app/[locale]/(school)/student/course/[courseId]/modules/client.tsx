@@ -21,11 +21,14 @@ import {
   Pin,
   Trophy,
   Sparkles,
+  Maximize2,
+  ExternalLink,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { LeaderboardModal } from '@/components/course/leaderboard-modal';
 import { markLessonCompleted } from '@/lib/actions/gamification';
 import { useTranslations, useLocale } from 'next-intl';
+import { detectPlatform } from '@/lib/interactive-utils';
 
 export function StudentCourseModulesClient({
   course,
@@ -60,6 +63,20 @@ export function StudentCourseModulesClient({
       console.error('Failed to mark lesson completed:', err);
     } finally {
       setMarkingId(null);
+    }
+  };
+
+  const handleToggleFullscreen = (cntId: string) => {
+    const elem = document.getElementById(`interactive-frame-${cntId}`);
+    if (!elem) return;
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen?.().catch((err) => {
+        console.warn('Fullscreen request failed:', err);
+      });
+    } else {
+      document.exitFullscreen?.().catch((err) => {
+        console.warn('Exit fullscreen failed:', err);
+      });
     }
   };
 
@@ -242,15 +259,17 @@ export function StudentCourseModulesClient({
                               <FileText className="h-5 w-5 text-blue-600" />
                             ) : cnt.type === 'FILE' ? (
                               <FileDown className="h-5 w-5 text-emerald-600" />
-                            ) : (
+                            ) : cnt.type === 'VIDEO' ? (
                               <Video className="h-5 w-5 text-red-600" />
+                            ) : (
+                              <Sparkles className="h-5 w-5 text-[#FF8928]" />
                             )}
                             <h5 className="font-bold text-base text-[#002446]">
                               {cnt.title}
                             </h5>
                           </div>
                           <Badge variant="outline" className="text-xs">
-                            {cnt.type}
+                            {cnt.type === 'INTERACTIVE' ? t('formatInteractive') : cnt.type}
                           </Badge>
                         </div>
 
@@ -302,6 +321,59 @@ export function StudentCourseModulesClient({
                                 className="w-full max-w-2xl rounded"
                               />
                             )}
+                          </div>
+                        )}
+
+                        {/* Interactive Content / Embed */}
+                        {cnt.type === 'INTERACTIVE' && (
+                          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden shadow-2xs">
+                            <div className="flex items-center justify-between px-3.5 py-2 bg-slate-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-800">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-[#FF8928]" />
+                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                                  {detectPlatform(cnt.fileUrl || cnt.body || '')}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleToggleFullscreen(cnt.id)}
+                                  className="h-7 px-2.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 border-gray-300 dark:border-gray-700"
+                                  title={t('btnFullscreen')}
+                                >
+                                  <Maximize2 className="h-3.5 w-3.5 mr-1 text-gray-500" />
+                                  <span className="hidden sm:inline">{t('btnFullscreen')}</span>
+                                </Button>
+
+                                {cnt.fileUrl && (
+                                  <a
+                                    href={cnt.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center h-7 px-2.5 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                                    title={t('btnOpenNewTab')}
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5 mr-1 text-gray-500" />
+                                    <span className="hidden sm:inline">{t('btnOpenNewTab')}</span>
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+
+                            <div
+                              id={`interactive-frame-${cnt.id}`}
+                              className="relative w-full aspect-video min-h-[480px] bg-gray-950 flex items-center justify-center"
+                            >
+                              <iframe
+                                src={cnt.fileUrl || undefined}
+                                title={cnt.title}
+                                allow="fullscreen; autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                allowFullScreen
+                                className="w-full h-full border-0 absolute inset-0"
+                              />
+                            </div>
                           </div>
                         )}
 
