@@ -61,7 +61,7 @@ export default async function TeacherDashboard() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Link href="/teacher/courses">
+          <Link href="/teacher/my-courses">
             <Button className="bg-accent-500 hover:bg-accent-600 text-white font-bold text-xs">
               {tTeacher('manageCourses')}
             </Button>
@@ -122,7 +122,7 @@ export default async function TeacherDashboard() {
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-[#002446]">{tTeacher('activeCoursesTitle')}</h2>
-            <Link href="/teacher/courses">
+            <Link href="/teacher/my-courses">
               <Button variant="ghost" size="sm" className="text-xs text-blue-700 hover:text-blue-900">
                 {tTeacher('viewAll')} &rarr;
               </Button>
@@ -158,7 +158,7 @@ export default async function TeacherDashboard() {
                   </CardContent>
 
                   <div className="p-4 pt-0">
-                    <Link href={`/teacher/courses/${c.id}`}>
+                    <Link href={`/teacher/course/${c.id}/modules`}>
                       <Button
                         variant="outline"
                         size="sm"

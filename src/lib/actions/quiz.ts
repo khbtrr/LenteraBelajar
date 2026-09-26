@@ -6,6 +6,7 @@ import { QuestionType, GradeType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { createBulkNotifications } from './notification';
 import { awardXp } from './gamification';
+import { checkStudentItemAccess } from './cohort-access';
 
 export async function getQuizById(quizId: string) {
   const session = await requireAuth();
@@ -16,6 +17,11 @@ export async function getQuizById(quizId: string) {
       module: {
         include: {
           course: true,
+        },
+      },
+      cohortAccess: {
+        include: {
+          cohort: { select: { id: true, name: true } },
         },
       },
       questions: {
@@ -315,6 +321,9 @@ export async function getQuizStatusForStudent(quizId: string) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
     include: {
+      module: {
+        select: { courseId: true },
+      },
       attempts: {
         where: { userId: session.user.id },
         orderBy: { startedAt: 'desc' },
@@ -326,6 +335,18 @@ export async function getQuizStatusForStudent(quizId: string) {
   });
 
   if (!quiz) throw new Error('Quiz not found');
+
+  if (session.user.role === 'STUDENT') {
+    const hasAccess = await checkStudentItemAccess({
+      userId: session.user.id,
+      itemType: 'QUIZ',
+      itemId: quizId,
+      courseId: quiz.module.courseId,
+    });
+    if (!hasAccess) {
+      throw new Error('Anda tidak memiliki akses ke kuis ini.');
+    }
+  }
 
   const attempts = quiz.attempts;
   const submittedAttempts = attempts.filter((a) => a.submittedAt !== null);
@@ -393,6 +414,9 @@ export async function startOrGetQuizAttempt(quizId: string, token?: string) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
     include: {
+      module: {
+        select: { courseId: true },
+      },
       questions: {
         orderBy: { order: 'asc' },
       },
@@ -401,6 +425,19 @@ export async function startOrGetQuizAttempt(quizId: string, token?: string) {
   });
 
   if (!quiz) throw new Error('Quiz not found');
+
+  // Check cohort access restriction
+  if (session.user.role === 'STUDENT') {
+    const hasAccess = await checkStudentItemAccess({
+      userId: session.user.id,
+      itemType: 'QUIZ',
+      itemId: quizId,
+      courseId: quiz.module.courseId,
+    });
+    if (!hasAccess) {
+      throw new Error('Anda tidak memiliki akses ke kuis ini.');
+    }
+  }
 
   // Check remedial eligibility
   if (quiz.isRemedial && quiz.targetStudentIds) {

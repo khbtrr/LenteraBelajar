@@ -48,15 +48,27 @@ export async function getCourseGradebook(courseId: string): Promise<CourseGradeb
       modules: {
         include: {
           quizzes: {
-            select: { id: true, title: true, order: true },
+            select: {
+              id: true,
+              title: true,
+              order: true,
+              cohortAccess: { select: { cohortId: true } },
+            },
           },
           assignments: {
-            select: { id: true, title: true, maxScore: true, order: true },
+            select: {
+              id: true,
+              title: true,
+              maxScore: true,
+              order: true,
+              cohortAccess: { select: { cohortId: true } },
+            },
           },
         },
       },
       enrollments: {
         include: {
+          cohort: { select: { id: true } },
           user: {
             select: {
               id: true,
@@ -88,8 +100,8 @@ export async function getCourseGradebook(courseId: string): Promise<CourseGradeb
   const assignmentIds = assignments.map((a) => a.id);
   const studentIds = course.enrollments.map((e) => e.user.id);
 
-  // Fetch all quiz attempts and assignment submissions in bulk
-  const [quizAttempts, submissions] = await Promise.all([
+  // Fetch all quiz attempts, assignment submissions, cohort memberships, and overrides in bulk
+  const [quizAttempts, submissions, cohortMembers, itemOverrides] = await Promise.all([
     quizIds.length > 0 && studentIds.length > 0
       ? db.quizAttempt.findMany({
           where: {
@@ -106,6 +118,18 @@ export async function getCourseGradebook(courseId: string): Promise<CourseGradeb
             assignmentId: { in: assignmentIds },
             userId: { in: studentIds },
           },
+        })
+      : [],
+    studentIds.length > 0
+      ? db.cohortMember.findMany({
+          where: { userId: { in: studentIds } },
+          select: { userId: true, cohortId: true },
+        })
+      : [],
+    studentIds.length > 0
+      ? db.itemAccessOverride.findMany({
+          where: { userId: { in: studentIds } },
+          select: { userId: true, itemType: true, itemId: true },
         })
       : [],
   ]);
@@ -138,24 +162,53 @@ export async function getCourseGradebook(courseId: string): Promise<CourseGradeb
     const studentQuizScores: Record<string, number | null> = {};
     const studentAssignScores: Record<string, number | null> = {};
 
+    const studentCohortIds = new Set<string>();
+    if (e.cohort?.id) studentCohortIds.add(e.cohort.id);
+    for (const cm of cohortMembers.filter((m) => m.userId === u.id)) {
+      studentCohortIds.add(cm.cohortId);
+    }
+    const studentOverrides = new Set<string>(
+      itemOverrides.filter((io) => io.userId === u.id).map((io) => `${io.itemType}_${io.itemId}`)
+    );
+
     let totalScore = 0;
     let totalItems = 0;
 
     for (const q of quizzes) {
-      const s = quizMap[u.id]?.[q.id] ?? null;
-      studentQuizScores[q.id] = s;
-      if (s !== null) {
-        totalScore += s;
-        totalItems++;
+      const hasAccess =
+        !q.cohortAccess ||
+        q.cohortAccess.length === 0 ||
+        studentOverrides.has(`QUIZ_${q.id}`) ||
+        q.cohortAccess.some((ca: any) => studentCohortIds.has(ca.cohortId));
+
+      if (hasAccess) {
+        const s = quizMap[u.id]?.[q.id] ?? null;
+        studentQuizScores[q.id] = s;
+        if (s !== null) {
+          totalScore += s;
+          totalItems++;
+        }
+      } else {
+        studentQuizScores[q.id] = null;
       }
     }
 
     for (const a of assignments) {
-      const s = assignMap[u.id]?.[a.id] ?? null;
-      studentAssignScores[a.id] = s;
-      if (s !== null) {
-        totalScore += s;
-        totalItems++;
+      const hasAccess =
+        !a.cohortAccess ||
+        a.cohortAccess.length === 0 ||
+        studentOverrides.has(`ASSIGNMENT_${a.id}`) ||
+        a.cohortAccess.some((ca: any) => studentCohortIds.has(ca.cohortId));
+
+      if (hasAccess) {
+        const s = assignMap[u.id]?.[a.id] ?? null;
+        studentAssignScores[a.id] = s;
+        if (s !== null) {
+          totalScore += s;
+          totalItems++;
+        }
+      } else {
+        studentAssignScores[a.id] = null;
       }
     }
 
@@ -209,12 +262,14 @@ export async function getAssignmentSubmissionsList(assignmentId: string) {
   const assignment = await db.assignment.findUnique({
     where: { id: assignmentId },
     include: {
+      cohortAccess: { select: { cohortId: true } },
       module: {
         include: {
           course: {
             include: {
               enrollments: {
                 include: {
+                  cohort: { select: { id: true } },
                   user: {
                     select: {
                       id: true,
@@ -249,9 +304,36 @@ export async function getAssignmentSubmissionsList(assignmentId: string) {
 
   if (!assignment) return null;
 
+  const allowedCohortIds = (assignment.cohortAccess || []).map((ca) => ca.cohortId);
+
+  let allowedStudentIdSet: Set<string> | null = null;
+  if (allowedCohortIds.length > 0) {
+    const [overrides, cohortMembers] = await Promise.all([
+      db.itemAccessOverride.findMany({
+        where: { itemType: 'ASSIGNMENT', itemId: assignmentId },
+        select: { userId: true },
+      }),
+      db.cohortMember.findMany({
+        where: { cohortId: { in: allowedCohortIds } },
+        select: { userId: true },
+      }),
+    ]);
+
+    allowedStudentIdSet = new Set<string>();
+    for (const o of overrides) allowedStudentIdSet.add(o.userId);
+    for (const cm of cohortMembers) allowedStudentIdSet.add(cm.userId);
+  }
+
   const submissionsByUser = new Map(assignment.submissions.map((s) => [s.userId, s]));
 
-  const enrolledStudents = assignment.module.course.enrollments.map((e) => {
+  const eligibleEnrollments = assignment.module.course.enrollments.filter((e) => {
+    if (allowedCohortIds.length === 0) return true;
+    if (e.cohort?.id && allowedCohortIds.includes(e.cohort.id)) return true;
+    if (allowedStudentIdSet && allowedStudentIdSet.has(e.user.id)) return true;
+    return false;
+  });
+
+  const enrolledStudents = eligibleEnrollments.map((e) => {
     const sub = submissionsByUser.get(e.user.id);
     return {
       student: e.user,
@@ -498,29 +580,34 @@ export async function getStudentGradesOverview(userId: string) {
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
 
-  const enrollments = await db.enrollment.findMany({
-    where: { userId },
-    include: {
-      course: {
-        include: {
-          teacher: { select: { name: true } },
-          academicYear: true,
-          modules: {
-            include: {
-              quizzes: {
-                include: {
-                  attempts: {
-                    where: { userId, submittedAt: { not: null } },
-                    orderBy: { startedAt: 'desc' },
-                    take: 1,
+  const [enrollments, userCohortMembers, userOverrides] = await Promise.all([
+    db.enrollment.findMany({
+      where: { userId },
+      include: {
+        cohort: { select: { id: true } },
+        course: {
+          include: {
+            teacher: { select: { name: true } },
+            academicYear: true,
+            modules: {
+              include: {
+                quizzes: {
+                  include: {
+                    cohortAccess: { select: { cohortId: true } },
+                    attempts: {
+                      where: { userId, submittedAt: { not: null } },
+                      orderBy: { startedAt: 'desc' },
+                      take: 1,
+                    },
                   },
                 },
-              },
-              assignments: {
-                include: {
-                  submissions: {
-                    where: { userId },
-                    take: 1,
+                assignments: {
+                  include: {
+                    cohortAccess: { select: { cohortId: true } },
+                    submissions: {
+                      where: { userId },
+                      take: 1,
+                    },
                   },
                 },
               },
@@ -528,37 +615,63 @@ export async function getStudentGradesOverview(userId: string) {
           },
         },
       },
-    },
-  });
+    }),
+    db.cohortMember.findMany({
+      where: { userId },
+      select: { cohortId: true },
+    }),
+    db.itemAccessOverride.findMany({
+      where: { userId },
+      select: { itemType: true, itemId: true },
+    }),
+  ]);
+
+  const memberCohortIds = new Set(userCohortMembers.map((m) => m.cohortId));
+  const overrideSet = new Set(userOverrides.map((o) => `${o.itemType}_${o.itemId}`));
 
   return enrollments.map((e) => {
     const c = e.course;
+    const studentCohortIds = new Set(memberCohortIds);
+    if (e.cohort?.id) studentCohortIds.add(e.cohort.id);
+
     const quizzes = c.modules.flatMap((m) =>
-      m.quizzes.map((q) => {
-        const attempt = q.attempts[0];
-        return {
-          id: q.id,
-          title: q.title,
-          score: attempt ? attempt.score : null,
-          isGraded: attempt ? attempt.isGraded : false,
-          submittedAt: attempt ? attempt.submittedAt : null,
-        };
-      })
+      m.quizzes
+        .filter((q) => {
+          if (!q.cohortAccess || q.cohortAccess.length === 0) return true;
+          if (overrideSet.has(`QUIZ_${q.id}`)) return true;
+          return q.cohortAccess.some((ca: any) => studentCohortIds.has(ca.cohortId));
+        })
+        .map((q) => {
+          const attempt = q.attempts[0];
+          return {
+            id: q.id,
+            title: q.title,
+            score: attempt ? attempt.score : null,
+            isGraded: attempt ? attempt.isGraded : false,
+            submittedAt: attempt ? attempt.submittedAt : null,
+          };
+        })
     );
 
     const assignments = c.modules.flatMap((m) =>
-      m.assignments.map((a) => {
-        const sub = a.submissions[0];
-        return {
-          id: a.id,
-          title: a.title,
-          maxScore: a.maxScore,
-          score: sub ? sub.score : null,
-          teacherNote: sub ? sub.teacherNote : null,
-          submittedAt: sub ? sub.submittedAt : null,
-          gradedAt: sub ? sub.gradedAt : null,
-        };
-      })
+      m.assignments
+        .filter((a) => {
+          if (!a.cohortAccess || a.cohortAccess.length === 0) return true;
+          if (overrideSet.has(`ASSIGNMENT_${a.id}`)) return true;
+          return a.cohortAccess.some((ca: any) => studentCohortIds.has(ca.cohortId));
+        })
+        .map((a) => {
+          const sub = a.submissions[0];
+          return {
+            id: a.id,
+            title: a.title,
+            maxScore: a.maxScore,
+            score: sub ? sub.score : null,
+            teacherNote: sub ? sub.teacherNote : null,
+            submittedAt: sub ? sub.submittedAt : null,
+            gradedAt: sub ? sub.gradedAt : null,
+          };
+        })
     );
 
     // Calculate course average

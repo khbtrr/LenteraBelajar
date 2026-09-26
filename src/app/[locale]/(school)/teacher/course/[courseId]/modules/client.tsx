@@ -47,9 +47,11 @@ import {
   KeyRound,
   RefreshCw,
   Eye,
+  Users,
 } from 'lucide-react';
 import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
-import { createModule, deleteModule, createContent, deleteContent } from '@/lib/actions/module';
+import { createModule, deleteModule, createContent, deleteContent, getCourseModules } from '@/lib/actions/module';
+import { ModuleCohortAccessModal } from '@/components/course/module-cohort-access-modal';
 
 function extractMediaFromText(text: string) {
   if (!text) return { type: 'NONE' as const, url: '', maxPlay: null, cleanText: '' };
@@ -181,10 +183,12 @@ export function TeacherCourseModulesClient({
   isReadOnly?: boolean;
 }) {
   const t = useTranslations('teacherModules');
+  const tCohort = useTranslations('cohortAccess');
   const locale = useLocale();
 
   const [modules, setModules] = useState<any[]>(initialModules);
   const [loading, setLoading] = useState(false);
+  const [cohortAccessModule, setCohortAccessModule] = useState<{ id: string; title: string } | null>(null);
 
   // Modals state
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -1198,6 +1202,20 @@ export function TeacherCourseModulesClient({
 
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setCohortAccessModule({
+                          id: mod.id,
+                          title: mod.title,
+                        })
+                      }
+                      className="h-8 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1"
+                    >
+                      <Users className="h-3.5 w-3.5" /> {tCohort('btnManageAccess')}
+                    </Button>
+
+                    <Button
+                      size="sm"
                       variant="ghost"
                       onClick={() =>
                         setModuleToDelete({
@@ -1249,6 +1267,12 @@ export function TeacherCourseModulesClient({
                                 <Badge variant="outline" className="text-[10px] py-0">
                                   {c.type}
                                 </Badge>
+                                {c.cohortAccess && c.cohortAccess.length > 0 && (
+                                  <Badge variant="outline" className="text-[10px] py-0 bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 font-medium">
+                                    <Users className="h-2.5 w-2.5" />
+                                    {c.cohortAccess.map((ca: any) => ca.cohort.name).join(', ')}
+                                  </Badge>
+                                )}
                                 {c.fileName && <span>{c.fileName}</span>}
                               </div>
                             </div>
@@ -1340,6 +1364,12 @@ export function TeacherCourseModulesClient({
                               {q.isRemedial && (
                                 <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-900 border border-amber-300">
                                   {t('remedialBadge')}
+                                </Badge>
+                              )}
+                              {q.cohortAccess && q.cohortAccess.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1 font-medium">
+                                  <Users className="h-2.5 w-2.5" />
+                                  {q.cohortAccess.map((ca: any) => ca.cohort.name).join(', ')}
                                 </Badge>
                               )}
                             </div>
@@ -1445,6 +1475,12 @@ export function TeacherCourseModulesClient({
                                   <Paperclip className="h-3 w-3" />
                                   <span className="truncate max-w-[120px]">{a.fileName}</span>
                                 </a>
+                              )}
+                              {a.cohortAccess && a.cohortAccess.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1 font-medium">
+                                  <Users className="h-2.5 w-2.5" />
+                                  {a.cohortAccess.map((ca: any) => ca.cohort.name).join(', ')}
+                                </Badge>
                               )}
                             </div>
                           </div>
@@ -3557,6 +3593,21 @@ export function TeacherCourseModulesClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Pengaturan Akses Kohort / Rombel */}
+      {cohortAccessModule && (
+        <ModuleCohortAccessModal
+          isOpen={!!cohortAccessModule}
+          onClose={() => setCohortAccessModule(null)}
+          moduleId={cohortAccessModule.id}
+          moduleTitle={cohortAccessModule.title}
+          courseId={course.id}
+          onUpdated={async () => {
+            const updatedModules = await getCourseModules(course.id);
+            setModules(updatedModules);
+          }}
+        />
+      )}
     </div>
   );
 }

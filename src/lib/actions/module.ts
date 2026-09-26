@@ -14,10 +14,22 @@ export async function getCourseModules(courseId: string) {
     include: {
       contents: {
         orderBy: { order: 'asc' },
+        include: {
+          cohortAccess: {
+            include: {
+              cohort: { select: { id: true, name: true } },
+            },
+          },
+        },
       },
       quizzes: {
         orderBy: { order: 'asc' },
         include: {
+          cohortAccess: {
+            include: {
+              cohort: { select: { id: true, name: true } },
+            },
+          },
           _count: {
             select: {
               questions: true,
@@ -29,6 +41,11 @@ export async function getCourseModules(courseId: string) {
       assignments: {
         orderBy: { order: 'asc' },
         include: {
+          cohortAccess: {
+            include: {
+              cohort: { select: { id: true, name: true } },
+            },
+          },
           _count: {
             select: {
               submissions: true,

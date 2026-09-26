@@ -5,16 +5,22 @@ import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { createNotification, createBulkNotifications } from './notification';
 import { awardXp } from './gamification';
+import { checkStudentItemAccess } from './cohort-access';
 
 export async function getAssignmentById(assignmentId: string) {
   const session = await requireAuth();
 
-  return db.assignment.findUnique({
+  const assignment = await db.assignment.findUnique({
     where: { id: assignmentId },
     include: {
       module: {
         include: {
           course: true,
+        },
+      },
+      cohortAccess: {
+        include: {
+          cohort: { select: { id: true, name: true } },
         },
       },
       submissions: {
@@ -33,6 +39,22 @@ export async function getAssignmentById(assignmentId: string) {
       },
     },
   });
+
+  if (!assignment) return null;
+
+  if (session.user.role === 'STUDENT') {
+    const hasAccess = await checkStudentItemAccess({
+      userId: session.user.id,
+      itemType: 'ASSIGNMENT',
+      itemId: assignmentId,
+      courseId: assignment.module.courseId,
+    });
+    if (!hasAccess) {
+      return null;
+    }
+  }
+
+  return assignment;
 }
 
 export async function createAssignment(data: {
@@ -152,6 +174,33 @@ export async function submitAssignment(data: {
 }) {
   const session = await requireAuth();
 
+  const assignment = await db.assignment.findUnique({
+    where: { id: data.assignmentId },
+    include: {
+      module: {
+        include: {
+          course: {
+            select: { id: true, title: true, teacherId: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!assignment) throw new Error('Penugasan tidak ditemukan');
+
+  if (session.user.role === 'STUDENT') {
+    const hasAccess = await checkStudentItemAccess({
+      userId: session.user.id,
+      itemType: 'ASSIGNMENT',
+      itemId: data.assignmentId,
+      courseId: assignment.module.course.id,
+    });
+    if (!hasAccess) {
+      throw new Error('Anda tidak memiliki akses ke penugasan ini.');
+    }
+  }
+
   const existing = await db.assignmentSubmission.findFirst({
     where: {
       assignmentId: data.assignmentId,
@@ -185,18 +234,6 @@ export async function submitAssignment(data: {
 
   // Notify course teacher
   try {
-    const assignment = await db.assignment.findUnique({
-      where: { id: data.assignmentId },
-      include: {
-        module: {
-          include: {
-            course: {
-              select: { id: true, title: true, teacherId: true },
-            },
-          },
-        },
-      },
-    });
 
     if (assignment?.module.course.teacherId) {
       await createNotification({

@@ -27,6 +27,9 @@ export default async function StudentQuizPage({
       />
     );
   } catch (err: any) {
+    if (err.message?.includes('tidak memiliki akses') || err.message?.includes('not found')) {
+      notFound();
+    }
     return (
       <div className="max-w-xl mx-auto py-12 text-center space-y-4">
         <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-800">

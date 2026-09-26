@@ -90,6 +90,7 @@ model User {
   conversationParticipants ConversationParticipant[]
   sentDirectMessages      DirectMessage[]           @relation("DirectMessageSender")
   auditLogs               AuditLog[]
+  itemAccessOverrides     ItemAccessOverride[]
 
   @@index([schoolId])
   @@index([email])
@@ -235,6 +236,9 @@ model Cohort {
   homeroomTeacher User?          @relation("CohortHomeroomTeacher", fields: [homeroomTeacherId], references: [id], onDelete: SetNull)
   members         CohortMember[]
   enrollments     Enrollment[]
+  quizAccess      QuizCohortAccess[]
+  assignmentAccess AssignmentCohortAccess[]
+  contentAccess   ContentCohortAccess[]
 
   @@index([schoolId])
   @@index([homeroomTeacherId])
@@ -304,6 +308,7 @@ model Content {
   updatedAt DateTime    @updatedAt
 
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  cohortAccess ContentCohortAccess[]
 
   @@index([moduleId])
 }
@@ -345,6 +350,7 @@ model Quiz {
   questions             QuizQuestion[]
   attempts              QuizAttempt[]
   questionBankSelections QuizBankSelection[]
+  cohortAccess          QuizCohortAccess[]
 
   @@index([moduleId])
   @@index([parentQuizId])
@@ -428,6 +434,7 @@ model Assignment {
 
   module      Module                 @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   submissions AssignmentSubmission[]
+  cohortAccess AssignmentCohortAccess[]
 
   @@index([moduleId])
 }
@@ -835,5 +842,64 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+model QuizCohortAccess {
+  id        String   @id @default(cuid())
+  quizId    String
+  cohortId  String
+  createdAt DateTime @default(now())
+
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  cohort Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, cohortId])
+  @@index([cohortId])
+}
+
+model AssignmentCohortAccess {
+  id           String   @id @default(cuid())
+  assignmentId String
+  cohortId     String
+  createdAt    DateTime @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  cohort     Cohort     @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, cohortId])
+  @@index([cohortId])
+}
+
+model ContentCohortAccess {
+  id        String   @id @default(cuid())
+  contentId String
+  cohortId  String
+  createdAt DateTime @default(now())
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  cohort  Cohort  @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, cohortId])
+  @@index([cohortId])
+}
+
+model ItemAccessOverride {
+  id        String         @id @default(cuid())
+  itemType  AccessItemType
+  itemId    String
+  userId    String
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([itemType, itemId, userId])
+  @@index([itemType, itemId])
+  @@index([userId])
+}
+
+enum AccessItemType {
+  QUIZ
+  ASSIGNMENT
+  CONTENT
 }
 

@@ -34,13 +34,64 @@ export default async function StudentCourseModulesPage({
     notFound();
   }
 
+  // Determine user's cohorts and overrides for filtering
+  const userId = session?.user?.id;
+  const isStudent = session?.user?.role === 'STUDENT';
+
+  let filteredModules = modules;
+  if (isStudent && userId) {
+    const userEnrollment = course.enrollments.find((e: any) => e.user?.id === userId);
+    const [userCohortMembers, userOverrides] = await Promise.all([
+      db.cohortMember.findMany({
+        where: { userId },
+        select: { cohortId: true },
+      }),
+      db.itemAccessOverride.findMany({
+        where: { userId },
+        select: { itemType: true, itemId: true },
+      }),
+    ]);
+
+    const userCohortIds = new Set<string>();
+    if (userEnrollment?.cohort?.id) {
+      userCohortIds.add(userEnrollment.cohort.id);
+    }
+    for (const cm of userCohortMembers) {
+      userCohortIds.add(cm.cohortId);
+    }
+
+    const overrideSet = new Set<string>();
+    for (const o of userOverrides) {
+      overrideSet.add(`${o.itemType}_${o.itemId}`);
+    }
+
+    filteredModules = modules.map((mod: any) => ({
+      ...mod,
+      contents: (mod.contents || []).filter((c: any) => {
+        if (!c.cohortAccess || c.cohortAccess.length === 0) return true;
+        if (overrideSet.has(`CONTENT_${c.id}`)) return true;
+        return c.cohortAccess.some((ca: any) => userCohortIds.has(ca.cohortId));
+      }),
+      quizzes: (mod.quizzes || []).filter((q: any) => {
+        if (!q.cohortAccess || q.cohortAccess.length === 0) return true;
+        if (overrideSet.has(`QUIZ_${q.id}`)) return true;
+        return q.cohortAccess.some((ca: any) => userCohortIds.has(ca.cohortId));
+      }),
+      assignments: (mod.assignments || []).filter((a: any) => {
+        if (!a.cohortAccess || a.cohortAccess.length === 0) return true;
+        if (overrideSet.has(`ASSIGNMENT_${a.id}`)) return true;
+        return a.cohortAccess.some((ca: any) => userCohortIds.has(ca.cohortId));
+      }),
+    }));
+  }
+
   const completedLessonIds = completedLessons.map((l: any) => l.contentId);
 
   const activeSession = sessions.find((s) => s.isOpen && s.allowSelfCheckin) || null;
 
-  // Fetch quiz statuses for all quizzes across all modules
+  // Fetch quiz statuses only for quizzes accessible to the student
   const quizStatusMap: Record<string, any> = {};
-  const allQuizzes = modules.flatMap((m: any) => m.quizzes || []);
+  const allQuizzes = filteredModules.flatMap((m: any) => m.quizzes || []);
   await Promise.all(
     allQuizzes.map(async (quiz: any) => {
       try {
@@ -68,7 +119,7 @@ export default async function StudentCourseModulesPage({
 
       <StudentCourseModulesClient
         course={course}
-        modules={modules}
+        modules={filteredModules}
         quizStatusMap={quizStatusMap}
         pinnedAnnouncement={pinnedAnnouncement}
         activeSession={activeSession}
