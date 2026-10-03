@@ -26,12 +26,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Enforce allowed file extensions for LMS
+    const ALLOWED_EXTENSIONS = new Set([
+      '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv',
+      '.jpg', '.jpeg', '.png', '.webp', '.gif',
+      '.mp3', '.mp4', '.wav', '.ogg', '.webm', '.m4a',
+      '.zip', '.rar', '.7z'
+    ]);
+
+    const ext = path.extname(file.name).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      return NextResponse.json(
+        { error: `Format file '${ext || 'tanpa ekstensi'}' tidak diizinkan demi keamanan.` },
+        { status: 400 }
+      );
+    }
+
     const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
     await mkdir(uploadDir, { recursive: true });
 
-    // Sanitize filename and make unique
-    const sanitizedOriginalName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const uniqueFileName = `${Date.now()}_${sanitizedOriginalName}`;
+    // Use cryptographically secure UUID and sanitized basename
+    const sanitizedBase = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+    const uniqueFileName = `${crypto.randomUUID()}_${sanitizedBase}${ext}`;
     const filePath = path.join(uploadDir, uniqueFileName);
 
     const bytes = await file.arrayBuffer();

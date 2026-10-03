@@ -252,6 +252,7 @@ export async function getCohortLegerData({
           where: {
             courseId: { in: courseIds },
             userId: { in: studentIds },
+            type: { notIn: ['QUIZ', 'ASSIGNMENT'] },
           },
           select: {
             courseId: true,

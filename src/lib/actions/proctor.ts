@@ -46,15 +46,123 @@ export interface LiveProctorData {
   };
 }
 
-export async function verifyQuizToken(quizId: string, token: string) {
-  await requireAuth();
+async function assertQuizProctorAccess(quizId: string) {
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
 
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
-    select: { requireToken: true, token: true },
+    include: {
+      module: {
+        select: {
+          courseId: true,
+          course: {
+            include: {
+              enrollments: {
+                include: {
+                  user: {
+                    select: { id: true, name: true, email: true, nis: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      attempts: {
+        orderBy: { startedAt: 'desc' },
+      },
+      _count: {
+        select: { questions: true },
+      },
+    },
   });
 
   if (!quiz) throw new Error('Kuis tidak ditemukan');
+
+  if (session.user.role === 'SUPER_ADMIN') {
+    return { session, quiz };
+  }
+
+  if (session.user.role === 'ADMIN') {
+    if (quiz.module.course.schoolId !== session.user.schoolId) {
+      throw new Error('Akses ditolak: Kuis tidak berada dalam sekolah Anda');
+    }
+    return { session, quiz };
+  }
+
+  // TEACHER
+  if (quiz.module.course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk kelas ini');
+  }
+
+  return { session, quiz };
+}
+
+async function assertAttemptProctorAccess(attemptId: string) {
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+
+  const attempt = await db.quizAttempt.findUnique({
+    where: { id: attemptId },
+    include: {
+      quiz: {
+        include: {
+          module: {
+            include: {
+              course: true,
+            },
+          },
+        },
+      },
+      answers: true,
+    },
+  });
+
+  if (!attempt) throw new Error('Attempt tidak ditemukan');
+
+  if (session.user.role === 'SUPER_ADMIN') {
+    return { session, attempt };
+  }
+
+  if (session.user.role === 'ADMIN') {
+    if (attempt.quiz.module.course.schoolId !== session.user.schoolId) {
+      throw new Error('Akses ditolak: Attempt tidak berada dalam sekolah Anda');
+    }
+    return { session, attempt };
+  }
+
+  // TEACHER
+  if (attempt.quiz.module.course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk kelas ini');
+  }
+
+  return { session, attempt };
+}
+
+export async function verifyQuizToken(quizId: string, token: string) {
+  const session = await requireAuth();
+
+  const quiz = await db.quiz.findUnique({
+    where: { id: quizId },
+    include: {
+      module: {
+        select: {
+          courseId: true,
+          course: {
+            select: { schoolId: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!quiz) throw new Error('Kuis tidak ditemukan');
+
+  if (session.user.role !== 'SUPER_ADMIN' && session.user.schoolId) {
+    if (quiz.module.course.schoolId !== session.user.schoolId) {
+      throw new Error('Akses ditolak: Kuis tidak berada dalam sekolah Anda');
+    }
+  }
+
   if (!quiz.requireToken) return { valid: true };
 
   const inputToken = token.trim().toUpperCase();
@@ -144,37 +252,7 @@ export async function pingAttemptHeartbeat(attemptId: string) {
 }
 
 export async function getLiveProctorData(quizId: string): Promise<LiveProctorData> {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
-
-  const quiz = await db.quiz.findUnique({
-    where: { id: quizId },
-    include: {
-      module: {
-        select: {
-          courseId: true,
-          course: {
-            include: {
-              enrollments: {
-                include: {
-                  user: {
-                    select: { id: true, name: true, email: true, nis: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      attempts: {
-        orderBy: { startedAt: 'desc' },
-      },
-      _count: {
-        select: { questions: true },
-      },
-    },
-  });
-
-  if (!quiz) throw new Error('Kuis tidak ditemukan');
+  const { quiz } = await assertQuizProctorAccess(quizId);
 
   const enrolledStudents = quiz.module.course.enrollments.map((enr) => enr.user);
   const now = new Date();
@@ -259,14 +337,7 @@ export async function getLiveProctorData(quizId: string): Promise<LiveProctorDat
 }
 
 export async function grantExtraTime(attemptId: string, minutes: number) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
-
-  const attempt = await db.quizAttempt.findUnique({
-    where: { id: attemptId },
-    select: { extraTimeMinutes: true, quizId: true },
-  });
-
-  if (!attempt) throw new Error('Attempt tidak ditemukan');
+  const { attempt } = await assertAttemptProctorAccess(attemptId);
 
   const updated = await db.quizAttempt.update({
     where: { id: attemptId },
@@ -280,16 +351,7 @@ export async function grantExtraTime(attemptId: string, minutes: number) {
 }
 
 export async function forceSubmitAttempt(attemptId: string, reason?: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
-
-  const attempt = await db.quizAttempt.findUnique({
-    where: { id: attemptId },
-    include: {
-      answers: true,
-    },
-  });
-
-  if (!attempt) throw new Error('Attempt tidak ditemukan');
+  const { attempt } = await assertAttemptProctorAccess(attemptId);
 
   let totalScore = 0;
   for (const ans of attempt.answers) {
@@ -311,14 +373,7 @@ export async function forceSubmitAttempt(attemptId: string, reason?: string) {
 }
 
 export async function resetStudentAttempt(attemptId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
-
-  const attempt = await db.quizAttempt.findUnique({
-    where: { id: attemptId },
-    select: { quizId: true },
-  });
-
-  if (!attempt) throw new Error('Attempt tidak ditemukan');
+  const { attempt } = await assertAttemptProctorAccess(attemptId);
 
   // Delete answers first, then attempt
   await db.quizAnswer.deleteMany({
@@ -342,7 +397,7 @@ export async function updateQuizSecuritySettings(
     maxTabSwitches: number;
   }
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertQuizProctorAccess(quizId);
 
   const updated = await db.quiz.update({
     where: { id: quizId },

@@ -44,32 +44,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save/update draft answers in transaction or batch
+    // Save/update draft answers atomically using unique composite key
     if (Array.isArray(answers) && answers.length > 0) {
       for (const a of answers) {
         if (!a.questionId) continue;
-        const existingAnswer = await db.quizAnswer.findFirst({
+        await db.quizAnswer.upsert({
           where: {
-            attemptId: attempt.id,
-            questionId: a.questionId,
-          },
-          select: { id: true },
-        });
-
-        if (existingAnswer) {
-          await db.quizAnswer.update({
-            where: { id: existingAnswer.id },
-            data: { answer: a.answer || '' },
-          });
-        } else {
-          await db.quizAnswer.create({
-            data: {
+            attemptId_questionId: {
               attemptId: attempt.id,
               questionId: a.questionId,
-              answer: a.answer || '',
             },
-          });
-        }
+          },
+          update: {
+            answer: a.answer || '',
+          },
+          create: {
+            attemptId: attempt.id,
+            questionId: a.questionId,
+            answer: a.answer || '',
+          },
+        });
       }
     }
 

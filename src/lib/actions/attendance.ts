@@ -28,6 +28,115 @@ export interface AttendanceSessionItem {
   };
 }
 
+async function assertCourseAttendanceAccess(courseId: string) {
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    include: {
+      enrollments: {
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, nis: true },
+          },
+        },
+      },
+      attendanceSessions: {
+        orderBy: { date: 'asc' },
+        include: {
+          records: true,
+        },
+      },
+    },
+  });
+
+  if (!course) throw new Error('Kursus tidak ditemukan');
+
+  if (session.user.role === 'SUPER_ADMIN') {
+    return { session, course };
+  }
+
+  if (session.user.role === 'ADMIN') {
+    if (course.schoolId !== session.user.schoolId) {
+      throw new Error('Akses ditolak: Kelas tidak berada dalam sekolah Anda');
+    }
+    return { session, course };
+  }
+
+  // TEACHER
+  if (course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk kelas ini');
+  }
+
+  return { session, course };
+}
+
+async function assertAttendanceSessionAccess(sessionId: string) {
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+
+  const attSession = await db.attendanceSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      course: true,
+    },
+  });
+
+  if (!attSession) throw new Error('Sesi presensi tidak ditemukan');
+
+  if (session.user.role === 'SUPER_ADMIN') {
+    return { session, attSession };
+  }
+
+  if (session.user.role === 'ADMIN') {
+    if (attSession.course.schoolId !== session.user.schoolId) {
+      throw new Error('Akses ditolak: Kelas tidak berada dalam sekolah Anda');
+    }
+    return { session, attSession };
+  }
+
+  // TEACHER
+  if (attSession.course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk kelas ini');
+  }
+
+  return { session, attSession };
+}
+
+async function assertAttendanceRecordAccess(recordId: string) {
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+
+  const record = await db.attendanceRecord.findUnique({
+    where: { id: recordId },
+    include: {
+      session: {
+        include: {
+          course: true,
+        },
+      },
+    },
+  });
+
+  if (!record) throw new Error('Data presensi tidak ditemukan');
+
+  if (session.user.role === 'SUPER_ADMIN') {
+    return { session, record };
+  }
+
+  if (session.user.role === 'ADMIN') {
+    if (record.session.course.schoolId !== session.user.schoolId) {
+      throw new Error('Akses ditolak: Kelas tidak berada dalam sekolah Anda');
+    }
+    return { session, record };
+  }
+
+  // TEACHER
+  if (record.session.course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk kelas ini');
+  }
+
+  return { session, record };
+}
+
 export async function createAttendanceSession(data: {
   courseId: string;
   moduleId?: string;
@@ -38,18 +147,7 @@ export async function createAttendanceSession(data: {
   allowSelfCheckin?: boolean;
   token?: string;
 }) {
-  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
-
-  // Verify course belongs to teacher/admin's school
-  const course = await db.course.findUnique({
-    where: { id: data.courseId },
-    include: { enrollments: { select: { userId: true } } },
-  });
-
-  if (!course) throw new Error('Kursus tidak ditemukan');
-  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
-    throw new Error('Akses ditolak');
-  }
+  const { course } = await assertCourseAttendanceAccess(data.courseId);
 
   // Generate 6 digit token if not provided
   const generatedToken =
@@ -86,20 +184,25 @@ export async function createAttendanceSession(data: {
 }
 
 export async function toggleAttendanceSession(sessionId: string, isOpen: boolean) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const { attSession } = await assertAttendanceSessionAccess(sessionId);
 
   const updated = await db.attendanceSession.update({
     where: { id: sessionId },
     data: { isOpen },
   });
 
-  revalidatePath(`/teacher/course/${updated.courseId}/attendance`);
-  revalidatePath(`/student/course/${updated.courseId}/attendance`);
+  revalidatePath(`/teacher/course/${attSession.courseId}/attendance`);
+  revalidatePath(`/student/course/${attSession.courseId}/attendance`);
   return updated;
 }
 
 export async function deleteAttendanceSession(sessionId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const { attSession } = await assertAttendanceSessionAccess(sessionId);
+
+  // Delete records first, then session
+  await db.attendanceRecord.deleteMany({
+    where: { sessionId },
+  });
 
   const session = await db.attendanceSession.delete({
     where: { id: sessionId },
@@ -115,7 +218,7 @@ export async function updateAttendanceRecord(
   status: AttendanceStatus,
   notes?: string
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const { record } = await assertAttendanceRecordAccess(recordId);
 
   const updated = await db.attendanceRecord.update({
     where: { id: recordId },
@@ -137,27 +240,22 @@ export async function bulkUpdateAttendanceRecords(
   sessionId: string,
   updates: Array<{ recordId: string; status: AttendanceStatus; notes?: string }>
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const { attSession } = await assertAttendanceSessionAccess(sessionId);
 
-  for (const item of updates) {
-    await db.attendanceRecord.update({
-      where: { id: item.recordId },
-      data: {
-        status: item.status,
-        notes: item.notes,
-        checkInAt: item.status === AttendanceStatus.PRESENT ? new Date() : null,
-      },
-    });
-  }
+  await db.$transaction(
+    updates.map((item) =>
+      db.attendanceRecord.update({
+        where: { id: item.recordId },
+        data: {
+          status: item.status,
+          notes: item.notes,
+          checkInAt: item.status === AttendanceStatus.PRESENT ? new Date() : null,
+        },
+      })
+    )
+  );
 
-  const session = await db.attendanceSession.findUnique({
-    where: { id: sessionId },
-    select: { courseId: true },
-  });
-
-  if (session) {
-    revalidatePath(`/teacher/course/${session.courseId}/attendance`);
-  }
+  revalidatePath(`/teacher/course/${attSession.courseId}/attendance`);
 
   return { success: true };
 }
@@ -254,7 +352,30 @@ export async function studentCheckIn(sessionId: string, token: string) {
 }
 
 export async function getCourseAttendanceSessions(courseId: string): Promise<AttendanceSessionItem[]> {
-  await requireAuth();
+  const session = await requireAuth();
+
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: {
+      teacherId: true,
+      schoolId: true,
+      enrollments: {
+        where: { userId: session.user.id },
+        select: { id: true },
+      },
+    },
+  });
+
+  if (!course) throw new Error('Kursus tidak ditemukan');
+
+  const isTeacher = course.teacherId === session.user.id;
+  const isEnrolled = course.enrollments.length > 0;
+  const isAdmin = session.user.role === 'ADMIN' && course.schoolId === session.user.schoolId;
+  const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
+
+  if (!isTeacher && !isEnrolled && !isAdmin && !isSuperAdmin) {
+    throw new Error('Akses ditolak');
+  }
 
   const sessions = await db.attendanceSession.findMany({
     where: { courseId },
@@ -294,7 +415,7 @@ export async function getCourseAttendanceSessions(courseId: string): Promise<Att
 }
 
 export async function getSessionDetails(sessionId: string) {
-  await requireAuth();
+  const sessionUser = await requireAuth();
 
   const session = await db.attendanceSession.findUnique({
     where: { id: sessionId },
@@ -305,6 +426,7 @@ export async function getSessionDetails(sessionId: string) {
           id: true,
           title: true,
           teacherId: true,
+          schoolId: true,
           enrollments: {
             include: {
               user: {
@@ -325,6 +447,15 @@ export async function getSessionDetails(sessionId: string) {
   });
 
   if (!session) return null;
+
+  const isTeacher = session.course.teacherId === sessionUser.user.id;
+  const isEnrolled = session.course.enrollments.some((e) => e.user.id === sessionUser.user.id);
+  const isAdmin = sessionUser.user.role === 'ADMIN' && session.course.schoolId === sessionUser.user.schoolId;
+  const isSuperAdmin = sessionUser.user.role === 'SUPER_ADMIN';
+
+  if (!isTeacher && !isEnrolled && !isAdmin && !isSuperAdmin) {
+    throw new Error('Akses ditolak');
+  }
 
   // Make sure every enrolled student has a record in view
   const recordUserMap = new Map(session.records.map((r) => [r.userId, r]));
@@ -353,6 +484,12 @@ export async function getSessionDetails(sessionId: string) {
 export async function getStudentAttendanceOverview(courseId: string, targetStudentId?: string) {
   const session = await requireAuth();
   const studentId = targetStudentId || session.user.id;
+
+  if (targetStudentId && targetStudentId !== session.user.id) {
+    if (!['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+      throw new Error('Akses ditolak');
+    }
+  }
 
   const sessions = await db.attendanceSession.findMany({
     where: { courseId },
@@ -402,28 +539,7 @@ export async function getStudentAttendanceOverview(courseId: string, targetStude
 }
 
 export async function getCourseAttendanceRecap(courseId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
-
-  const course = await db.course.findUnique({
-    where: { id: courseId },
-    include: {
-      enrollments: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, nis: true },
-          },
-        },
-      },
-      attendanceSessions: {
-        orderBy: { date: 'asc' },
-        include: {
-          records: true,
-        },
-      },
-    },
-  });
-
-  if (!course) throw new Error('Kursus tidak ditemukan');
+  const { course } = await assertCourseAttendanceAccess(courseId);
 
   const totalSessions = course.attendanceSessions.length;
 

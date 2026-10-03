@@ -435,6 +435,7 @@ export async function getMessages(
               avatar: true,
               role: true,
               email: true,
+              schoolId: true,
             },
           },
         },
@@ -447,10 +448,22 @@ export async function getMessages(
   }
 
   const isParticipant = conv.participants.some((p) => p.userId === currentUserId);
-  const isAdminOrSupervisor = ['ADMIN', 'SUPERVISOR', 'SUPER_ADMIN'].includes(session.user.role);
+  const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
+  const isAdminOrSupervisor = ['ADMIN', 'SUPERVISOR'].includes(session.user.role);
 
-  if (!isParticipant && !isAdminOrSupervisor) {
-    throw new Error('Anda tidak memiliki akses ke percakapan ini');
+  if (!isParticipant) {
+    if (isSuperAdmin) {
+      // Super admin can access any conversation
+    } else if (isAdminOrSupervisor && session.user.schoolId) {
+      const hasSchoolParticipant = conv.participants.some(
+        (p) => p.user.schoolId === session.user.schoolId
+      );
+      if (!hasSchoolParticipant) {
+        throw new Error('Anda tidak memiliki akses ke percakapan ini');
+      }
+    } else {
+      throw new Error('Anda tidak memiliki akses ke percakapan ini');
+    }
   }
 
   const rawMessages = await db.directMessage.findMany({
@@ -728,6 +741,42 @@ export async function pollNewMessages(
 ): Promise<FormattedMessage[]> {
   const session = await requireAuth();
   const currentUserId = session.user.id;
+
+  const conv = await db.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      participants: {
+        include: {
+          user: {
+            select: { schoolId: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!conv) {
+    throw new Error('Obrolan tidak ditemukan');
+  }
+
+  const isParticipant = conv.participants.some((p) => p.userId === currentUserId);
+  const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
+  const isAdminOrSupervisor = ['ADMIN', 'SUPERVISOR'].includes(session.user.role);
+
+  if (!isParticipant) {
+    if (isSuperAdmin) {
+      // Allowed
+    } else if (isAdminOrSupervisor && session.user.schoolId) {
+      const hasSchoolParticipant = conv.participants.some(
+        (p) => p.user.schoolId === session.user.schoolId
+      );
+      if (!hasSchoolParticipant) {
+        throw new Error('Anda tidak memiliki akses ke percakapan ini');
+      }
+    } else {
+      throw new Error('Anda tidak memiliki akses ke percakapan ini');
+    }
+  }
 
   const rawMessages = await db.directMessage.findMany({
     where: {

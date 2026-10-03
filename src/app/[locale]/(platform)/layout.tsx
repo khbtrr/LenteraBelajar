@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { AppLayout } from '@/components/layout/app-layout';
-import { LayoutDashboard, School, Settings } from 'lucide-react';
+import { LayoutDashboard, School, Users, Settings } from 'lucide-react';
 
 export default async function PlatformLayout({
   children,
@@ -19,6 +19,7 @@ export default async function PlatformLayout({
   const sidebarItems = [
     { label: t('dashboard'), href: '/platform/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: t('schools'), href: '/platform/schools', icon: <School className="h-5 w-5" /> },
+    { label: t('users'), href: '/platform/users', icon: <Users className="h-5 w-5" /> },
     { label: t('settings'), href: '/platform/settings', icon: <Settings className="h-5 w-5" /> },
   ];
 

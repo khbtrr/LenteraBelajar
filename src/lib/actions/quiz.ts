@@ -43,6 +43,37 @@ export async function getQuizById(quizId: string) {
     },
   });
 
+  if (!quiz) return null;
+
+  if (session.user.role === 'STUDENT') {
+    const hasAccess = await checkStudentItemAccess({
+      userId: session.user.id,
+      itemType: 'QUIZ',
+      itemId: quizId,
+      courseId: quiz.module.courseId,
+    });
+    if (!hasAccess) {
+      return null;
+    }
+
+    // Sanitize question options so students cannot inspect correct answers before taking quiz
+    if (quiz.questions && Array.isArray(quiz.questions)) {
+      quiz.questions = quiz.questions.map((q) => {
+        let sanitizedOptions = null;
+        if (q.options && Array.isArray(q.options)) {
+          sanitizedOptions = (q.options as any[]).map((opt) => ({
+            id: opt.id,
+            text: opt.text,
+          }));
+        }
+        return {
+          ...q,
+          options: sanitizedOptions,
+        };
+      });
+    }
+  }
+
   return quiz;
 }
 
@@ -64,7 +95,7 @@ export async function createQuiz(data: {
   enableLockdown?: boolean;
   maxTabSwitches?: number;
 }) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
 
   // Retrieve school defaults if any field is not explicitly provided
   const moduleItem = await db.module.findUnique({
@@ -72,6 +103,9 @@ export async function createQuiz(data: {
     select: {
       course: {
         select: {
+          id: true,
+          teacherId: true,
+          schoolId: true,
           school: {
             select: {
               defaultPassingGrade: true,
@@ -86,7 +120,16 @@ export async function createQuiz(data: {
       },
     },
   });
-  const schoolDefaults = moduleItem?.course?.school;
+
+  if (!moduleItem) throw new Error('Modul tidak ditemukan');
+  if (session.user.role === 'TEACHER' && moduleItem.course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk modul ini');
+  }
+  if (session.user.role === 'ADMIN' && session.user.schoolId && moduleItem.course.schoolId !== session.user.schoolId) {
+    throw new Error('Akses ditolak: Modul ini berada di sekolah lain');
+  }
+
+  const schoolDefaults = moduleItem.course.school;
 
   const count = await db.quiz.count({ where: { moduleId: data.moduleId } });
 
@@ -155,8 +198,66 @@ export async function createQuiz(data: {
   return quiz;
 }
 
+async function assertQuizOwnership(quizId: string) {
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const quiz = await db.quiz.findUnique({
+    where: { id: quizId },
+    include: {
+      module: {
+        include: {
+          course: {
+            select: { id: true, teacherId: true, schoolId: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!quiz) throw new Error('Kuis tidak ditemukan');
+  const course = quiz.module.course;
+  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk kuis ini');
+  }
+  if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
+    throw new Error('Akses ditolak: Kuis ini berada di sekolah lain');
+  }
+
+  return { session, quiz, course };
+}
+
+async function assertQuizQuestionOwnership(questionId: string) {
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const question = await db.quizQuestion.findUnique({
+    where: { id: questionId },
+    include: {
+      quiz: {
+        include: {
+          module: {
+            include: {
+              course: {
+                select: { id: true, teacherId: true, schoolId: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!question) throw new Error('Butir soal tidak ditemukan');
+  const course = question.quiz.module.course;
+  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk soal ini');
+  }
+  if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
+    throw new Error('Akses ditolak: Soal ini berada di sekolah lain');
+  }
+
+  return { session, question, course };
+}
+
 export async function deleteQuiz(quizId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertQuizOwnership(quizId);
 
   // Find all attempt IDs for this quiz to clean up answers first
   const attempts = await db.quizAttempt.findMany({
@@ -200,7 +301,7 @@ export async function addQuizQuestion(
     options?: { id: string; text: string; isCorrect: boolean }[];
   }
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertQuizOwnership(quizId);
 
   const count = await db.quizQuestion.count({ where: { quizId } });
 
@@ -228,7 +329,7 @@ export async function updateQuizQuestion(
     points?: number;
   }
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertQuizQuestionOwnership(questionId);
 
   const question = await db.quizQuestion.update({
     where: { id: questionId },
@@ -244,7 +345,7 @@ export async function updateQuizQuestion(
 }
 
 export async function deleteQuizQuestion(questionId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertQuizQuestionOwnership(questionId);
 
   const deleted = await db.quizQuestion.delete({
     where: { id: questionId },
@@ -271,7 +372,7 @@ export async function updateQuizSettings(
     maxTabSwitches?: number;
   }
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertQuizOwnership(quizId);
 
   const quiz = await db.quiz.update({
     where: { id: quizId },
@@ -296,7 +397,7 @@ export async function updateQuizSettings(
 }
 
 export async function getQuizWithQuestions(quizId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertQuizOwnership(quizId);
 
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
@@ -488,72 +589,14 @@ export async function startOrGetQuizAttempt(quizId: string, token?: string) {
   let questions: any[] = [];
 
   if (attempt) {
-    if (quiz.useQuestionBank && attempt.questionSnapshot) {
-      const snapshot: any = attempt.questionSnapshot;
+    if (attempt.questionSnapshot && Array.isArray(attempt.questionSnapshot)) {
+      const snapshot: any[] = attempt.questionSnapshot as any[];
       questions = snapshot.map((q: any) => ({
-         id: q.id,
-         type: q.type,
-         text: q.text,
-         points: q.points,
-         options: q.options
-      }));
-    } else {
-       questions = quiz.questions.map((q) => {
-         let sanitizedOptions = null;
-         if (q.options && Array.isArray(q.options)) {
-           sanitizedOptions = (q.options as any[]).map((opt) => ({
-             id: opt.id,
-             text: opt.text,
-           }));
-         }
-         return {
-           id: q.id,
-           type: q.type,
-           text: q.text,
-           points: q.points,
-           options: sanitizedOptions,
-         };
-       });
-    }
-  } else {
-    let snapshotToSave: any = null;
-
-    if (quiz.useQuestionBank) {
-      let bankQuestions: any[] = [];
-      for (const selection of quiz.questionBankSelections || []) {
-         const qbQuestions = await db.questionBank.findMany({
-           where: { categoryId: selection.categoryId },
-         });
-         const shuffled = qbQuestions.sort(() => Math.random() - 0.5).slice(0, selection.count);
-         bankQuestions.push(...shuffled);
-      }
-      
-      const snapshot = bankQuestions.map(q => {
-         let sanitizedOptions = null;
-         let correctData = null;
-         if (q.options && Array.isArray(q.options)) {
-           sanitizedOptions = (q.options as any[]).map((opt) => ({
-             id: opt.id,
-             text: opt.text,
-           }));
-           correctData = q.options;
-         }
-         return {
-           id: q.id,
-           type: q.type,
-           text: q.text,
-           points: q.points,
-           options: sanitizedOptions,
-           _correctData: correctData
-         };
-      });
-      snapshotToSave = snapshot;
-      questions = snapshot.map(q => ({
-         id: q.id,
-         type: q.type,
-         text: q.text,
-         points: q.points,
-         options: q.options
+        id: q.id,
+        type: q.type,
+        text: q.text,
+        points: q.points,
+        options: q.options,
       }));
     } else {
       questions = quiz.questions.map((q) => {
@@ -573,39 +616,101 @@ export async function startOrGetQuizAttempt(quizId: string, token?: string) {
         };
       });
     }
+  } else {
+    let preparedQuestions: any[] = [];
+
+    if (quiz.useQuestionBank) {
+      const bankQuestions: any[] = [];
+      for (const selection of quiz.questionBankSelections || []) {
+        const qbQuestions = await db.questionBank.findMany({
+          where: { categoryId: selection.categoryId },
+        });
+        const shuffled = qbQuestions.sort(() => Math.random() - 0.5).slice(0, selection.count);
+        bankQuestions.push(...shuffled);
+      }
+
+      preparedQuestions = bankQuestions.map((q) => {
+        let sanitizedOptions = null;
+        let correctData = null;
+        if (q.options && Array.isArray(q.options)) {
+          sanitizedOptions = (q.options as any[]).map((opt) => ({
+            id: opt.id,
+            text: opt.text,
+          }));
+          correctData = q.options;
+        }
+        return {
+          id: q.id,
+          type: q.type,
+          text: q.text,
+          points: q.points,
+          options: sanitizedOptions,
+          _correctData: correctData,
+        };
+      });
+    } else {
+      preparedQuestions = quiz.questions.map((q) => {
+        let sanitizedOptions = null;
+        let correctData = null;
+        if (q.options && Array.isArray(q.options)) {
+          sanitizedOptions = (q.options as any[]).map((opt) => ({
+            id: opt.id,
+            text: opt.text,
+          }));
+          correctData = q.options;
+        }
+        return {
+          id: q.id,
+          type: q.type,
+          text: q.text,
+          points: q.points,
+          options: sanitizedOptions,
+          _correctData: correctData,
+        };
+      });
+    }
+
+    // Shuffle questions once on attempt creation if enabled
+    if (quiz.shuffleQuestions) {
+      preparedQuestions = [...preparedQuestions].sort(() => Math.random() - 0.5);
+    }
+
+    // Shuffle options once on attempt creation if enabled
+    if (quiz.shuffleOptions) {
+      preparedQuestions = preparedQuestions.map((q) => {
+        if (
+          (q.type === QuestionType.MULTIPLE_CHOICE || q.type === QuestionType.MULTIPLE_CHOICE_COMPLEX) &&
+          Array.isArray(q.options)
+        ) {
+          const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+          return {
+            ...q,
+            options: shuffledOptions,
+          };
+        }
+        return q;
+      });
+    }
 
     attempt = await db.quizAttempt.create({
       data: {
         quizId,
         userId: session.user.id,
         startedAt: new Date(),
-        questionSnapshot: snapshotToSave
+        questionSnapshot: preparedQuestions,
       },
       include: {
         answers: true,
       },
     });
-  }
 
-  // Shuffle questions if quiz.shuffleQuestions is true
-  if (quiz.shuffleQuestions) {
-    questions = [...questions].sort(() => Math.random() - 0.5);
-  }
-
-  // Shuffle options if quiz.shuffleOptions is true
-  if (quiz.shuffleOptions) {
-    questions = questions.map((q) => {
-      if (
-        (q.type === QuestionType.MULTIPLE_CHOICE || q.type === QuestionType.MULTIPLE_CHOICE_COMPLEX) &&
-        Array.isArray(q.options)
-      ) {
-        return {
-          ...q,
-          options: [...q.options].sort(() => Math.random() - 0.5),
-        };
-      }
-      return q;
-    });
+    questions = preparedQuestions.map((q) => ({
+      id: q.id,
+      type: q.type,
+      text: q.text,
+      points: q.points,
+      options: q.options,
+    }));
   }
 
   const effectiveDuration = quiz.duration
@@ -668,10 +773,12 @@ export async function submitQuizAttempt(
      activeQuestions = attempt.quiz.questions;
   }
 
-  // Delete partial answers if re-submitting before inserting new answers
-  await db.quizAnswer.deleteMany({
-    where: { attemptId: attempt.id },
-  });
+  const answersToInsert: Array<{
+    attemptId: string;
+    questionId: string;
+    answer: string;
+    score: number | null;
+  }> = [];
 
   for (const q of activeQuestions) {
     totalPoints += q.points;
@@ -739,13 +846,11 @@ export async function submitQuizAttempt(
       questionScore = null;
     }
 
-    await db.quizAnswer.create({
-      data: {
-        attemptId: attempt.id,
-        questionId: q.id,
-        answer: answerText,
-        score: questionScore,
-      },
+    answersToInsert.push({
+      attemptId: attempt.id,
+      questionId: q.id,
+      answer: answerText,
+      score: questionScore,
     });
   }
 
@@ -754,13 +859,26 @@ export async function submitQuizAttempt(
   const isFullyGraded = !hasEssay;
   const currentAttemptScore = isFullyGraded ? Math.round(finalPercentage * 10) / 10 : null;
 
-  await db.quizAttempt.update({
-    where: { id: attemptId },
-    data: {
-      submittedAt: new Date(),
-      score: currentAttemptScore,
-      isGraded: isFullyGraded,
-    },
+  await db.$transaction(async (tx) => {
+    // Delete partial answers if re-submitting before inserting new answers
+    await tx.quizAnswer.deleteMany({
+      where: { attemptId: attempt.id },
+    });
+
+    if (answersToInsert.length > 0) {
+      await tx.quizAnswer.createMany({
+        data: answersToInsert,
+      });
+    }
+
+    await tx.quizAttempt.update({
+      where: { id: attemptId },
+      data: {
+        submittedAt: new Date(),
+        score: currentAttemptScore,
+        isGraded: isFullyGraded,
+      },
+    });
   });
 
   // Record into Grade table if fully graded

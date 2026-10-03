@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
           include: {
             questions: true,
             module: true,
+            parentQuiz: true,
           },
         },
       },
@@ -67,10 +68,12 @@ export async function POST(req: NextRequest) {
       activeQuestions = attempt.quiz.questions;
     }
 
-    // Delete any partial answers if re-submitting before recording
-    await db.quizAnswer.deleteMany({
-      where: { attemptId: attempt.id },
-    });
+    const answersToInsert: Array<{
+      attemptId: string;
+      questionId: string;
+      answer: string;
+      score: number | null;
+    }> = [];
 
     for (const q of activeQuestions) {
       totalPoints += q.points;
@@ -136,13 +139,11 @@ export async function POST(req: NextRequest) {
         questionScore = null;
       }
 
-      await db.quizAnswer.create({
-        data: {
-          attemptId: attempt.id,
-          questionId: q.id,
-          answer: answerText,
-          score: questionScore,
-        },
+      answersToInsert.push({
+        attemptId: attempt.id,
+        questionId: q.id,
+        answer: answerText,
+        score: questionScore,
       });
     }
 
@@ -150,16 +151,35 @@ export async function POST(req: NextRequest) {
     const isFullyGraded = !hasEssay;
     const currentAttemptScore = isFullyGraded ? Math.round(finalPercentage * 10) / 10 : null;
 
-    await db.quizAttempt.update({
-      where: { id: attemptId },
-      data: {
-        submittedAt: new Date(),
-        score: currentAttemptScore,
-        isGraded: isFullyGraded,
-      },
+    await db.$transaction(async (tx) => {
+      // Delete any partial answers if re-submitting before recording
+      await tx.quizAnswer.deleteMany({
+        where: { attemptId: attempt.id },
+      });
+
+      if (answersToInsert.length > 0) {
+        await tx.quizAnswer.createMany({
+          data: answersToInsert,
+        });
+      }
+
+      await tx.quizAttempt.update({
+        where: { id: attemptId },
+        data: {
+          submittedAt: new Date(),
+          score: currentAttemptScore,
+          isGraded: isFullyGraded,
+        },
+      });
     });
 
     if (isFullyGraded) {
+      const isRemedial = attempt.quiz.isRemedial && !!attempt.quiz.parentQuiz;
+      const targetQuizTitle = isRemedial ? attempt.quiz.parentQuiz!.title : attempt.quiz.title;
+      const passingLimit = isRemedial && attempt.quiz.parentQuiz?.passingGrade 
+        ? attempt.quiz.parentQuiz.passingGrade 
+        : 100;
+
       const allAttempts = await db.quizAttempt.findMany({
         where: {
           quizId: attempt.quizId,
@@ -169,31 +189,35 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      const bestScore = Math.max(
+      let bestScore = Math.max(
         ...allAttempts.map((a) => a.score as number),
         currentAttemptScore as number
       );
+      if (isRemedial) {
+        bestScore = Math.min(bestScore, passingLimit);
+      }
 
       const existingGrade = await db.grade.findFirst({
         where: {
           userId: session.user.id,
           courseId: attempt.quiz.module.courseId,
           type: GradeType.QUIZ,
-          label: attempt.quiz.title,
+          label: targetQuizTitle,
         },
       });
 
       if (existingGrade) {
+        const finalScore = isRemedial ? Math.max(existingGrade.score, bestScore) : bestScore;
         await db.grade.update({
           where: { id: existingGrade.id },
-          data: { score: bestScore, sourceId: attempt.id },
+          data: { score: finalScore, sourceId: attempt.id },
         });
       } else {
         await db.grade.create({
           data: {
             courseId: attempt.quiz.module.courseId,
             userId: session.user.id,
-            label: attempt.quiz.title,
+            label: targetQuizTitle,
             score: bestScore,
             maxScore: 100,
             type: GradeType.QUIZ,

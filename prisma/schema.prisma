@@ -366,8 +366,7 @@ model QuizQuestion {
   points   Float        @default(1)
   order    Int          @default(0)
 
-  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  answers QuizAnswer[]
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
 
   @@index([quizId])
 }
@@ -410,10 +409,11 @@ model QuizAnswer {
   score       Float?
   teacherNote String?
 
-  attempt  QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  question QuizQuestion @relation(fields: [questionId], references: [id])
+  attempt QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
 
+  @@unique([attemptId, questionId])
   @@index([attemptId])
+  @@index([questionId])
 }
 
 model Assignment {

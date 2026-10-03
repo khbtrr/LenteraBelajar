@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { auth } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { filename } = await params;
     // Sanitize filename to prevent directory traversal
     const safeFilename = path.basename(filename);
@@ -50,7 +56,10 @@ export async function GET(
         'Content-Type': contentType,
         'Content-Length': fileStat.size.toString(),
         'Accept-Ranges': 'bytes',
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Cache-Control': 'private, max-age=3600',
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy': "default-src 'none'; sandbox",
+        'Content-Disposition': `inline; filename="${safeFilename}"`,
       },
     });
   } catch (error) {

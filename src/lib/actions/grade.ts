@@ -40,6 +40,10 @@ export async function getCourseGradebook(courseId: string): Promise<CourseGradeb
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
 
+  if (session.user.role === 'STUDENT') {
+    throw new Error('Akses ditolak: Siswa tidak diizinkan mengakses buku nilai kelas.');
+  }
+
   const course = await db.course.findUnique({
     where: { id: courseId },
     include: {
@@ -373,12 +377,22 @@ export async function gradeAssignmentSubmission(
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
 
+  if (!['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    throw new Error('Akses ditolak: Hanya pengajar atau administrator yang dapat menilai tugas.');
+  }
+
   const submission = await db.assignmentSubmission.findUnique({
     where: { id: submissionId },
     include: {
       assignment: {
         include: {
-          module: true,
+          module: {
+            include: {
+              course: {
+                select: { id: true, teacherId: true, schoolId: true },
+              },
+            },
+          },
         },
       },
     },
@@ -386,10 +400,22 @@ export async function gradeAssignmentSubmission(
 
   if (!submission) throw new Error('Submission not found');
 
+  const course = submission.assignment.module.course;
+  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk mata pelajaran ini.');
+  }
+  if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
+    throw new Error('Akses ditolak: Mata pelajaran ini tidak berada dalam sekolah Anda.');
+  }
+
+  const rawScore = Number(data.score);
+  const maxScore = submission.assignment.maxScore || 100;
+  const validatedScore = isNaN(rawScore) ? 0 : Math.max(0, Math.min(rawScore, maxScore));
+
   const updated = await db.assignmentSubmission.update({
     where: { id: submissionId },
     data: {
-      score: data.score,
+      score: validatedScore,
       teacherNote: data.teacherNote,
       gradedAt: new Date(),
     },
@@ -455,11 +481,7 @@ export async function getQuizAttemptsList(quizId: string) {
           user: {
             select: { id: true, name: true, email: true, nis: true },
           },
-          answers: {
-            include: {
-              question: true,
-            },
-          },
+          answers: true,
         },
         orderBy: { submittedAt: 'desc' },
       },
@@ -467,6 +489,42 @@ export async function getQuizAttemptsList(quizId: string) {
   });
 
   if (!quiz) return null;
+
+  // Build a base question lookup map
+  const questionMap = new Map<string, { id: string; type: string; text: string; points: number }>();
+  for (const q of quiz.questions) {
+    questionMap.set(q.id, { id: q.id, type: q.type, text: q.text, points: q.points });
+  }
+
+  const attemptsWithQuestions = quiz.attempts.map((att) => {
+    // If bank soal snapshot exists, merge its questions into local lookup
+    const localMap = new Map(questionMap);
+    if (quiz.useQuestionBank && att.questionSnapshot && Array.isArray(att.questionSnapshot)) {
+      for (const sq of att.questionSnapshot as any[]) {
+        if (sq?.id) {
+          localMap.set(sq.id, { id: sq.id, type: sq.type, text: sq.text, points: sq.points || 1 });
+        }
+      }
+    }
+
+    const answersWithQuestion = att.answers.map((ans) => {
+      const qInfo = localMap.get(ans.questionId) || {
+        id: ans.questionId,
+        type: 'MULTIPLE_CHOICE',
+        text: 'Soal Ujian',
+        points: 1,
+      };
+      return {
+        ...ans,
+        question: qInfo,
+      };
+    });
+
+    return {
+      ...att,
+      answers: answersWithQuestion,
+    };
+  });
 
   return {
     quiz: {
@@ -478,7 +536,7 @@ export async function getQuizAttemptsList(quizId: string) {
       maxAttempts: quiz.maxAttempts,
     },
     questions: quiz.questions,
-    attempts: quiz.attempts,
+    attempts: attemptsWithQuestions,
   };
 }
 
@@ -489,6 +547,10 @@ export async function gradeQuizEssayAnswer(
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
 
+  if (!['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    throw new Error('Akses ditolak: Hanya pengajar atau administrator yang dapat menilai kuis.');
+  }
+
   const answer = await db.quizAnswer.findUnique({
     where: { id: answerId },
     include: {
@@ -498,7 +560,13 @@ export async function gradeQuizEssayAnswer(
           quiz: {
             include: {
               questions: true,
-              module: true,
+              module: {
+                include: {
+                  course: {
+                    select: { id: true, teacherId: true, schoolId: true },
+                  },
+                },
+              },
             },
           },
         },
@@ -508,20 +576,35 @@ export async function gradeQuizEssayAnswer(
 
   if (!answer) throw new Error('Answer not found');
 
+  const course = answer.attempt.quiz.module.course;
+  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk mata pelajaran ini.');
+  }
+  if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
+    throw new Error('Akses ditolak: Kuis ini tidak berada dalam sekolah Anda.');
+  }
+
+  const rawScore = Number(data.score);
+  const validatedScore = isNaN(rawScore) ? 0 : Math.max(0, rawScore);
+
   await db.quizAnswer.update({
     where: { id: answerId },
     data: {
-      score: data.score,
+      score: validatedScore,
       teacherNote: data.teacherNote,
     },
   });
 
-  // Recalculate total score for attempt
+  // Recalculate total score for attempt (supporting both standard questions and question bank snapshots)
   const updatedAnswers = await db.quizAnswer.findMany({
     where: { attemptId: answer.attemptId },
   });
 
-  const totalPoints = answer.attempt.quiz.questions.reduce((acc, q) => acc + q.points, 0);
+  const activeQuestions: any[] = (answer.attempt.quiz.useQuestionBank && answer.attempt.questionSnapshot)
+    ? (answer.attempt.questionSnapshot as any[])
+    : answer.attempt.quiz.questions;
+
+  const totalPoints = activeQuestions.reduce((acc, q) => acc + (q.points || 1), 0);
   const earnedPoints = updatedAnswers.reduce((acc, a) => acc + (a.score || 0), 0);
   const finalPercentage = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
 
@@ -579,6 +662,10 @@ export async function gradeQuizEssayAnswer(
 export async function getStudentGradesOverview(userId: string) {
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
+
+  if (session.user.role === 'STUDENT' && session.user.id !== userId) {
+    throw new Error('Akses ditolak: Anda hanya dapat melihat ikhtisar nilai Anda sendiri.');
+  }
 
   const [enrollments, userCohortMembers, userOverrides] = await Promise.all([
     db.enrollment.findMany({

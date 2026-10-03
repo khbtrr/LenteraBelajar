@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { School, Plus, Search, Users, BookOpen } from 'lucide-react';
-import { createSchool, toggleSchoolActive } from '@/lib/actions/school';
+import { School, Plus, Search, Users, BookOpen, ExternalLink, Loader2 } from 'lucide-react';
+import { createSchool, toggleSchoolActive, switchActiveSchool } from '@/lib/actions/school';
 import { useDialog } from '@/context/DialogContext';
 
 interface SchoolItem {
@@ -46,6 +47,7 @@ export function PlatformSchoolsClient({
   initialSchools: any[];
 }) {
   const t = useTranslations('schools');
+  const router = useRouter();
   const { showAlert } = useDialog();
   const [schools, setSchools] = useState<SchoolItem[]>(initialSchools);
   const [search, setSearch] = useState('');
@@ -54,6 +56,19 @@ export function PlatformSchoolsClient({
   const [code, setCode] = useState('');
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
+
+  const handleSwitchSchool = async (schoolId: string) => {
+    try {
+      setSwitchingId(schoolId);
+      await switchActiveSchool(schoolId);
+      router.push('/admin/dashboard');
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || 'Gagal berpindah ke sekolah', { type: 'error' });
+      setSwitchingId(null);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,14 +201,32 @@ export function PlatformSchoolsClient({
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleToggle(school)}
-                        className="text-xs text-gray-600"
-                      >
-                        {school.isActive ? t('deactivate') : t('activate')}
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {school.isActive && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={switchingId === school.id}
+                            onClick={() => handleSwitchSchool(school.id)}
+                            className="text-xs text-[#002446] border-[#002446]/20 hover:bg-[#002446]/5 flex items-center gap-1.5 h-8"
+                          >
+                            {switchingId === school.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <ExternalLink className="h-3.5 w-3.5 text-[#FF8928]" />
+                            )}
+                            Masuk Sekolah
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggle(school)}
+                          className="text-xs text-gray-500 hover:text-gray-700 h-8"
+                        >
+                          {school.isActive ? t('deactivate') : t('activate')}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
