@@ -81,6 +81,11 @@ export async function getCohortLegerData({
   const userRole = session.user.role;
   const userId = session.user.id;
 
+  // Hanya Admin, Super Admin, dan Guru yang diizinkan mengakses Leger Nilai
+  if (!['ADMIN', 'SUPER_ADMIN', 'TEACHER'].includes(userRole)) {
+    return null;
+  }
+
   // 1. Ambil data sekolah & kohort
   const [school, cohort] = await Promise.all([
     db.school.findUnique({
@@ -506,6 +511,13 @@ export async function getLegerFilterOptions() {
   const schoolId = session.schoolId;
   const userRole = session.user.role;
   const userId = session.user.id;
+
+  if (!['ADMIN', 'SUPER_ADMIN', 'TEACHER'].includes(userRole)) {
+    return {
+      cohorts: [],
+      academicYears: [],
+    };
+  }
 
   const cohortWhere: { schoolId: string; homeroomTeacherId?: string } = { schoolId };
   if (userRole === 'TEACHER') {

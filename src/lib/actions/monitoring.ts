@@ -1,19 +1,21 @@
 'use server';
 
 import { auth } from '@/lib/auth';
+import { requireRole } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 
 export async function getTeacherActivityStats(schoolId: string, academicYearId?: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error('Unauthorized');
+  const session = await requireRole('SUPERVISOR', 'ADMIN', 'SUPER_ADMIN');
+  const targetSchoolId = session.user.role === 'SUPER_ADMIN' ? schoolId : (session.user.schoolId || schoolId);
+  if (!targetSchoolId) throw new Error('Sekolah tidak ditemukan');
 
-  const whereCourse: Record<string, unknown> = { schoolId };
+  const whereCourse: Record<string, unknown> = { schoolId: targetSchoolId };
   if (academicYearId) {
     whereCourse.academicYearId = academicYearId;
   }
 
   const teachers = await db.user.findMany({
-    where: { schoolId, role: 'TEACHER', isActive: true },
+    where: { schoolId: targetSchoolId, role: 'TEACHER', isActive: true },
     select: {
       id: true,
       name: true,
@@ -90,11 +92,12 @@ export async function getTeacherActivityStats(schoolId: string, academicYearId?:
 }
 
 export async function getStudentActivityStats(schoolId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error('Unauthorized');
+  const session = await requireRole('SUPERVISOR', 'ADMIN', 'SUPER_ADMIN');
+  const targetSchoolId = session.user.role === 'SUPER_ADMIN' ? schoolId : (session.user.schoolId || schoolId);
+  if (!targetSchoolId) throw new Error('Sekolah tidak ditemukan');
 
   const students = await db.user.findMany({
-    where: { schoolId, role: 'STUDENT', isActive: true },
+    where: { schoolId: targetSchoolId, role: 'STUDENT', isActive: true },
     select: {
       id: true,
       name: true,
@@ -131,10 +134,11 @@ export async function getStudentActivityStats(schoolId: string) {
 }
 
 export async function getSchoolReportsOverview(schoolId: string, academicYearId?: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error('Unauthorized');
+  const session = await requireRole('SUPERVISOR', 'ADMIN', 'SUPER_ADMIN');
+  const targetSchoolId = session.user.role === 'SUPER_ADMIN' ? schoolId : (session.user.schoolId || schoolId);
+  if (!targetSchoolId) throw new Error('Sekolah tidak ditemukan');
 
-  const whereCourse: Record<string, unknown> = { schoolId };
+  const whereCourse: Record<string, unknown> = { schoolId: targetSchoolId };
   if (academicYearId) {
     whereCourse.academicYearId = academicYearId;
   }

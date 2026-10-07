@@ -6,7 +6,20 @@ import { QuestionType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
 export async function getQuestionBankByCategory(courseId: string) {
-  await requireAuth();
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: { teacherId: true, schoolId: true },
+  });
+  if (!course) throw new Error('Kursus tidak ditemukan');
+
+  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk kelas ini');
+  }
+  if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
+    throw new Error('Akses ditolak: Kelas tidak berada dalam sekolah Anda');
+  }
 
   const categories = await db.questionBankCategory.findMany({
     where: { courseId },

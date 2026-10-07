@@ -717,8 +717,16 @@ export async function startOrGetQuizAttempt(quizId: string, token?: string) {
     ? quiz.duration + (attempt?.extraTimeMinutes || 0)
     : null;
 
+  // Sanitize attempt to prevent leaking server-side snapshot with correct answers
+  const safeAttempt = attempt
+    ? {
+        ...attempt,
+        questionSnapshot: null,
+      }
+    : null;
+
   return {
-    attempt,
+    attempt: safeAttempt,
     quizTitle: quiz.title,
     durationMinutes: effectiveDuration,
     questions,

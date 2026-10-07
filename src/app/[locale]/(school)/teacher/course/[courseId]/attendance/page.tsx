@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { auth } from '@/lib/auth';
 import { getCourseById } from '@/lib/actions/course';
 import { getCourseModules } from '@/lib/actions/module';
 import { getCourseAttendanceSessions, getCourseAttendanceRecap } from '@/lib/actions/attendance';
@@ -10,6 +11,7 @@ export default async function TeacherCourseAttendancePage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
+  const session = await auth();
   const [course, modules, sessions, recap] = await Promise.all([
     getCourseById(courseId),
     getCourseModules(courseId),
@@ -21,6 +23,8 @@ export default async function TeacherCourseAttendancePage({
     notFound();
   }
 
+  const isReadOnly = session?.user?.role === 'SUPERVISOR';
+
   return (
     <div className="space-y-6">
       <TeacherAttendanceClient
@@ -28,6 +32,7 @@ export default async function TeacherCourseAttendancePage({
         modules={modules}
         initialSessions={sessions}
         recapData={recap}
+        isReadOnly={isReadOnly}
       />
     </div>
   );

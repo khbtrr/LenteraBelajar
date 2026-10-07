@@ -490,6 +490,18 @@ export async function getQuizAttemptsList(quizId: string) {
 
   if (!quiz) return null;
 
+  if (session.user.role === 'STUDENT') {
+    throw new Error('Akses ditolak: Siswa tidak diizinkan mengakses daftar pengerjaan kuis.');
+  }
+
+  const course = quiz.module.course;
+  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
+    throw new Error('Akses ditolak: Anda bukan pengajar untuk kuis ini.');
+  }
+  if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
+    throw new Error('Akses ditolak: Kuis ini tidak berada dalam sekolah Anda.');
+  }
+
   // Build a base question lookup map
   const questionMap = new Map<string, { id: string; type: string; text: string; points: number }>();
   for (const q of quiz.questions) {

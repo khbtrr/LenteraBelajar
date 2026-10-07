@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { AttendanceStatus } from '@prisma/client';
 import { awardXp } from './gamification';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export interface AttendanceSessionItem {
   id: string;
@@ -264,6 +265,15 @@ export async function studentCheckIn(sessionId: string, token: string) {
   const userSession = await requireAuth();
   const userId = userSession.user.id;
 
+  // Rate limit: max 5 check-in attempts per minute per user to prevent token brute-forcing
+  const rateLimit = checkRateLimit(`attendance-checkin:${userId}`, 5, 60 * 1000);
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error: `Terlalu banyak percobaan check-in. Harap tunggu ${rateLimit.resetInSeconds} detik.`,
+    };
+  }
+
   const attendanceSession = await db.attendanceSession.findUnique({
     where: { id: sessionId },
     include: {
@@ -405,7 +415,7 @@ export async function getCourseAttendanceSessions(courseId: string): Promise<Att
       date: s.date,
       startTime: s.startTime,
       endTime: s.endTime,
-      token: s.token,
+      token: (isTeacher || isAdmin || isSuperAdmin) ? s.token : null,
       allowSelfCheckin: s.allowSelfCheckin,
       isOpen: s.isOpen,
       createdAt: s.createdAt,
@@ -477,6 +487,7 @@ export async function getSessionDetails(sessionId: string) {
 
   return {
     ...session,
+    token: (isTeacher || isAdmin || isSuperAdmin) ? session.token : null,
     records: combinedRecords,
   };
 }

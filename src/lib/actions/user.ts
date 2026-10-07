@@ -40,6 +40,11 @@ export async function createUser(data: {
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
 
+  // Cegah eskalasi wewenang: Admin sekolah dilarang membuat Super Admin
+  if (session.user.role !== 'SUPER_ADMIN' && data.role === Role.SUPER_ADMIN) {
+    throw new Error('Akses ditolak: Admin sekolah tidak dapat membuat akun dengan peran Super Admin.');
+  }
+
   // Generate compliant default password
   const initialPassword = generateDefaultPassword(data.nis || data.nip);
   const passwordHash = hashPassword(initialPassword);
@@ -107,12 +112,17 @@ export async function bulkImportUsers(
     const initialPassword = generateDefaultPassword(item.nis || item.nip);
     const passwordHash = hashPassword(initialPassword);
 
+    const targetRole =
+      session.user.role !== 'SUPER_ADMIN' && item.role === Role.SUPER_ADMIN
+        ? Role.STUDENT
+        : item.role || Role.STUDENT;
+
     const user = await db.user.upsert({
       where: { email: item.email },
       create: {
         name: item.name,
         email: item.email,
-        role: item.role || Role.STUDENT,
+        role: targetRole,
         nis: item.nis || null,
         nip: item.nip || null,
         passwordHash,
@@ -233,6 +243,10 @@ export async function updateUser(
   if (!user) throw new Error('Pengguna tidak ditemukan');
 
   if (session.user.role !== 'SUPER_ADMIN') {
+    // Cegah eskalasi wewenang: Admin sekolah dilarang mengubah role menjadi atau dari Super Admin
+    if (data.role === Role.SUPER_ADMIN || user.role === Role.SUPER_ADMIN) {
+      throw new Error('Akses ditolak: Admin sekolah tidak dapat mengubah pengguna dengan peran Super Admin.');
+    }
     const isRelated = user.schoolId === schoolId || user.assignedSchools.some((as) => as.schoolId === schoolId);
     if (!isRelated) throw new Error('Anda tidak memiliki akses ke pengguna ini');
   }

@@ -52,12 +52,14 @@ import {
   ArrowLeft,
   Copy,
   Check,
+  Eye,
 } from 'lucide-react';
 
 interface Props {
   course: any;
   modules: any[];
   initialSessions: AttendanceSessionItem[];
+  isReadOnly?: boolean;
   recapData: {
     sessions: Array<{ id: string; title: string; date: Date }>;
     students: Array<{
@@ -83,6 +85,7 @@ export function TeacherAttendanceClient({
   modules,
   initialSessions,
   recapData,
+  isReadOnly = false,
 }: Props) {
   const t = useTranslations('teacherAttendance');
   const locale = useLocale();
@@ -222,7 +225,7 @@ export function TeacherAttendanceClient({
   };
 
   const handleStatusChange = async (recordId: string, newStatus: AttendanceStatus) => {
-    if (!activeSessionDetails) return;
+    if (isReadOnly || !activeSessionDetails) return;
 
     // Optimistic UI update
     const previousRecords = [...activeSessionDetails.records];
@@ -347,26 +350,37 @@ export function TeacherAttendanceClient({
             <Download className="h-4 w-4" /> {t('btnExportExcel')}
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSyncGradebook}
-            disabled={syncing}
-            className="flex items-center gap-1.5 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
-          >
-            <Award className="h-4 w-4" />
-            {syncing ? t('btnSyncing') : t('btnSyncGradebook')}
-          </Button>
+          {!isReadOnly && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncGradebook}
+                disabled={syncing}
+                className="flex items-center gap-1.5 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+              >
+                <Award className="h-4 w-4" />
+                {syncing ? t('btnSyncing') : t('btnSyncGradebook')}
+              </Button>
 
-          <Button
-            size="sm"
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5"
-          >
-            <Plus className="h-4 w-4" /> {t('btnNewSession')}
-          </Button>
+              <Button
+                size="sm"
+                onClick={() => setIsCreateOpen(true)}
+                className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5"
+              >
+                <Plus className="h-4 w-4" /> {t('btnNewSession')}
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {isReadOnly && (
+        <div className="p-3.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-xl text-xs text-sky-800 dark:text-sky-300 flex items-center gap-2.5">
+          <Eye className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+          <span>Mode Supervisi: Anda sedang memantau presensi dan rekapitulasi kelas ini dalam mode hanya-baca.</span>
+        </div>
+      )}
 
       {syncSuccessMessage && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-sm flex items-center gap-2">
@@ -528,33 +542,37 @@ export function TeacherAttendanceClient({
                         </Button>
                       )}
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleOpen(sess.id, sess.isOpen)}
-                        className={`text-xs flex items-center gap-1.5 ${
-                          sess.isOpen ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50'
-                        }`}
-                      >
-                        {sess.isOpen ? (
-                          <>
-                            <Lock className="h-3.5 w-3.5" /> {t('lockSession')}
-                          </>
-                        ) : (
-                          <>
-                            <Unlock className="h-3.5 w-3.5" /> {t('unlockSession')}
-                          </>
-                        )}
-                      </Button>
+                      {!isReadOnly && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleOpen(sess.id, sess.isOpen)}
+                            className={`text-xs flex items-center gap-1.5 ${
+                              sess.isOpen ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50'
+                            }`}
+                          >
+                            {sess.isOpen ? (
+                              <>
+                                <Lock className="h-3.5 w-3.5" /> {t('lockSession')}
+                              </>
+                            ) : (
+                              <>
+                                <Unlock className="h-3.5 w-3.5" /> {t('unlockSession')}
+                              </>
+                            )}
+                          </Button>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteSession(sess.id)}
-                        className="text-red-600 hover:bg-red-50 text-xs px-2"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteSession(sess.id)}
+                            className="text-red-600 hover:bg-red-50 text-xs px-2"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
 
                       <Button
                         variant="ghost"
@@ -642,7 +660,10 @@ export function TeacherAttendanceClient({
                                       <div className="flex items-center justify-center gap-1.5">
                                         <button
                                           onClick={() => handleStatusChange(rec.id, AttendanceStatus.PRESENT)}
+                                          disabled={isReadOnly}
                                           className={`px-2.5 py-1 text-xs font-bold rounded transition-colors ${
+                                            isReadOnly ? 'cursor-default' : ''
+                                          } ${
                                             rec.status === AttendanceStatus.PRESENT
                                               ? 'bg-emerald-600 text-white shadow-sm'
                                               : 'bg-gray-100 text-gray-600 hover:bg-emerald-100 hover:text-emerald-800'
@@ -653,7 +674,10 @@ export function TeacherAttendanceClient({
                                         </button>
                                         <button
                                           onClick={() => handleStatusChange(rec.id, AttendanceStatus.SICK)}
+                                          disabled={isReadOnly}
                                           className={`px-2.5 py-1 text-xs font-bold rounded transition-colors ${
+                                            isReadOnly ? 'cursor-default' : ''
+                                          } ${
                                             rec.status === AttendanceStatus.SICK
                                               ? 'bg-amber-500 text-white shadow-sm'
                                               : 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-800'
@@ -664,7 +688,10 @@ export function TeacherAttendanceClient({
                                         </button>
                                         <button
                                           onClick={() => handleStatusChange(rec.id, AttendanceStatus.PERMISSION)}
+                                          disabled={isReadOnly}
                                           className={`px-2.5 py-1 text-xs font-bold rounded transition-colors ${
+                                            isReadOnly ? 'cursor-default' : ''
+                                          } ${
                                             rec.status === AttendanceStatus.PERMISSION
                                               ? 'bg-blue-600 text-white shadow-sm'
                                               : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-800'
@@ -675,7 +702,10 @@ export function TeacherAttendanceClient({
                                         </button>
                                         <button
                                           onClick={() => handleStatusChange(rec.id, AttendanceStatus.ABSENT)}
+                                          disabled={isReadOnly}
                                           className={`px-2.5 py-1 text-xs font-bold rounded transition-colors ${
+                                            isReadOnly ? 'cursor-default' : ''
+                                          } ${
                                             rec.status === AttendanceStatus.ABSENT
                                               ? 'bg-rose-600 text-white shadow-sm'
                                               : 'bg-gray-100 text-gray-600 hover:bg-rose-100 hover:text-rose-800'

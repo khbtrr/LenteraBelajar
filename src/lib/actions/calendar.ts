@@ -420,8 +420,8 @@ export async function createCalendarEvent(data: {
 
   // Scope permissions check
   if (data.scope === CalendarEventScope.SCHOOL) {
-    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-      throw new Error('Hanya Admin yang dapat membuat Agenda Sekolah');
+    if (!['ADMIN', 'SUPER_ADMIN', 'SUPERVISOR'].includes(userRole)) {
+      throw new Error('Hanya Admin atau Kepala Sekolah yang dapat membuat Agenda Sekolah');
     }
   }
 

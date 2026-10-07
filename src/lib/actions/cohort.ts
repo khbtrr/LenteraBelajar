@@ -83,7 +83,7 @@ export async function getAvailableTeachersForCohort() {
 }
 
 export async function createCohort(name: string, homeroomTeacherId?: string | null) {
-  const session = await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
 
@@ -299,7 +299,7 @@ export async function bulkCreateCohorts(cohortNames: string[]): Promise<BulkCrea
 }
 
 export async function addStudentToCohort(cohortId: string, userId: string) {
-  await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
+  await requireRole('ADMIN', 'SUPER_ADMIN');
 
   const membership = await db.cohortMember.upsert({
     where: {
@@ -320,7 +320,7 @@ export async function addStudentToCohort(cohortId: string, userId: string) {
 }
 
 export async function removeStudentFromCohort(cohortId: string, userId: string) {
-  await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
+  await requireRole('ADMIN', 'SUPER_ADMIN');
 
   const deleted = await db.cohortMember.delete({
     where: {
@@ -363,7 +363,7 @@ export async function getStudentsInSchool(options?: { allSchools?: boolean }) {
 }
 
 export async function bulkAddStudentsToCohort(cohortId: string, userIds: string[]) {
-  await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
+  await requireRole('ADMIN', 'SUPER_ADMIN');
 
   for (const userId of userIds) {
     await db.cohortMember.upsert({
@@ -386,7 +386,7 @@ export async function bulkAddStudentsToCohort(cohortId: string, userIds: string[
 }
 
 export async function bulkRemoveStudentsFromCohort(cohortId: string, userIds: string[]) {
-  await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
+  await requireRole('ADMIN', 'SUPER_ADMIN');
 
   const result = await db.cohortMember.deleteMany({
     where: {

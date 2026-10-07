@@ -6,7 +6,7 @@ import { AnnouncementPriority, AnnouncementTarget, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
 export async function getSchoolAnnouncements() {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 
@@ -37,7 +37,7 @@ export async function createSchoolAnnouncement(data: {
   expiresAt?: string | null;
   sendNotification?: boolean;
 }) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 
@@ -83,13 +83,20 @@ export async function createSchoolAnnouncement(data: {
 
       if (targetUsers.length > 0) {
         const priorityPrefix = priority === AnnouncementPriority.URGENT ? '🚨 [MENDESAK] ' : priority === AnnouncementPriority.IMPORTANT ? '⚠️ [PENTING] ' : '';
+        const getRoleLink = (role: Role) => {
+          if (role === Role.TEACHER) return '/teacher/dashboard';
+          if (role === Role.STUDENT) return '/student/dashboard';
+          if (role === Role.SUPERVISOR) return '/supervisor/dashboard';
+          return '/admin/dashboard';
+        };
+
         await db.notification.createMany({
           data: targetUsers.map((u) => ({
             userId: u.id,
             title: `${priorityPrefix}${data.title.trim()}`,
             message: 'Pengumuman resmi baru telah diterbitkan oleh pihak sekolah.',
             type: 'school_announcement',
-            link: u.role === Role.TEACHER ? '/teacher/dashboard' : '/student/dashboard',
+            link: getRoleLink(u.role),
           })),
         });
       }
@@ -117,7 +124,7 @@ export async function updateSchoolAnnouncement(
     isActive?: boolean;
   }
 ) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 
@@ -142,7 +149,7 @@ export async function updateSchoolAnnouncement(
 }
 
 export async function toggleSchoolAnnouncementActive(id: string) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 
@@ -166,7 +173,7 @@ export async function toggleSchoolAnnouncementActive(id: string) {
 }
 
 export async function deleteSchoolAnnouncement(id: string) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 

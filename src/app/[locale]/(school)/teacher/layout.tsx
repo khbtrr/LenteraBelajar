@@ -43,16 +43,34 @@ export default async function TeacherLayout({
   const tRoles = await getTranslations('roles');
 
   let school = null;
+  let isHomeroomTeacher = false;
   if (session.user.schoolId) {
-    school = await db.school.findUnique({
-      where: { id: session.user.schoolId },
-      select: { name: true, logo: true },
-    });
+    const [schoolData, homeroom] = await Promise.all([
+      db.school.findUnique({
+        where: { id: session.user.schoolId },
+        select: { name: true, logo: true },
+      }),
+      isTeacher
+        ? db.cohort.findFirst({
+            where: {
+              homeroomTeacherId: session.user.id,
+              schoolId: session.user.schoolId,
+              isActive: true,
+            },
+            select: { id: true },
+          })
+        : null,
+    ]);
+    school = schoolData;
+    isHomeroomTeacher = Boolean(homeroom);
   }
 
   let sidebarItems = [
     { label: t('dashboard'), href: '/teacher/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: t('myCourses'), href: '/teacher/my-courses', icon: <BookOpen className="h-5 w-5" /> },
+    ...(isHomeroomTeacher
+      ? [{ label: t('cohortGrades'), href: '/teacher/leger', icon: <FileSpreadsheet className="h-5 w-5" /> }]
+      : []),
     { label: t('messages'), href: '/messages', icon: <MessageSquare className="h-5 w-5" /> },
     { label: t('requestCourse'), href: '/teacher/request-course', icon: <PlusCircle className="h-5 w-5" /> },
     { label: t('calendar'), href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
@@ -70,6 +88,7 @@ export default async function TeacherLayout({
       { label: t('categories'), href: '/admin/categories', icon: <FolderTree className="h-5 w-5" /> },
       { label: t('courses'), href: '/admin/courses', icon: <BookOpen className="h-5 w-5" /> },
       { label: t('cohorts'), href: '/admin/cohorts', icon: <UsersRound className="h-5 w-5" /> },
+      { label: t('cohortGrades'), href: '/admin/grades/leger', icon: <FileSpreadsheet className="h-5 w-5" /> },
       { label: t('users'), href: '/admin/users', icon: <Users className="h-5 w-5" /> },
       { label: t('courseRequests'), href: '/admin/course-requests', icon: <FileCheck className="h-5 w-5" /> },
       { label: t('calendar'), href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
@@ -79,6 +98,7 @@ export default async function TeacherLayout({
   } else if (isSupervisor) {
     sidebarItems = [
       { label: t('dashboard'), href: '/supervisor/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+      { label: t('announcements'), href: '/supervisor/announcements', icon: <Megaphone className="h-5 w-5" /> },
       { label: t('messages'), href: '/messages', icon: <MessageSquare className="h-5 w-5" /> },
       { label: t('teacherActivity'), href: '/supervisor/teacher-activity', icon: <UserCheck className="h-5 w-5" /> },
       { label: t('studentActivity'), href: '/supervisor/student-activity', icon: <GraduationCap className="h-5 w-5" /> },

@@ -98,8 +98,11 @@ export async function createCourse(data: {
   teacherId?: string;
   isCrossSchool?: boolean;
 }) {
-  const session = await requireSchool();
-  const teacherId = data.teacherId || session.user.id;
+  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const schoolId = session.user.schoolId;
+  if (!schoolId) throw new Error('No school selected');
+
+  const teacherId = session.user.role === 'TEACHER' ? session.user.id : (data.teacherId || session.user.id);
 
   const course = await db.course.create({
     data: {
@@ -108,8 +111,8 @@ export async function createCourse(data: {
       categoryId: data.categoryId || null,
       academicYearId: data.academicYearId,
       teacherId,
-      schoolId: session.schoolId,
-      isCrossSchool: Boolean(data.isCrossSchool),
+      schoolId,
+      isCrossSchool: session.user.role === 'SUPER_ADMIN' ? Boolean(data.isCrossSchool) : false,
       status: CourseStatus.ACTIVE,
     },
   });
