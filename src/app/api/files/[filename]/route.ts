@@ -2,20 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { filename } = await params;
     // Sanitize filename to prevent directory traversal
     const safeFilename = path.basename(filename);
+
+    const session = await auth();
+    if (!session?.user) {
+      // Allow public access for school branding logos on public pages (e.g. login)
+      const isPublicLogo = await db.school.findFirst({
+        where: { logo: { contains: safeFilename } },
+        select: { id: true },
+      });
+      if (!isPublicLogo) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
     const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
     const filePath = path.join(uploadDir, safeFilename);
 

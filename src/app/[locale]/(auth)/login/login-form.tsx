@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { getAccountLockoutStatus } from '@/lib/actions/auth-lockout';
-import { AlertCircle, Lock, GraduationCap } from 'lucide-react';
+import { AlertCircle, Lock, Mail, GraduationCap, School } from 'lucide-react';
 
 interface SchoolBranding {
   name: string | null;
@@ -18,26 +18,103 @@ interface SchoolBranding {
   loginQuoteAuthor?: string | null;
 }
 
-function GeometricPattern() {
+/**
+ * Modern 3D isometric architectural portal sculpture.
+ * Clean geometric lighting facets matching the aesthetic of modern design references.
+ */
+function IsometricSculpture() {
   return (
-    <svg
-      className="absolute left-0 top-0 h-full w-[420px] text-white opacity-[0.08] pointer-events-none select-none"
-      viewBox="0 0 380 900"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      preserveAspectRatio="xMinYMid slice"
-      aria-hidden="true"
-    >
-      {/* Repeating architectural arches and structured geometric paths */}
-      <rect x="24" y="24" width="90" height="260" rx="45" stroke="currentColor" strokeWidth="20" />
-      <rect x="70" y="90" width="130" height="320" rx="65" stroke="currentColor" strokeWidth="20" />
-      <path d="M24 300 H180 V450 C180 500 140 540 90 540 C40 540 24 500 24 450 Z" stroke="currentColor" strokeWidth="20" />
-      <rect x="24" y="560" width="150" height="280" rx="60" stroke="currentColor" strokeWidth="20" />
-      <path d="M140 40 V220 H280 C320 220 340 260 340 300 V460" stroke="currentColor" strokeWidth="20" />
-      <circle cx="260" cy="130" r="36" stroke="currentColor" strokeWidth="20" />
-      <path d="M190 480 H320 V660 C320 710 275 750 225 750 H180" stroke="currentColor" strokeWidth="20" />
-      <line x1="24" y1="460" x2="340" y2="460" stroke="currentColor" strokeWidth="8" strokeDasharray="16 16" />
-    </svg>
+    <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-square mx-auto flex items-center justify-center my-auto py-2 select-none pointer-events-none">
+      <svg
+        viewBox="0 0 400 400"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full drop-shadow-2xl"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="topFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f8fafc" />
+            <stop offset="100%" stopColor="#e2e8f0" />
+          </linearGradient>
+          <linearGradient id="leftFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#cbd5e1" />
+            <stop offset="100%" stopColor="#94a3b8" />
+          </linearGradient>
+          <linearGradient id="rightFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#64748b" />
+            <stop offset="100%" stopColor="#475569" />
+          </linearGradient>
+          <linearGradient id="innerTop" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#475569" />
+            <stop offset="100%" stopColor="#334155" />
+          </linearGradient>
+          <linearGradient id="innerRight" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#94a3b8" />
+            <stop offset="100%" stopColor="#64748b" />
+          </linearGradient>
+          <radialGradient id="shadowGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#001428" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#001428" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Ambient Ground Shadow */}
+        <ellipse cx="200" cy="350" rx="140" ry="24" fill="url(#shadowGradient)" />
+
+        {/* Outer Isometric Structure */}
+        {/* Top Surface */}
+        <path
+          d="M 200 60 L 320 130 L 200 200 L 80 130 Z"
+          fill="url(#topFacet)"
+        />
+
+        {/* Left Surface */}
+        <path
+          d="M 80 130 L 200 200 L 200 330 L 80 260 Z"
+          fill="url(#leftFacet)"
+        />
+
+        {/* Right Surface */}
+        <path
+          d="M 200 200 L 320 130 L 320 260 L 200 330 Z"
+          fill="url(#rightFacet)"
+        />
+
+        {/* Hollow Core / Interior Cutout (Portal) */}
+        {/* Inner Floor */}
+        <path
+          d="M 160 177 L 240 130 L 200 107 L 120 153 Z"
+          fill="url(#innerTop)"
+        />
+
+        {/* Inner Left Wall */}
+        <path
+          d="M 160 177 L 200 200 L 200 250 L 160 227 Z"
+          fill="#334155"
+        />
+
+        {/* Inner Right Wall */}
+        <path
+          d="M 200 200 L 240 177 L 240 227 L 200 250 Z"
+          fill="url(#innerRight)"
+        />
+
+        {/* Nested Inner Cube Feature */}
+        <path
+          d="M 200 170 L 230 187 L 200 204 L 170 187 Z"
+          fill="url(#topFacet)"
+        />
+        <path
+          d="M 170 187 L 200 204 L 200 240 L 170 223 Z"
+          fill="url(#leftFacet)"
+        />
+        <path
+          d="M 200 204 L 230 187 L 230 223 L 200 240 Z"
+          fill="url(#rightFacet)"
+        />
+      </svg>
+    </div>
   );
 }
 
@@ -67,18 +144,13 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
       });
 
       if (result?.error) {
-        // Query lockout and failed attempt details
         const status = await getAccountLockoutStatus(email);
         if (status.isLocked) {
           setIsLocked(true);
-          setError(
-            t('accountLocked', { minutes: status.remainingMinutes })
-          );
+          setError(t('accountLocked', { minutes: status.remainingMinutes }));
         } else if (status.failedAttempts > 0) {
           const remaining = Math.max(0, status.maxAttempts - status.failedAttempts);
-          setError(
-            t('remainingAttempts', { remaining })
-          );
+          setError(t('remainingAttempts', { remaining }));
         } else {
           setError(t('loginError'));
         }
@@ -98,159 +170,176 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
   };
 
   return (
-    <div className="min-h-screen flex w-full relative bg-slate-50 dark:bg-gray-950 font-sans selection:bg-[#FF8928]/30">
+    <div className="min-h-screen bg-[#F0F2F5] dark:bg-gray-950 flex flex-col justify-center items-center p-3 sm:p-6 lg:p-8 selection:bg-[#FF8928]/30">
       {/* Floating Language Switcher in top right */}
       <div className="fixed top-4 right-4 z-40">
-        <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xs border border-gray-200 dark:border-gray-800 rounded-lg p-0.5 shadow-xs">
+        <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xs border border-gray-200 dark:border-gray-800 rounded-xl p-0.5 shadow-xs">
           <LanguageSwitcher />
         </div>
       </div>
 
-      {/* Left Column: Academic Branding & Identity (hidden on mobile, visible on desktop lg+) */}
-      <div className="hidden lg:flex lg:w-7/12 xl:w-2/3 bg-[#002446] relative overflow-hidden flex-col justify-between p-10 xl:p-16 text-white">
-        {/* Subtle geometric pattern */}
-        <GeometricPattern />
-
-        {/* Top/Header Branding */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-4">
-            {school?.logo ? (
-              <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/20 p-2 flex items-center justify-center shrink-0 shadow-xs">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={school.logo}
-                  alt={school.name || 'Logo'}
-                  className="max-h-full max-w-full object-contain"
-                />
-              </div>
-            ) : (
-              <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0 shadow-xs">
-                <GraduationCap className="w-8 h-8 text-white" />
-              </div>
-            )}
-
-            <div className="flex-1 flex items-center gap-4 min-w-0">
-              <span className="text-xl xl:text-2xl font-bold tracking-tight text-white truncate">
-                {school?.name || 'LenteraBelajar'}
-              </span>
-              <div className="h-px bg-white/20 flex-1 hidden sm:block max-w-xs" />
-            </div>
-          </div>
-        </div>
-
-        {/* Center: Inspirational Quote */}
-        <div className="relative z-10 my-auto py-12 max-w-xl pl-2 xl:pl-4">
-          <blockquote className="text-xl xl:text-2xl font-normal text-white/95 italic leading-relaxed font-serif tracking-wide">
-            &ldquo;{activeQuote}&rdquo;
-          </blockquote>
-          <p className="mt-4 text-sm font-medium text-white/70 tracking-wider">
-            {activeAuthor}
-          </p>
-        </div>
-
-        {/* Bottom: Platform Credit */}
-        <div className="relative z-10 pt-6 border-t border-white/10 flex flex-col gap-0.5">
-          <span className="text-sm font-semibold tracking-wide text-white/95">
-            LenteraBelajar
-          </span>
-          <span className="text-xs text-white/60">
-            {t('deptTik')}
-          </span>
-        </div>
-      </div>
-
-      {/* Right Column: Sign In Form */}
-      <div className="w-full lg:w-5/12 xl:w-1/3 flex flex-col justify-center items-center px-6 sm:px-12 py-12 bg-white dark:bg-gray-900 transition-colors">
-        <div className="w-full max-w-sm">
-          {/* Form Header */}
-          <div className="mb-8">
-            <div className="mb-5 flex items-center">
+      {/* Main Dual-Card Wrapper */}
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch my-auto">
+        {/* Sisi Kiri: Branding Showcase Card (Deep Navy) */}
+        <div className="hidden lg:flex lg:col-span-7 bg-[#002446] rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden flex-col justify-between shadow-sm min-h-[620px]">
+          {/* Top: Header Branding & Quote */}
+          <div className="relative z-10 space-y-5">
+            <div className="flex items-center gap-3.5">
               {school?.logo ? (
-                <div className="w-14 h-14 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 shadow-xs flex items-center justify-center overflow-hidden">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/20 p-2 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={school.logo}
-                    alt={school.name || 'Logo Sekolah'}
+                    alt={school.name || 'Logo'}
                     className="max-h-full max-w-full object-contain"
                   />
                 </div>
               ) : (
-                <div className="w-14 h-14 rounded-2xl bg-[#002446] dark:bg-brand-600 flex items-center justify-center shadow-xs">
-                  <GraduationCap className="h-8 w-8 text-white" />
+                <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <School className="w-6 h-6 text-white" />
                 </div>
               )}
+              <div className="min-w-0">
+                <span className="text-base font-bold tracking-tight text-white block truncate">
+                  {school?.name || 'LenteraBelajar'}
+                </span>
+                <span className="text-xs text-white/70 block">
+                  LMS Portal
+                </span>
+              </div>
             </div>
 
-            <h1 className="text-2xl font-bold tracking-tight text-[#002446] dark:text-white">
-              {school?.name ? `${t('loginTo')} ${school.name}` : t('loginTitle')}
-            </h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {t('loginSubtitle')}
-            </p>
+            <div className="space-y-2 max-w-lg pt-1">
+              <h2 className="text-2xl xl:text-3xl font-semibold tracking-tight leading-snug text-white/95">
+                &ldquo;{activeQuote}&rdquo;
+              </h2>
+              <p className="text-sm font-medium text-white/75 tracking-wide">
+                ({activeAuthor})
+              </p>
+            </div>
           </div>
 
-          {/* Form Content */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div
-                role="alert"
-                className={`p-3 text-sm rounded-lg flex items-start gap-2.5 ${
-                  isLocked
-                    ? 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
-                    : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:border-red-800 dark:text-red-300'
-                }`}
-              >
-                {isLocked ? (
-                  <Lock className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+          {/* Center: Tactile 3D Isometric Architectural Visual */}
+          <IsometricSculpture />
+
+          {/* Bottom Card (Sisi Kiri): Info Pengembang & Platform */}
+          <div className="relative z-10 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 sm:p-5">
+            <p className="text-sm font-semibold tracking-wide text-white/95">
+              LenteraBelajar LMS
+            </p>
+            <p className="text-xs text-white/70 mt-0.5">
+              {t('deptTik')}
+            </p>
+          </div>
+        </div>
+
+        {/* Sisi Kanan: Form Card Saja (Card di bawah form dihapus) */}
+        <div className="w-full lg:col-span-5 flex flex-col justify-center">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-200/80 dark:border-gray-800 flex flex-col justify-center min-h-[620px]">
+            {/* School Branding / Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3.5 mb-5">
+                {school?.logo ? (
+                  <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 shadow-xs flex items-center justify-center overflow-hidden shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={school.logo}
+                      alt={school.name || 'Logo Sekolah'}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                  <div className="w-14 h-14 rounded-2xl bg-[#002446] dark:bg-brand-600 flex items-center justify-center shadow-xs shrink-0">
+                    <GraduationCap className="h-7 w-7 text-white" />
+                  </div>
                 )}
-                <span className="leading-snug">{error}</span>
+                <div>
+                  <span className="text-sm font-semibold tracking-tight text-[#002446] dark:text-white block">
+                    {school?.name || 'LenteraBelajar'}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                    Portal Akses Pembelajaran
+                  </span>
+                </div>
               </div>
-            )}
 
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                {t('email')}
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@sekolah.sch.id"
-                required
-                className="h-11 bg-white dark:bg-gray-800/70 border-gray-200 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-brand-500"
-              />
+              <h1 className="text-2xl font-bold tracking-tight text-[#002446] dark:text-white">
+                {school?.name ? `${t('loginTo')} ${school.name}` : t('loginTitle')}
+              </h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {t('loginSubtitle')}
+              </p>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                {t('password')}
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-11 bg-white dark:bg-gray-800/70 border-gray-200 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-brand-500"
-              />
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div
+                  role="alert"
+                  className={`p-3 text-sm rounded-xl flex items-start gap-2.5 ${
+                    isLocked
+                      ? 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
+                      : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:border-red-800 dark:text-red-300'
+                  }`}
+                >
+                  {isLocked ? (
+                    <Lock className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                  )}
+                  <span className="leading-snug">{error}</span>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {t('email')}
+                </Label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="user@sekolah.sch.id"
+                    required
+                    className="h-11 pl-10 rounded-xl bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {t('password')}
+                </Label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-11 pl-10 rounded-xl bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-brand-500"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-11 font-semibold text-white bg-[#002446] hover:bg-[#022b52] dark:bg-brand-600 dark:hover:bg-brand-700 rounded-xl shadow-xs transition-colors mt-2"
+                disabled={loading}
+              >
+                {loading ? '...' : t('loginButton')}
+              </Button>
+            </form>
+
+            {/* Mobile Footer Credit (hanya muncul di mobile karena sisi kiri disembunyikan) */}
+            <div className="lg:hidden mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 text-center text-xs text-gray-500 dark:text-gray-400">
+              <p className="font-semibold text-gray-800 dark:text-gray-300">LenteraBelajar LMS</p>
+              <p className="mt-0.5">{t('deptTik')}</p>
             </div>
-
-            <Button
-              type="submit"
-              className="w-full h-11 font-semibold text-white bg-[#002446] hover:bg-[#022b52] dark:bg-brand-600 dark:hover:bg-brand-700 shadow-xs transition-colors"
-              disabled={loading}
-            >
-              {loading ? '...' : t('loginButton')}
-            </Button>
-          </form>
-
-          {/* Mobile Footer Credit (only on mobile screens where left column is hidden) */}
-          <div className="lg:hidden mt-12 text-center text-xs text-gray-400 dark:text-gray-600">
-            <p className="font-semibold text-gray-600 dark:text-gray-400">LenteraBelajar</p>
-            <p className="mt-0.5">{t('deptTik')}</p>
           </div>
         </div>
       </div>
