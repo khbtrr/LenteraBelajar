@@ -46,7 +46,10 @@
     "passwordChanged": "Password changed successfully",
     "mustChangePassword": "You must change your password before continuing",
     "passwordPolicyHint": "Minimum 8 characters, must contain uppercase (A-Z), lowercase (a-z), and number (0-9).",
-    "errorOccurred": "An error occurred while processing request"
+    "errorOccurred": "An error occurred while processing request",
+    "deptTik": "Dept. of ICT SMA Plus PGRI Cibinong",
+    "defaultQuote": "Education is not the filling of a pail, but the lighting of a fire.",
+    "defaultQuoteAuthor": "Plutarch"
   },
   "sidebar": {
     "dashboard": "Dashboard",
@@ -1016,6 +1019,11 @@
     "uploadLogo": "Upload School Logo",
     "removeLogo": "Remove Logo",
     "logoHint": "Transparent PNG / JPG format (1:1 ratio recommended, max 2MB).",
+    "quoteLabel": "Login Page Quote / Tagline",
+    "quotePlaceholder": "e.g. Education is not the filling of a pail, but the lighting of a fire.",
+    "quoteAuthorLabel": "Quote Author",
+    "quoteAuthorPlaceholder": "e.g. Plutarch, Ki Hajar Dewantara, etc.",
+    "quoteHint": "This quote will be displayed on the school login branding area.",
     "saveProfile": "Save School Profile",
     "saving": "Saving...",
     "profileSavedAlert": "School profile successfully updated!",

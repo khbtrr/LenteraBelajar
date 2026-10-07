@@ -50,6 +50,8 @@ export async function updateSchoolProfile(data: {
   email?: string;
   website?: string;
   logo?: string;
+  loginQuote?: string;
+  loginQuoteAuthor?: string;
 }) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
@@ -78,6 +80,8 @@ export async function updateSchoolProfile(data: {
       email: data.email?.trim() || null,
       website: data.website?.trim() || null,
       logo: data.logo || null,
+      loginQuote: data.loginQuote?.trim() || null,
+      loginQuoteAuthor: data.loginQuoteAuthor?.trim() || null,
     },
   });
 
@@ -85,6 +89,7 @@ export async function updateSchoolProfile(data: {
   revalidatePath('/[locale]/admin', 'layout');
   revalidatePath('/[locale]/teacher', 'layout');
   revalidatePath('/[locale]/student', 'layout');
+  revalidatePath('/[locale]/login', 'page');
 
   return updatedSchool;
 }

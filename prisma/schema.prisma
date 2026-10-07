@@ -19,6 +19,9 @@ model School {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  loginQuote        String?
+  loginQuoteAuthor  String?
+
   // Standar Akademik Default
   defaultPassingGrade  Float?   @default(75)
 

@@ -7,6 +7,8 @@ export default async function LoginPage() {
     select: {
       name: true,
       logo: true,
+      loginQuote: true,
+      loginQuoteAuthor: true,
     },
   });
 

@@ -46,7 +46,10 @@
     "passwordChanged": "Kata sandi berhasil diubah",
     "mustChangePassword": "Anda harus mengubah kata sandi sebelum melanjutkan",
     "passwordPolicyHint": "Minimal 8 karakter, harus mengandung huruf besar (A-Z), huruf kecil (a-z), dan angka (0-9).",
-    "errorOccurred": "Terjadi kesalahan saat memproses permintaan"
+    "errorOccurred": "Terjadi kesalahan saat memproses permintaan",
+    "deptTik": "Dept. TIK SMA Plus PGRI Cibinong",
+    "defaultQuote": "Belajar bukan tentang mengisi wadah, melainkan menyalakan api.",
+    "defaultQuoteAuthor": "Plutarch"
   },
   "sidebar": {
     "dashboard": "Dasbor",
@@ -1016,6 +1019,11 @@
     "uploadLogo": "Unggah Logo Sekolah",
     "removeLogo": "Hapus Logo",
     "logoHint": "Format PNG / JPG transparan (disarankan rasio 1:1, maks 2MB).",
+    "quoteLabel": "Kutipan / Tagline Halaman Login",
+    "quotePlaceholder": "misal: Belajar bukan tentang mengisi wadah, melainkan menyalakan api.",
+    "quoteAuthorLabel": "Nama Pengarang Kutipan",
+    "quoteAuthorPlaceholder": "misal: Plutarch, Ki Hajar Dewantara, dll.",
+    "quoteHint": "Kutipan ini akan ditampilkan pada area branding halaman login sekolah.",
     "saveProfile": "Simpan Profil Sekolah",
     "saving": "Menyimpan...",
     "profileSavedAlert": "Profil sekolah berhasil diperbarui!",

@@ -50,6 +50,8 @@ interface SchoolData {
   phone: string | null;
   email: string | null;
   website: string | null;
+  loginQuote?: string | null;
+  loginQuoteAuthor?: string | null;
   defaultPassingGrade: number | null;
   cbtLockdownEnabled: boolean;
   cbtMaxTabSwitches: number;
@@ -98,6 +100,8 @@ export function AdminSettingsClient({
   const [email, setEmail] = useState(initialSchool.email || '');
   const [website, setWebsite] = useState(initialSchool.website || '');
   const [logo, setLogo] = useState<string | null>(initialSchool.logo);
+  const [loginQuote, setLoginQuote] = useState(initialSchool.loginQuote || '');
+  const [loginQuoteAuthor, setLoginQuoteAuthor] = useState(initialSchool.loginQuoteAuthor || '');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -119,6 +123,8 @@ export function AdminSettingsClient({
     setEmail(initialSchool.email || '');
     setWebsite(initialSchool.website || '');
     setLogo(initialSchool.logo);
+    setLoginQuote(initialSchool.loginQuote || '');
+    setLoginQuoteAuthor(initialSchool.loginQuoteAuthor || '');
     setPassingGrade(initialSchool.defaultPassingGrade ?? 75);
     setCbtLockdown(initialSchool.cbtLockdownEnabled ?? true);
     setMaxTabSwitches(initialSchool.cbtMaxTabSwitches ?? 3);
@@ -189,6 +195,8 @@ export function AdminSettingsClient({
         email,
         website,
         logo: logo || undefined,
+        loginQuote: loginQuote || undefined,
+        loginQuoteAuthor: loginQuoteAuthor || undefined,
       });
       await showAlert(t('profileSavedAlert'), { type: 'success' });
     } catch (err: any) {
@@ -486,6 +494,35 @@ export function AdminSettingsClient({
                           {t('logoHint')}
                         </p>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Quote / Tagline Section */}
+                  <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="loginQuote" className="font-medium">
+                        {t('quoteLabel')}
+                      </Label>
+                      <Textarea
+                        id="loginQuote"
+                        value={loginQuote}
+                        onChange={(e) => setLoginQuote(e.target.value)}
+                        placeholder={t('quotePlaceholder')}
+                        rows={2}
+                      />
+                      <p className="text-xs text-gray-500">{t('quoteHint')}</p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="loginQuoteAuthor" className="font-medium">
+                        {t('quoteAuthorLabel')}
+                      </Label>
+                      <Input
+                        id="loginQuoteAuthor"
+                        value={loginQuoteAuthor}
+                        onChange={(e) => setLoginQuoteAuthor(e.target.value)}
+                        placeholder={t('quoteAuthorPlaceholder')}
+                      />
                     </div>
                   </div>
 
