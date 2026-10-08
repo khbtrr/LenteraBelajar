@@ -14,15 +14,17 @@ export async function GET(
     const safeFilename = path.basename(filename);
 
     const session = await auth();
+    let isPublicLogo = false;
     if (!session?.user) {
       // Allow public access for school branding logos on public pages (e.g. login)
-      const isPublicLogo = await db.school.findFirst({
+      const schoolWithLogo = await db.school.findFirst({
         where: { logo: { contains: safeFilename } },
         select: { id: true },
       });
-      if (!isPublicLogo) {
+      if (!schoolWithLogo) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
+      isPublicLogo = true;
     }
     const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
     const filePath = path.join(uploadDir, safeFilename);
@@ -59,17 +61,20 @@ export async function GET(
       contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
     else if (ext === '.zip') contentType = 'application/zip';
 
-    return new NextResponse(fileBuffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': fileStat.size.toString(),
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'private, max-age=3600',
-        'X-Content-Type-Options': 'nosniff',
-        'Content-Security-Policy': "default-src 'none'; sandbox",
-        'Content-Disposition': `inline; filename="${safeFilename}"`,
-      },
-    });
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Content-Length': fileStat.size.toString(),
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': isPublicLogo ? 'public, max-age=86400, stale-while-revalidate=604800' : 'private, max-age=3600',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': `inline; filename="${safeFilename}"`,
+    };
+
+    if (!isPublicLogo) {
+      headers['Content-Security-Policy'] = "default-src 'none'; sandbox";
+    }
+
+    return new NextResponse(fileBuffer, { headers });
   } catch (error) {
     console.error('File serve error:', error);
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
