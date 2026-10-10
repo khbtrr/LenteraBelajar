@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -81,7 +81,7 @@ export function ModuleCohortAccessModal({
   const [studentSearch, setStudentSearch] = useState('');
   const [addingStudentId, setAddingStudentId] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [modAccess, courseInfo] = await Promise.all([
@@ -103,13 +103,13 @@ export function ModuleCohortAccessModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [moduleId, courseId]);
 
   useEffect(() => {
     if (isOpen) {
       fetchData();
     }
-  }, [isOpen, moduleId, courseId]);
+  }, [isOpen, fetchData]);
 
   const toggleCohort = (itemKey: string, cohortId: string) => {
     setSelectedCohortsMap((prev) => {

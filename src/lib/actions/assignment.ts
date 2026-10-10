@@ -3,12 +3,14 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
-import { createNotification, createBulkNotifications } from './notification';
-import { awardXp } from './gamification';
+import { createNotification, createBulkNotifications } from '@/lib/notifications';
+import { awardXp } from '@/lib/gamification';
 import { checkStudentItemAccess } from './cohort-access';
+import { assertModuleAccess, assertItemAccess } from '@/lib/access';
+import { assertFileReferences, bindFileReferences } from '@/lib/files';
 
 export async function getAssignmentById(assignmentId: string) {
-  const session = await requireAuth();
+  const { session } = await assertItemAccess('ASSIGNMENT', assignmentId);
 
   const assignment = await db.assignment.findUnique({
     where: { id: assignmentId },
@@ -69,7 +71,8 @@ export async function createAssignment(data: {
   fileName?: string;
   fileSize?: number;
 }) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertModuleAccess(data.moduleId, 'manage');
+  await assertFileReferences(data.fileUrl);
 
   const count = await db.assignment.count({ where: { moduleId: data.moduleId } });
 
@@ -90,6 +93,7 @@ export async function createAssignment(data: {
     },
   });
 
+  await bindFileReferences('ASSIGNMENT', assignment.id, assignment);
   // Notify enrolled students
   try {
     const moduleData = await db.module.findUnique({
@@ -132,7 +136,8 @@ export async function updateAssignment(data: {
   fileName?: string | null;
   fileSize?: number | null;
 }) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertItemAccess('ASSIGNMENT', data.id, 'manage');
+  await assertFileReferences(data.fileUrl);
 
   const assignment = await db.assignment.update({
     where: { id: data.id },
@@ -151,12 +156,13 @@ export async function updateAssignment(data: {
 
   revalidatePath('/[locale]/teacher/course/[courseId]/modules', 'page');
   revalidatePath('/[locale]/teacher/course/[courseId]/submissions/[assignmentId]', 'page');
+  await bindFileReferences('ASSIGNMENT', assignment.id, assignment);
   revalidatePath('/[locale]/student/course/[courseId]/assignment/[assignmentId]', 'page');
   return assignment;
 }
 
 export async function deleteAssignment(assignmentId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertItemAccess('ASSIGNMENT', assignmentId, 'manage');
 
   const deleted = await db.assignment.delete({
     where: { id: assignmentId },
@@ -173,6 +179,9 @@ export async function submitAssignment(data: {
   fileSize: number;
 }) {
   const session = await requireAuth();
+  if (session.user.role !== 'STUDENT') throw new Error('Akses ditolak: Hanya siswa dapat mengumpulkan tugas');
+  await assertItemAccess('ASSIGNMENT', data.assignmentId);
+  await assertFileReferences(data.fileUrl);
 
   const assignment = await db.assignment.findUnique({
     where: { id: data.assignmentId },
@@ -232,6 +241,7 @@ export async function submitAssignment(data: {
     });
   }
 
+  await bindFileReferences('SUBMISSION', submission.id, data.fileUrl);
   // Notify course teacher
   try {
 
@@ -254,7 +264,8 @@ export async function submitAssignment(data: {
         xpAmount,
         `Mengumpulkan tugas: ${assignment.title} (${isOntime ? 'Tepat Waktu' : 'Terlambat'})`,
         'ASSIGNMENT',
-        assignment.module.course.id
+        assignment.module.course.id,
+        `ASSIGNMENT:${submission.id}`
       );
     }
   } catch (err) {

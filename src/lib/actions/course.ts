@@ -4,7 +4,9 @@ import { db } from '@/lib/db';
 import { requireAuth, requireSchool, requireRole } from '@/lib/auth-utils';
 import { CourseStatus, CourseRequestStatus, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
-import { createNotification } from './notification';
+import { createNotification } from '@/lib/notifications';
+import { assertCourseAccess, assertAcademicReferences } from '@/lib/access';
+import { getCourseModules } from '@/lib/actions/module';
 
 export async function getCourses(filters?: {
   status?: CourseStatus;
@@ -59,8 +61,8 @@ export async function getTeachersInSchool() {
 }
 
 export async function getCourseById(courseId: string) {
-  const session = await requireAuth();
-  return db.course.findUnique({
+  const { session } = await assertCourseAccess(courseId);
+  const course = await db.course.findUnique({
     where: { id: courseId },
     include: {
       teacher: { select: { id: true, name: true, email: true } },
@@ -88,6 +90,16 @@ export async function getCourseById(courseId: string) {
       },
     },
   });
+
+  if (!course) return null;
+
+  if (session.user.role === 'STUDENT') {
+    course.modules = await getCourseModules(courseId);
+
+    course.enrollments = course.enrollments.filter((e) => e.userId === session.user.id);
+  }
+
+  return course;
 }
 
 export async function createCourse(data: {
@@ -103,6 +115,7 @@ export async function createCourse(data: {
   if (!schoolId) throw new Error('No school selected');
 
   const teacherId = session.user.role === 'TEACHER' ? session.user.id : (data.teacherId || session.user.id);
+  await assertAcademicReferences(schoolId, { ...data, teacherId });
 
   const course = await db.course.create({
     data: {
@@ -131,6 +144,7 @@ export async function requestCourse(data: {
   const session = await requireRole('TEACHER', 'ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
+  await assertAcademicReferences(schoolId, data);
 
   const courseRequest = await db.courseRequest.create({
     data: {
@@ -190,75 +204,41 @@ export async function getTeacherCourseRequests() {
   });
 }
 
-export async function reviewCourseRequest(
-  requestId: string,
-  action: 'APPROVE' | 'REJECT',
-  adminNote?: string
-) {
+export async function reviewCourseRequest(requestId: string, action: 'APPROVE' | 'REJECT', adminNote?: string) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
-  if (!schoolId) throw new Error('No school selected');
-
-  const request = await db.courseRequest.findUnique({
-    where: { id: requestId, schoolId },
+  if (!schoolId || !['APPROVE', 'REJECT'].includes(action)) throw new Error('Permintaan review tidak valid');
+  const outcome = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "CourseRequest" WHERE "id" = ${requestId} FOR UPDATE`;
+    const request = await tx.courseRequest.findUnique({ where: { id: requestId, schoolId } });
+    if (!request) throw new Error('Request not found');
+    const status = action === 'APPROVE' ? CourseRequestStatus.APPROVED : CourseRequestStatus.REJECTED;
+    if (request.status === status) return { request, changed: false };
+    if (request.status !== CourseRequestStatus.PENDING) throw new Error('Pengajuan sudah diputuskan');
+    let courseId: string | null = null;
+    if (action === 'APPROVE') {
+      const teacher = await tx.user.findFirst({ where: { id: request.requesterId, role: 'TEACHER', isActive: true, OR: [{ schoolId }, { assignedSchools: { some: { schoolId } } }] } });
+      const year = await tx.academicYear.findFirst({ where: { id: request.academicYearId, schoolId } });
+      const category = request.categoryId ? await tx.category.findFirst({ where: { id: request.categoryId, schoolId } }) : true;
+      if (!teacher || !year || !category) throw new Error('Relasi akademik pengajuan tidak valid');
+      const course = await tx.course.create({ data: {
+        title: request.title, description: request.description, categoryId: request.categoryId,
+        academicYearId: request.academicYearId, teacherId: request.requesterId, schoolId, status: 'ACTIVE',
+      } });
+      courseId = course.id;
+    }
+    const updated = await tx.courseRequest.update({ where: { id: requestId, status: 'PENDING' }, data: { status, courseId, adminNote: adminNote ?? null } });
+    return { request: updated, changed: true };
   });
-
-  if (!request) throw new Error('Request not found');
-
-  if (action === 'APPROVE') {
-    // Create the actual Course
-    const course = await db.course.create({
-      data: {
-        title: request.title,
-        description: request.description,
-        categoryId: request.categoryId,
-        academicYearId: request.academicYearId,
-        teacherId: request.requesterId,
-        schoolId,
-        status: CourseStatus.ACTIVE,
-      },
-    });
-
-    await db.courseRequest.update({
-      where: { id: requestId },
-      data: {
-        status: CourseRequestStatus.APPROVED,
-        courseId: course.id,
-        adminNote: adminNote || null,
-      },
-    });
-
-    // Notify Teacher
-    await createNotification({
-      userId: request.requesterId,
-      title: 'Course Disetujui!',
-      message: `Course "${request.title}" telah disetujui dan aktif.`,
-      type: 'course_approved',
-      link: `/teacher/my-courses`,
-    });
-  } else {
-    await db.courseRequest.update({
-      where: { id: requestId },
-      data: {
-        status: CourseRequestStatus.REJECTED,
-        adminNote: adminNote || null,
-      },
-    });
-
-    // Notify Teacher
-    await createNotification({
-      userId: request.requesterId,
-      title: 'Course Ditolak',
-      message: `Pengajuan course "${request.title}" ditolak.${adminNote ? ` Catatan: ${adminNote}` : ''}`,
-      type: 'course_rejected',
-      link: `/teacher/request-course`,
-    });
-  }
-
+  if (outcome.changed) await createNotification({
+    userId: outcome.request.requesterId, title: action === 'APPROVE' ? 'Course Disetujui' : 'Course Ditolak',
+    message: outcome.request.title, type: action === 'APPROVE' ? 'course_approved' : 'course_rejected',
+    link: '/teacher/my-courses',
+  });
   revalidatePath('/[locale]/admin/course-requests', 'page');
   revalidatePath('/[locale]/admin/courses', 'page');
-  revalidatePath('/[locale]/admin/dashboard', 'page');
   revalidatePath('/[locale]/teacher/my-courses', 'page');
+  return { success: true, status: outcome.request.status, courseId: outcome.request.courseId };
 }
 
 export async function updateCourse(
@@ -281,6 +261,10 @@ export async function updateCourse(
     where: { id: courseId, schoolId },
   });
   if (!existing) throw new Error('Course tidak ditemukan');
+  if (data.isCrossSchool !== undefined && data.isCrossSchool !== existing.isCrossSchool && session.user.role !== 'SUPER_ADMIN') {
+    throw new Error('Akses ditolak: Hanya Super Admin dapat menerbitkan course lintas sekolah');
+  }
+  await assertAcademicReferences(schoolId, data);
 
   const updated = await db.course.update({
     where: { id: courseId },

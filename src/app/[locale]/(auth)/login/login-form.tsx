@@ -19,99 +19,146 @@ interface SchoolBranding {
 }
 
 /**
- * Modern 3D isometric architectural portal sculpture.
- * Clean geometric lighting facets matching the aesthetic of modern design references.
+ * Modern stylized Lantern of Knowledge illustration ("Lentera Pengetahuan").
+ * Symbolizes enlightenment, education, and the spark of learning ("menyalakan api").
  */
-function IsometricSculpture() {
+function LanternIllustration() {
   return (
     <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-square mx-auto flex items-center justify-center my-auto py-2 select-none pointer-events-none">
       <svg
-        viewBox="0 0 400 400"
+        viewBox="0 0 360 380"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full drop-shadow-2xl"
+        className="w-full h-full drop-shadow-xl"
         aria-hidden="true"
       >
         <defs>
-          <linearGradient id="topFacet" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#f8fafc" />
-            <stop offset="100%" stopColor="#e2e8f0" />
+          {/* Radial aura of knowledge flame */}
+          <radialGradient id="lanternGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#FF8928" stopOpacity="0.35" />
+            <stop offset="50%" stopColor="#ea580c" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#002446" stopOpacity="0" />
+          </radialGradient>
+
+          {/* Flame outer and inner gradients */}
+          <linearGradient id="flameOuter" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#fef08a" />
+            <stop offset="35%" stopColor="#fb923c" />
+            <stop offset="100%" stopColor="#ea580c" />
           </linearGradient>
-          <linearGradient id="leftFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+
+          <linearGradient id="flameInner" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="60%" stopColor="#fef08a" />
+            <stop offset="100%" stopColor="#f59e0b" />
+          </linearGradient>
+
+          {/* Metallic / Glass gradients */}
+          <linearGradient id="lanternMetal" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#cbd5e1" />
-            <stop offset="100%" stopColor="#94a3b8" />
-          </linearGradient>
-          <linearGradient id="rightFacet" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#64748b" />
-            <stop offset="100%" stopColor="#475569" />
-          </linearGradient>
-          <linearGradient id="innerTop" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#475569" />
+            <stop offset="40%" stopColor="#64748b" />
             <stop offset="100%" stopColor="#334155" />
           </linearGradient>
-          <linearGradient id="innerRight" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#94a3b8" />
-            <stop offset="100%" stopColor="#64748b" />
+
+          <linearGradient id="lanternBrass" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fed7aa" />
+            <stop offset="50%" stopColor="#fb923c" />
+            <stop offset="100%" stopColor="#c2410c" />
           </linearGradient>
-          <radialGradient id="shadowGradient" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#001428" stopOpacity="0.6" />
+
+          <linearGradient id="glassChamber" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+            <stop offset="30%" stopColor="#ffffff" stopOpacity="0.04" />
+            <stop offset="70%" stopColor="#ffffff" stopOpacity="0.02" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.12" />
+          </linearGradient>
+
+          <radialGradient id="groundShadow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#001428" stopOpacity="0.7" />
             <stop offset="100%" stopColor="#001428" stopOpacity="0" />
           </radialGradient>
         </defs>
 
         {/* Ambient Ground Shadow */}
-        <ellipse cx="200" cy="350" rx="140" ry="24" fill="url(#shadowGradient)" />
+        <ellipse cx="180" cy="350" rx="90" ry="14" fill="url(#groundShadow)" />
 
-        {/* Outer Isometric Structure */}
-        {/* Top Surface */}
-        <path
-          d="M 200 60 L 320 130 L 200 200 L 80 130 Z"
-          fill="url(#topFacet)"
-        />
+        {/* Radiating Light Orbits / Illumination Rings */}
+        <circle cx="180" cy="225" r="75" stroke="#FF8928" strokeOpacity="0.22" strokeWidth="1" strokeDasharray="4 6" />
+        <circle cx="180" cy="225" r="115" stroke="#FF8928" strokeOpacity="0.12" strokeWidth="1" strokeDasharray="6 8" />
 
-        {/* Left Surface */}
-        <path
-          d="M 80 130 L 200 200 L 200 330 L 80 260 Z"
-          fill="url(#leftFacet)"
-        />
+        {/* Warm Ambient Glow Aura */}
+        <circle cx="180" cy="225" r="95" fill="url(#lanternGlow)" />
 
-        {/* Right Surface */}
+        {/* Glass Chamber */}
         <path
-          d="M 200 200 L 320 130 L 320 260 L 200 330 Z"
-          fill="url(#rightFacet)"
+          d="M 132 150 L 122 284 H 238 L 228 150 Z"
+          fill="url(#glassChamber)"
+          stroke="rgba(255,255,255,0.12)"
+          strokeWidth="1.5"
         />
 
-        {/* Hollow Core / Interior Cutout (Portal) */}
-        {/* Inner Floor */}
+        {/* Glass Specular Highlights */}
         <path
-          d="M 160 177 L 240 130 L 200 107 L 120 153 Z"
-          fill="url(#innerTop)"
+          d="M 142 155 L 132 278"
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+        <path
+          d="M 148 158 L 140 274"
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
         />
 
-        {/* Inner Left Wall */}
+        {/* Candle / Oil Pillar Core */}
+        <rect x="172" y="252" width="16" height="32" rx="4" fill="url(#lanternMetal)" />
+        <line x1="180" y1="252" x2="180" y2="242" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+
+        {/* Outer Warm Flame */}
         <path
-          d="M 160 177 L 200 200 L 200 250 L 160 227 Z"
-          fill="#334155"
+          d="M 180 185 C 195 205 201 220 201 230 C 201 242 192 249 180 249 C 168 249 159 242 159 230 C 159 220 165 205 180 185 Z"
+          fill="url(#flameOuter)"
+          className="filter drop-shadow-[0_0_8px_rgba(255,137,40,0.6)]"
         />
 
-        {/* Inner Right Wall */}
+        {/* Inner Bright Flame Core */}
         <path
-          d="M 200 200 L 240 177 L 240 227 L 200 250 Z"
-          fill="url(#innerRight)"
+          d="M 180 204 C 188 217 191 226 191 233 C 191 240 186 245 180 245 C 174 245 169 240 169 233 C 169 226 172 217 180 204 Z"
+          fill="url(#flameInner)"
         />
 
-        {/* Nested Inner Cube Feature */}
+        {/* Rising Luminous Embers */}
+        <circle cx="177" cy="172" r="2.2" fill="#fef08a" opacity="0.85" />
+        <circle cx="185" cy="160" r="2.8" fill="#fed7aa" opacity="0.9" />
+        <circle cx="174" cy="148" r="1.8" fill="#fed7aa" opacity="0.75" />
+        <circle cx="184" cy="138" r="2" fill="#fde68a" opacity="0.6" />
+
+        {/* Lantern Vertical Struts / Pillars */}
+        <line x1="130" y1="150" x2="120" y2="284" stroke="url(#lanternMetal)" strokeWidth="4.5" strokeLinecap="round" />
+        <line x1="230" y1="150" x2="240" y2="284" stroke="url(#lanternMetal)" strokeWidth="4.5" strokeLinecap="round" />
+        <line x1="180" y1="150" x2="180" y2="284" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" strokeDasharray="3 3" />
+
+        {/* Base Pedestal Platform */}
+        <path d="M 124 308 L 132 284 H 228 L 236 308 Z" fill="url(#lanternMetal)" />
+        <rect x="110" y="308" width="140" height="14" rx="7" fill="url(#lanternMetal)" />
+        <rect x="118" y="318" width="124" height="10" rx="5" fill="#1e293b" />
+        <rect x="146" y="284" width="68" height="4" rx="2" fill="url(#lanternBrass)" />
+
+        {/* Canopy / Architectural Roof */}
+        <path d="M 106 150 L 136 108 H 224 L 254 150 Z" fill="url(#lanternMetal)" />
+        <rect x="100" y="146" width="160" height="7" rx="3.5" fill="url(#lanternBrass)" />
+        <path d="M 148 108 L 162 82 H 198 L 212 108 Z" fill="#334155" />
+        <rect x="144" y="106" width="72" height="4" rx="2" fill="url(#lanternBrass)" />
+
+        {/* Top Finial & Suspension Ring */}
+        <circle cx="180" cy="76" r="8" fill="url(#lanternBrass)" />
         <path
-          d="M 200 170 L 230 187 L 200 204 L 170 187 Z"
-          fill="url(#topFacet)"
-        />
-        <path
-          d="M 170 187 L 200 204 L 200 240 L 170 223 Z"
-          fill="url(#leftFacet)"
-        />
-        <path
-          d="M 200 204 L 230 187 L 230 223 L 200 240 Z"
-          fill="url(#rightFacet)"
+          d="M 166 68 C 166 48 194 48 194 68"
+          stroke="url(#lanternBrass)"
+          strokeWidth="4.5"
+          strokeLinecap="round"
+          fill="none"
         />
       </svg>
     </div>
@@ -219,8 +266,8 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
             </div>
           </div>
 
-          {/* Center: Tactile 3D Isometric Architectural Visual */}
-          <IsometricSculpture />
+          {/* Center: Lantern of Knowledge Illustration */}
+          <LanternIllustration />
 
           {/* Bottom Card (Sisi Kiri): Info Pengembang & Platform */}
           <div className="relative z-10 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 sm:p-5">

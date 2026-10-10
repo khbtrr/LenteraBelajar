@@ -11,6 +11,7 @@ declare module 'next-auth' {
     schoolId: string | null;
     mustChangePassword: boolean;
     locale: string;
+    sessionVersion: number;
   }
   interface Session {
     user: {
@@ -21,16 +22,33 @@ declare module 'next-auth' {
       schoolId: string | null;
       mustChangePassword: boolean;
       locale: string;
+      sessionVersion: number;
     };
   }
 }
 
 import { headers } from 'next/headers';
-import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/rate-limit';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
+import { recordFailedPassword } from '@/lib/login-security';
 import { recordAuditLog } from '@/lib/audit-log';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    async jwt(args) {
+      const shared = authConfig.callbacks?.jwt;
+      const token = shared ? await shared(args) : args.token;
+      if (!token || args.user) return token;
+      if (typeof token.sub !== 'string') return null;
+      const account = await db.user.findUnique({ where: { id: token.sub }, select: {
+        isActive: true, sessionVersion: true, role: true, schoolId: true, mustChangePassword: true, locale: true,
+      } });
+      if (!account?.isActive || account.sessionVersion !== token.sessionVersion) return null;
+      return { ...token, role: account.role, schoolId: account.schoolId, mustChangePassword: account.mustChangePassword, locale: account.locale };
+    },
+  },
   providers: [
     Credentials({
       name: 'credentials',
@@ -53,7 +71,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         // 1. IP Rate Limiting: Max 10 requests per minute
-        const rateLimit = checkRateLimit(`login:${ipAddress}`, 10, 60 * 1000);
+        const rateLimit = await checkSharedRateLimit(`login:${ipAddress}`, 10, 60 * 1000);
         if (!rateLimit.success) {
           await recordAuditLog({
             action: 'LOGIN_FAILED',
@@ -107,54 +125,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
 
         if (!isPasswordValid) {
-          const newFailedAttempts = (user.failedLoginAttempts || 0) + 1;
-          const shouldLock = newFailedAttempts >= 5;
-
-          if (shouldLock) {
-            const currentLockoutCount = (user.lockoutCount || 0) + 1;
-            // Progressive lockout: 3rd+ lockout -> 60 minutes, otherwise 15 minutes
-            const lockoutMinutes = currentLockoutCount >= 3 ? 60 : 15;
-            const lockedUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
-
-            await db.user.update({
-              where: { id: user.id },
-              data: {
-                failedLoginAttempts: newFailedAttempts,
-                lockoutCount: currentLockoutCount,
-                lockedUntil,
-              },
-            });
-
-            await recordAuditLog({
-              action: 'ACCOUNT_LOCKED',
-              userId: user.id,
-              userEmail: user.email,
-              ipAddress,
-              userAgent,
-              details: `Account locked for ${lockoutMinutes}m after 5 failed attempts (lockout #${currentLockoutCount})`,
-            });
-
-            throw new Error(`ACCOUNT_LOCKED:${lockoutMinutes}`);
-          } else {
-            await db.user.update({
-              where: { id: user.id },
-              data: {
-                failedLoginAttempts: newFailedAttempts,
-              },
-            });
-
-            await recordAuditLog({
-              action: 'LOGIN_FAILED',
-              userId: user.id,
-              userEmail: user.email,
-              ipAddress,
-              userAgent,
-              details: `Invalid password. Attempt ${newFailedAttempts}/5`,
-            });
-
-            const remainingAttempts = 5 - newFailedAttempts;
-            throw new Error(`INVALID_CREDENTIALS:${remainingAttempts}`);
-          }
+          const failure = await recordFailedPassword(user.id);
+          await recordAuditLog({
+            action: failure.lockoutMinutes ? 'ACCOUNT_LOCKED' : 'LOGIN_FAILED',
+            userId: user.id, userEmail: user.email, ipAddress, userAgent,
+            details: `Invalid password. Attempt ${failure.failed}/5`,
+          });
+          if (failure.lockoutMinutes) throw new Error(`ACCOUNT_LOCKED:${failure.lockoutMinutes}`);
+          throw new Error(`INVALID_CREDENTIALS:${Math.max(0, 5 - failure.failed)}`);
         }
 
         // 5. Success: Reset failure count and update last login
@@ -185,6 +163,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           schoolId: user.schoolId,
           mustChangePassword: user.mustChangePassword,
           locale: user.locale,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),

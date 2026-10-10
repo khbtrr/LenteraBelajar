@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { compare, hash } from 'bcryptjs';
-import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/rate-limit';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
 import { validatePassword } from '@/lib/password-policy';
 import { recordAuditLog } from '@/lib/audit-log';
 
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
     const userAgent = request.headers.get('user-agent') || '';
 
     // Rate Limiting: Max 20 requests per minute
-    const rateLimit = checkRateLimit(`change-password:${ipAddress}`, 20, 60 * 1000);
+    const rateLimit = await checkSharedRateLimit(`change-password:${ipAddress}`, 20, 60 * 1000);
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: `Terlalu banyak permintaan. Harap tunggu ${rateLimit.resetInSeconds} detik.` },
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await auth();
+    const session = await getServerSession({ allowPasswordChange: true });
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
       data: {
         passwordHash: hashedNewPassword,
         mustChangePassword: false,
+        sessionVersion: { increment: 1 },
       },
     });
 

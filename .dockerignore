@@ -3,5 +3,10 @@ node_modules
 .git
 .env
 .env.local
+.env*.local
+.qa
+playwright-report
+test-results
+skills
 uploads
 *.md

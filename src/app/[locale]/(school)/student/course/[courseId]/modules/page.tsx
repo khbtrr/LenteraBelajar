@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { getCourseById } from '@/lib/actions/course';
 import { getCourseModules } from '@/lib/actions/module';

@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { getSupervisorDashboardData } from '@/lib/actions/supervisor-analytics';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

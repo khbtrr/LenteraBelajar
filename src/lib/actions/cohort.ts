@@ -5,12 +5,15 @@ import { requireSchool, requireRole, hashPassword } from '@/lib/auth-utils';
 import { generateDefaultPassword } from '@/lib/password-policy';
 import { EnrollmentMethod, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { assertCourseAccess, assertSchoolResource, assertSchoolStudent, assertAcademicReferences } from '@/lib/access';
 
 export async function getCohorts(options?: { activeOnly?: boolean; allSchools?: boolean }) {
+  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
   const session = await requireSchool();
+  const allowAllSchools = Boolean(options?.allSchools && session.user.role === 'SUPER_ADMIN');
   return db.cohort.findMany({
     where: {
-      ...(options?.allSchools ? {} : { schoolId: session.schoolId }),
+      ...(allowAllSchools ? {} : { schoolId: session.schoolId }),
       ...(options?.activeOnly ? { isActive: true } : {}),
     },
     include: {
@@ -39,6 +42,7 @@ export async function getCohorts(options?: { activeOnly?: boolean; allSchools?: 
 }
 
 export async function getCohortById(id: string) {
+  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
   const session = await requireSchool();
   return db.cohort.findUnique({
     where: { id, schoolId: session.schoolId },
@@ -86,6 +90,7 @@ export async function createCohort(name: string, homeroomTeacherId?: string | nu
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
+  await assertAcademicReferences(schoolId, { teacherId: homeroomTeacherId });
 
   const trimmedName = name.trim();
   if (!trimmedName) throw new Error('Cohort name cannot be empty');
@@ -130,6 +135,7 @@ export async function updateCohort(id: string, name: string, homeroomTeacherId?:
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
+  await assertAcademicReferences(schoolId, { teacherId: homeroomTeacherId });
 
   const trimmedName = name.trim();
   if (!trimmedName) throw new Error('Cohort name cannot be empty');
@@ -299,7 +305,8 @@ export async function bulkCreateCohorts(cohortNames: string[]): Promise<BulkCrea
 }
 
 export async function addStudentToCohort(cohortId: string, userId: string) {
-  await requireRole('ADMIN', 'SUPER_ADMIN');
+  const { resource } = await assertSchoolResource('cohort', cohortId);
+  await assertSchoolStudent(userId, resource.schoolId);
 
   const membership = await db.cohortMember.upsert({
     where: {
@@ -320,7 +327,7 @@ export async function addStudentToCohort(cohortId: string, userId: string) {
 }
 
 export async function removeStudentFromCohort(cohortId: string, userId: string) {
-  await requireRole('ADMIN', 'SUPER_ADMIN');
+  await assertSchoolResource('cohort', cohortId);
 
   const deleted = await db.cohortMember.delete({
     where: {
@@ -336,10 +343,11 @@ export async function removeStudentFromCohort(cohortId: string, userId: string) 
 }
 
 export async function getStudentsInSchool(options?: { allSchools?: boolean }) {
+  await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
   const session = await requireSchool();
   return db.user.findMany({
     where: {
-      ...(options?.allSchools ? {} : { schoolId: session.schoolId }),
+      ...(options?.allSchools && session.user.role === 'SUPER_ADMIN' ? {} : { schoolId: session.schoolId }),
       role: Role.STUDENT,
       isActive: true,
     },
@@ -362,8 +370,19 @@ export async function getStudentsInSchool(options?: { allSchools?: boolean }) {
   });
 }
 
+export async function getEnrollmentCandidates(courseId: string) {
+  const { course } = await assertCourseAccess(courseId, 'manage');
+  const schoolFilter = course.isCrossSchool ? {} : { schoolId: course.schoolId };
+  const [cohorts, students] = await Promise.all([
+    db.cohort.findMany({ where: { ...schoolFilter, isActive: true }, select: { id: true, name: true, school: { select: { id: true, name: true, code: true } }, _count: { select: { members: true } } }, orderBy: { name: 'asc' } }),
+    db.user.findMany({ where: { ...schoolFilter, role: 'STUDENT', isActive: true }, select: { id: true, name: true, email: true, nis: true, school: { select: { id: true, name: true, code: true } } }, orderBy: { name: 'asc' } }),
+  ]);
+  return { cohorts, students };
+}
+
 export async function bulkAddStudentsToCohort(cohortId: string, userIds: string[]) {
-  await requireRole('ADMIN', 'SUPER_ADMIN');
+  const { resource } = await assertSchoolResource('cohort', cohortId);
+  for (const userId of userIds) await assertSchoolStudent(userId, resource.schoolId);
 
   for (const userId of userIds) {
     await db.cohortMember.upsert({
@@ -386,7 +405,7 @@ export async function bulkAddStudentsToCohort(cohortId: string, userIds: string[
 }
 
 export async function bulkRemoveStudentsFromCohort(cohortId: string, userIds: string[]) {
-  await requireRole('ADMIN', 'SUPER_ADMIN');
+  await assertSchoolResource('cohort', cohortId);
 
   const result = await db.cohortMember.deleteMany({
     where: {
@@ -409,6 +428,15 @@ export async function promoteCohortStudents(data: {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
+  const { resource: source } = await assertSchoolResource('cohort', data.sourceCohortId);
+  if (source.schoolId !== schoolId) throw new Error('Akses ditolak: Rombel bukan sekolah aktif');
+  if (data.targetCohortId) {
+    const { resource: target } = await assertSchoolResource('cohort', data.targetCohortId);
+    if (target.schoolId !== source.schoolId) throw new Error('Akses ditolak: Sekolah rombel berbeda');
+  }
+  const sourceCount = await db.cohortMember.count({ where: { cohortId: data.sourceCohortId, userId: { in: [...new Set(data.studentIds)] } } });
+  if (sourceCount !== new Set(data.studentIds).size) throw new Error('Akses ditolak: Siswa bukan anggota rombel asal');
+  for (const userId of data.studentIds) await assertSchoolStudent(userId, source.schoolId);
 
   if (!data.studentIds || data.studentIds.length === 0) {
     throw new Error('Pilih minimal satu siswa untuk dipromosikan');
@@ -483,6 +511,11 @@ export async function graduateCohortStudents(data: {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
+  const { resource } = await assertSchoolResource('cohort', data.cohortId);
+  if (resource.schoolId !== schoolId) throw new Error('Akses ditolak: Rombel bukan sekolah aktif');
+  const memberCount = await db.cohortMember.count({ where: { cohortId: data.cohortId, userId: { in: [...new Set(data.studentIds)] } } });
+  if (memberCount !== new Set(data.studentIds).size) throw new Error('Akses ditolak: Siswa bukan anggota rombel');
+  for (const userId of data.studentIds) await assertSchoolStudent(userId, resource.schoolId);
 
   if (!data.studentIds || data.studentIds.length === 0) {
     throw new Error('Pilih minimal satu siswa yang akan diluluskan');
@@ -506,6 +539,7 @@ export async function graduateCohortStudents(data: {
         },
         data: {
           isActive: false,
+          sessionVersion: { increment: 1 },
         },
       });
     }
@@ -522,7 +556,7 @@ export async function graduateCohortStudents(data: {
 }
 
 export async function syncCohortToCourse(courseId: string, cohortId: string) {
-  await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
+  const { course } = await assertCourseAccess(courseId, 'manage');
 
   // Get all members of the cohort
   const cohort = await db.cohort.findUnique({
@@ -533,6 +567,8 @@ export async function syncCohortToCourse(courseId: string, cohortId: string) {
   });
 
   if (!cohort) throw new Error('Cohort not found');
+  if (!course.isCrossSchool && cohort.schoolId !== course.schoolId) throw new Error('Akses ditolak: Sekolah rombel berbeda');
+  for (const member of cohort.members) await assertSchoolStudent(member.userId, course.schoolId, course.isCrossSchool);
 
   let enrolledCount = 0;
   for (const member of cohort.members) {
@@ -563,7 +599,8 @@ export async function syncCohortToCourse(courseId: string, cohortId: string) {
 }
 
 export async function manualEnrollStudent(courseId: string, userId: string) {
-  await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
+  const { course } = await assertCourseAccess(courseId, 'manage');
+  await assertSchoolStudent(userId, course.schoolId, course.isCrossSchool);
 
   const enrollment = await db.enrollment.upsert({
     where: {
@@ -585,7 +622,7 @@ export async function manualEnrollStudent(courseId: string, userId: string) {
 }
 
 export async function removeEnrollment(courseId: string, userId: string) {
-  await requireRole('ADMIN', 'TEACHER', 'SUPER_ADMIN');
+  await assertCourseAccess(courseId, 'manage');
 
   const deleted = await db.enrollment.delete({
     where: {
@@ -616,6 +653,7 @@ export async function batchPromoteExcel(data: {
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
   const targetSchoolId = schoolId as string;
+  for (const id of data.sourceCohortIds ?? []) await assertSchoolResource('cohort', id);
 
   const validRows = data.rows.filter(
     (r) => r.nis && r.nis.trim() && r.newCohortName && r.newCohortName.trim()
@@ -682,11 +720,11 @@ export async function batchPromoteExcel(data: {
     // 1. Siswa Mutasi Keluar
     if (transferOutUserIds.length > 0) {
       await tx.cohortMember.deleteMany({
-        where: { userId: { in: transferOutUserIds } },
+        where: { userId: { in: transferOutUserIds }, cohort: { schoolId } },
       });
       await tx.user.updateMany({
         where: { id: { in: transferOutUserIds }, schoolId },
-        data: { isActive: false },
+        data: { isActive: false, sessionVersion: { increment: 1 } },
       });
     }
 
@@ -794,6 +832,7 @@ export async function batchPromoteExcel(data: {
               where: {
                 userId: item.userId,
                 cohortId: { not: targetCohortId },
+                cohort: { schoolId },
               },
             });
           }

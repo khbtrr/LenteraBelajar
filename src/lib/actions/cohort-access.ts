@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { AccessItemType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { assertCourseAccess, assertModuleAccess, assertItemAccess } from '@/lib/access';
 
 export interface ItemCohortAccessInfo {
   itemId: string;
@@ -40,83 +41,21 @@ export async function checkStudentItemAccess({
   itemId: string;
   courseId?: string;
 }): Promise<boolean> {
-  // 1. Fetch cohort access entries for this item
-  let allowedCohortIds: string[] = [];
-
-  if (itemType === 'QUIZ') {
-    const access = await db.quizCohortAccess.findMany({
-      where: { quizId: itemId },
-      select: { cohortId: true },
-    });
-    allowedCohortIds = access.map((a) => a.cohortId);
-  } else if (itemType === 'ASSIGNMENT') {
-    const access = await db.assignmentCohortAccess.findMany({
-      where: { assignmentId: itemId },
-      select: { cohortId: true },
-    });
-    allowedCohortIds = access.map((a) => a.cohortId);
-  } else if (itemType === 'CONTENT') {
-    const access = await db.contentCohortAccess.findMany({
-      where: { contentId: itemId },
-      select: { cohortId: true },
-    });
-    allowedCohortIds = access.map((a) => a.cohortId);
+  const session = await requireAuth();
+  if (session.user.id !== userId) throw new Error('Akses ditolak: Identitas peserta tidak cocok');
+  try {
+    const access = await assertItemAccess(itemType, itemId);
+    return !courseId || courseId === access.course.id;
+  } catch {
+    return false;
   }
-
-  // If no cohort restrictions configured, it is open to all enrolled students
-  if (allowedCohortIds.length === 0) {
-    return true;
-  }
-
-  // 2. Check individual override
-  const override = await db.itemAccessOverride.findUnique({
-    where: {
-      itemType_itemId_userId: {
-        itemType,
-        itemId,
-        userId,
-      },
-    },
-  });
-
-  if (override) {
-    return true;
-  }
-
-  // 3. Check user cohort memberships
-  // User might have cohortId on Enrollment or in CohortMember
-  const [enrollment, cohortMemberships] = await Promise.all([
-    courseId
-      ? db.enrollment.findUnique({
-          where: { courseId_userId: { courseId, userId } },
-          select: { cohortId: true },
-        })
-      : db.enrollment.findFirst({
-          where: { userId, cohortId: { in: allowedCohortIds } },
-          select: { cohortId: true },
-        }),
-    db.cohortMember.findMany({
-      where: { userId, cohortId: { in: allowedCohortIds } },
-      select: { cohortId: true },
-    }),
-  ]);
-
-  if (enrollment?.cohortId && allowedCohortIds.includes(enrollment.cohortId)) {
-    return true;
-  }
-
-  if (cohortMemberships.length > 0) {
-    return true;
-  }
-
-  return false;
 }
 
 /**
  * Get all cohort access and override settings for a module's contents, quizzes, and assignments.
  */
 export async function getCohortAccessForModule(moduleId: string): Promise<ModuleAccessSettings> {
-  await requireAuth();
+  await assertModuleAccess(moduleId, 'roster');
 
   const moduleData = await db.module.findUnique({
     where: { id: moduleId },
@@ -232,9 +171,14 @@ export async function setCohortAccess(
   itemId: string,
   cohortIds: string[]
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const { course } = await assertItemAccess(itemType, itemId, 'manage');
 
   const uniqueCohortIds = Array.from(new Set(cohortIds));
+  const validCohorts = await db.cohort.count({ where: {
+    id: { in: uniqueCohortIds },
+    ...(course.isCrossSchool ? { enrollments: { some: { courseId: course.id } } } : { schoolId: course.schoolId }),
+  } });
+  if (validCohorts !== uniqueCohortIds.length) throw new Error('Akses ditolak: Rombel di luar course');
 
   await db.$transaction(async (tx) => {
     if (itemType === AccessItemType.QUIZ) {
@@ -275,7 +219,10 @@ export async function addStudentOverride(
   itemId: string,
   userId: string
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const { course } = await assertItemAccess(itemType, itemId, 'manage');
+  if (!await db.enrollment.findUnique({ where: { courseId_userId: { courseId: course.id, userId } } })) {
+    throw new Error('Akses ditolak: Siswa tidak terdaftar');
+  }
 
   const override = await db.itemAccessOverride.upsert({
     where: {
@@ -307,7 +254,7 @@ export async function removeStudentOverride(
   itemId: string,
   userId: string
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertItemAccess(itemType, itemId, 'manage');
 
   await db.itemAccessOverride.deleteMany({
     where: {
@@ -327,7 +274,7 @@ export async function removeStudentOverride(
  * Retrieve cohorts and students enrolled in or relevant to a course.
  */
 export async function getCourseCohortsAndStudents(courseId: string) {
-  await requireAuth();
+  await assertCourseAccess(courseId, 'roster');
 
   const course = await db.course.findUnique({
     where: { id: courseId },

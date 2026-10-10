@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireSchool } from '@/lib/auth-utils';
 import { AttendanceStatus } from '@prisma/client';
+import { loadCourseGrades } from '@/lib/course-grades';
 
 export interface LegerSubject {
   id: string;
@@ -358,6 +359,7 @@ export async function getCohortLegerData({
     else if (att.status === AttendanceStatus.ABSENT) stats.absent++;
   }
 
+  const courseGradeValues = new Map(await Promise.all(courseIds.map(async (courseId) => [courseId, await loadCourseGrades(courseId, studentIds)] as const)));
   // 5. Hitung Nilai Akhir Tiap Mapel untuk Setiap Siswa
   const studentRows: Omit<LegerStudentRow, 'rank'>[] = studentMembers.map((student) => {
     const subjectGrades: Record<string, number | null> = {};
@@ -374,9 +376,8 @@ export async function getCohortLegerData({
       if (aMap) aMap.forEach((val) => allComponentScores.push(val));
       if (mList) mList.forEach((val) => allComponentScores.push(val));
 
-      if (allComponentScores.length > 0) {
-        const sum = allComponentScores.reduce((acc, curr) => acc + curr, 0);
-        const avg = Math.round((sum / allComponentScores.length) * 10) / 10;
+      const avg = courseGradeValues.get(sub.id)?.scores.get(student.id)?.average ?? null;
+      if (avg !== null) {
         subjectGrades[sub.id] = avg;
         totalScore += avg;
         subjectsWithScoresCount++;

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { db } from '@/lib/db';

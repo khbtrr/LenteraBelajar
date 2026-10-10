@@ -55,11 +55,14 @@ export function StudentQuizLanding({ courseId, quiz, status }: { courseId: strin
   if (quizData) {
     return (
       <StudentQuizClient
+        key={quizData.attempt.id}
         courseId={courseId}
         quizId={quiz.id}
         initialAttempt={quizData.attempt}
         quizTitle={quizData.quizTitle}
         durationMinutes={quizData.durationMinutes}
+        endAt={quizData.endAt}
+        serverNow={quizData.serverNow}
         questions={quizData.questions}
         questionsPerPage={quizData.questionsPerPage}
         enableLockdown={quizData.enableLockdown}

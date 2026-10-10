@@ -37,7 +37,7 @@ export async function createSchoolAnnouncement(data: {
   expiresAt?: string | null;
   sendNotification?: boolean;
 }) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 
@@ -124,7 +124,7 @@ export async function updateSchoolAnnouncement(
     isActive?: boolean;
   }
 ) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 
@@ -149,7 +149,7 @@ export async function updateSchoolAnnouncement(
 }
 
 export async function toggleSchoolAnnouncementActive(id: string) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 
@@ -173,7 +173,7 @@ export async function toggleSchoolAnnouncementActive(id: string) {
 }
 
 export async function deleteSchoolAnnouncement(id: string) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
 

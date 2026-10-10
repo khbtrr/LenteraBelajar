@@ -3,109 +3,59 @@
 import { db } from '@/lib/db';
 import { requireRole, requireSchool } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
-import { AcademicYearStatus, CourseStatus } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 export async function getAcademicYears() {
   const session = await requireSchool();
-  return db.academicYear.findMany({
-    where: { schoolId: session.schoolId },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: { courses: true },
-      },
-    },
-  });
+  return db.academicYear.findMany({ where: { schoolId: session.schoolId }, orderBy: { createdAt: 'desc' }, include: { _count: { select: { courses: true } } } });
 }
 
-export async function createAcademicYear(data: {
-  name: string;
-  startDate: string;
-  endDate: string;
-  makeActive?: boolean;
-}) {
+async function archivePrevious(tx: Prisma.TransactionClient, schoolId: string, exceptId?: string) {
+  const years = await tx.academicYear.findMany({ where: { schoolId, status: 'ACTIVE', ...(exceptId ? { id: { not: exceptId } } : {}) }, select: { id: true } });
+  await tx.course.updateMany({ where: { schoolId, academicYearId: { in: years.map((year) => year.id) } }, data: { status: 'ARCHIVED' } });
+  await tx.academicYear.updateMany({ where: { id: { in: years.map((year) => year.id) } }, data: { status: 'ARCHIVED' } });
+}
+
+export async function createAcademicYear(data: { name: string; startDate: string; endDate: string; makeActive?: boolean }) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
-  if (!schoolId) throw new Error('No school selected');
-
-  if (data.makeActive) {
-    // Archive any currently active academic year and its courses
-    const activeYears = await db.academicYear.findMany({
-      where: { schoolId, status: AcademicYearStatus.ACTIVE },
-    });
-    for (const year of activeYears) {
-      await db.academicYear.update({
-        where: { id: year.id },
-        data: { status: AcademicYearStatus.ARCHIVED },
-      });
-      await db.course.updateMany({
-        where: { academicYearId: year.id },
-        data: { status: CourseStatus.ARCHIVED },
-      });
-    }
-  }
-
-  const newYear = await db.academicYear.create({
-    data: {
-      name: data.name,
-      startDate: new Date(data.startDate),
-      endDate: new Date(data.endDate),
-      status: data.makeActive ? AcademicYearStatus.ACTIVE : AcademicYearStatus.ACTIVE,
-      schoolId,
-    },
+  if (!schoolId) throw new Error('Sekolah tidak ditemukan');
+  const startDate = new Date(data.startDate), endDate = new Date(data.endDate);
+  if (!data.name.trim() || !Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || endDate <= startDate) throw new Error('Tanggal atau nama tahun ajaran tidak valid');
+  const year = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "School" WHERE "id" = ${schoolId} FOR UPDATE`;
+    if (data.makeActive) await archivePrevious(tx, schoolId);
+    return tx.academicYear.create({ data: { name: data.name.trim(), startDate, endDate, schoolId, status: data.makeActive ? 'ACTIVE' : 'PLANNED' } });
   });
-
   revalidatePath('/[locale]/admin/academic-years', 'page');
-  return newYear;
+  return year;
 }
 
 export async function setActiveAcademicYear(id: string) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
-  if (!schoolId) throw new Error('No school selected');
-
-  // Set previous active years to archived and archive their courses
-  const previousActive = await db.academicYear.findMany({
-    where: { schoolId, status: AcademicYearStatus.ACTIVE, id: { not: id } },
+  if (!schoolId) throw new Error('Sekolah tidak ditemukan');
+  const year = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "School" WHERE "id" = ${schoolId} FOR UPDATE`;
+    const target = await tx.academicYear.findUnique({ where: { id, schoolId } });
+    if (!target) throw new Error('Tahun ajaran tidak ditemukan');
+    await archivePrevious(tx, schoolId, id);
+    return tx.academicYear.update({ where: { id, schoolId }, data: { status: 'ACTIVE' } });
   });
-
-  for (const prev of previousActive) {
-    await db.academicYear.update({
-      where: { id: prev.id },
-      data: { status: AcademicYearStatus.ARCHIVED },
-    });
-    await db.course.updateMany({
-      where: { academicYearId: prev.id },
-      data: { status: CourseStatus.ARCHIVED },
-    });
-  }
-
-  // Activate the selected year
-  const updated = await db.academicYear.update({
-    where: { id, schoolId },
-    data: { status: AcademicYearStatus.ACTIVE },
-  });
-
   revalidatePath('/[locale]/admin/academic-years', 'page');
-  return updated;
+  return year;
 }
 
 export async function archiveAcademicYear(id: string) {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
-  if (!schoolId) throw new Error('No school selected');
-
-  const updated = await db.academicYear.update({
-    where: { id, schoolId },
-    data: { status: AcademicYearStatus.ARCHIVED },
+  if (!schoolId) throw new Error('Sekolah tidak ditemukan');
+  const year = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "School" WHERE "id" = ${schoolId} FOR UPDATE`;
+    const updated = await tx.academicYear.update({ where: { id, schoolId }, data: { status: 'ARCHIVED' } });
+    await tx.course.updateMany({ where: { academicYearId: id, schoolId }, data: { status: 'ARCHIVED' } });
+    return updated;
   });
-
-  // Archive all courses under this year automatically
-  await db.course.updateMany({
-    where: { academicYearId: id, schoolId },
-    data: { status: CourseStatus.ARCHIVED },
-  });
-
   revalidatePath('/[locale]/admin/academic-years', 'page');
-  return updated;
+  return year;
 }

@@ -296,7 +296,7 @@ export async function togglePlatformUserActive(userId: string) {
 
   const updated = await db.user.update({
     where: { id: userId },
-    data: { isActive: !user.isActive },
+    data: { isActive: !user.isActive, sessionVersion: { increment: 1 } },
     select: { id: true, isActive: true, name: true },
   });
 
@@ -322,6 +322,7 @@ export async function resetPlatformUserPassword(userId: string, newPassword: str
       passwordHash: hashedPassword,
       mustChangePassword: true,
       failedLoginAttempts: 0,
+      sessionVersion: { increment: 1 },
       lockedUntil: null,
     },
   });
@@ -410,7 +411,7 @@ export async function updateSuperAdminProfile(data: {
     data: {
       name: trimmedName,
       email: trimmedEmail,
-      ...(updatedPasswordHash ? { passwordHash: updatedPasswordHash } : {}),
+      ...(updatedPasswordHash ? { passwordHash: updatedPasswordHash, sessionVersion: { increment: 1 } } : {}),
     },
     select: {
       id: true,

@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { requireRole, verifyPassword, hashPassword } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { AcademicYearStatus } from '@prisma/client';
+import { assertFileReferences, bindFileReferences } from '@/lib/files';
 
 export async function getSchoolSettings() {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
@@ -56,6 +57,7 @@ export async function updateSchoolProfile(data: {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('Sekolah tidak ditemukan');
+  await assertFileReferences(data.logo);
 
   // Check code uniqueness if changed
   if (data.code) {
@@ -91,6 +93,7 @@ export async function updateSchoolProfile(data: {
   revalidatePath('/[locale]/student', 'layout');
   revalidatePath('/[locale]/login', 'page');
 
+  await bindFileReferences('LOGO', schoolId, data.logo);
   return updatedSchool;
 }
 
@@ -229,6 +232,7 @@ export async function updateAdminPassword(data: {
     where: { id: userId },
     data: {
       passwordHash: newHash,
+      sessionVersion: { increment: 1 },
       mustChangePassword: false,
     },
   });

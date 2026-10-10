@@ -3,7 +3,6 @@
 import { useSidebar } from '@/context/SidebarContext';
 import { Sidebar, type SidebarItem } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
-import Backdrop from '@/layout/Backdrop';
 
 interface AppLayoutProps {
   items: SidebarItem[];
@@ -36,7 +35,7 @@ export function AppLayout({
       : 'lg:ml-[88px]';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col lg:flex-row">
+    <div data-lms-shell className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col lg:flex-row">
       {/* Responsive TailAdmin Sidebar */}
       <Sidebar
         items={items}
@@ -46,7 +45,6 @@ export function AppLayout({
       />
       
       {/* Mobile Drawer Backdrop */}
-      <Backdrop />
 
       {/* Main Content Area */}
       <div

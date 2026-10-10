@@ -3,7 +3,8 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
-import { awardXp } from './gamification';
+import { awardXp } from '@/lib/gamification';
+import { assertCourseAccess } from '@/lib/access';
 
 export interface ForumCommentItem {
   id: string;
@@ -43,7 +44,7 @@ export async function getCourseForumThreads(
   courseId: string,
   moduleId?: string
 ): Promise<ForumThreadItem[]> {
-  await requireAuth();
+  await assertCourseAccess(courseId);
 
   const whereClause: any = { courseId };
   if (moduleId && moduleId !== 'ALL') {
@@ -112,6 +113,7 @@ export async function getForumThreadDetail(threadId: string) {
   });
 
   if (!thread) return null;
+  await assertCourseAccess(thread.courseId);
 
   // Build nested comments tree
   const commentMap = new Map<string, any>();
@@ -159,7 +161,11 @@ export async function createForumThread(data: {
   title: string;
   content: string;
 }) {
-  const session = await requireAuth();
+  const { session } = await assertCourseAccess(data.courseId);
+  if (session.user.role === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
+  if (data.moduleId && data.moduleId !== 'ALL' && !await db.module.findFirst({ where: { id: data.moduleId, courseId: data.courseId } })) {
+    throw new Error('Akses ditolak: Modul bukan bagian course');
+  }
 
   if (!data.title || !data.title.trim()) {
     throw new Error('Judul diskusi tidak boleh kosong');
@@ -205,7 +211,8 @@ export async function createForumThread(data: {
         10,
         `Memulai topik diskusi: "${data.title.slice(0, 30)}..."`,
         'FORUM',
-        data.courseId
+        data.courseId,
+        `FORUM_THREAD:${thread.id}`
       );
     } catch (xpErr) {
       console.error('Failed to award XP for forum thread:', xpErr);
@@ -236,6 +243,11 @@ export async function addForumComment(data: {
   });
 
   if (!thread) throw new Error('Topik diskusi tidak ditemukan');
+  await assertCourseAccess(thread.courseId);
+  if (session.user.role === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
+  if (data.parentId && !await db.forumComment.findFirst({ where: { id: data.parentId, threadId: data.threadId } })) {
+    throw new Error('Balasan induk bukan bagian diskusi ini');
+  }
 
   const comment = await db.forumComment.create({
     data: {
@@ -277,7 +289,8 @@ export async function addForumComment(data: {
         10,
         'Memberikan tanggapan diskusi di forum',
         'FORUM',
-        thread.courseId
+        thread.courseId,
+        `FORUM_REPLY:${comment.id}`
       );
     } catch (xpErr) {
       console.error('Failed to award XP for forum comment:', xpErr);
@@ -298,6 +311,11 @@ export async function markCommentAsAnswer(threadId: string, commentId: string) {
   });
 
   if (!thread) throw new Error('Topik diskusi tidak ditemukan');
+  await assertCourseAccess(thread.courseId);
+  if (session.user.role === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
+  if (!await db.forumComment.findFirst({ where: { id: commentId, threadId } })) {
+    throw new Error('Jawaban bukan bagian diskusi ini');
+  }
 
   const canMark =
     session.user.id === thread.course.teacherId ||
@@ -339,6 +357,7 @@ export async function togglePinForumThread(threadId: string) {
   });
 
   if (!thread) throw new Error('Diskusi tidak ditemukan');
+  await assertCourseAccess(thread.courseId, 'manage');
 
   const updated = await db.forumThread.update({
     where: { id: threadId },
@@ -359,6 +378,8 @@ export async function deleteForumThread(threadId: string) {
   });
 
   if (!thread) throw new Error('Diskusi tidak ditemukan');
+  await assertCourseAccess(thread.courseId);
+  if (session.user.role === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
 
   const canDelete =
     thread.authorId === session.user.id ||
@@ -391,6 +412,8 @@ export async function deleteForumComment(commentId: string) {
   });
 
   if (!comment) throw new Error('Komentar tidak ditemukan');
+  await assertCourseAccess(comment.thread.courseId);
+  if (session.user.role === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
 
   const canDelete =
     comment.authorId === session.user.id ||

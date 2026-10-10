@@ -33,6 +33,7 @@ import {
   Trash2,
   Archive,
   ArchiveRestore,
+  FileArchive,
 } from 'lucide-react';
 import {
   createCourse,
@@ -41,8 +42,9 @@ import {
   deleteCourse,
 } from '@/lib/actions/course';
 import { CourseStatus } from '@prisma/client';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useDialog } from '@/context/DialogContext';
+import { MoodleImportModal } from '@/components/moodle/moodle-import-modal';
 
 interface CourseItem {
   id: string;
@@ -87,11 +89,13 @@ export function AdminCoursesClient({
   teachers: Teacher[];
 }) {
   const t = useTranslations('adminCourses');
+  const router = useRouter();
   const { showAlert, showConfirm } = useDialog();
   const [courses, setCourses] = useState<CourseItem[]>(initialCourses);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isMoodleModalOpen, setIsMoodleModalOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -325,12 +329,22 @@ export function AdminCoursesClient({
           </select>
         </div>
 
-        <Button
-          onClick={() => setIsCreateOpen(true)}
-          className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white flex items-center gap-2 w-full sm:w-auto justify-center"
-        >
-          <Plus className="h-4 w-4" /> {t('btnCreateCourse')}
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => setIsMoodleModalOpen(true)}
+            className="border-slate-300 text-[#002446] hover:bg-slate-50 flex items-center gap-2 w-full sm:w-auto justify-center"
+          >
+            <FileArchive className="h-4 w-4 text-[#FF8928]" />
+            <span>Import Moodle (.mbz)</span>
+          </Button>
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-[#002446] hover:bg-[#002446]/90 dark:bg-brand-600 dark:hover:bg-brand-700 text-white flex items-center gap-2 w-full sm:w-auto justify-center"
+          >
+            <Plus className="h-4 w-4" /> {t('btnCreateCourse')}
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -737,6 +751,20 @@ export function AdminCoursesClient({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Import Moodle (.mbz) */}
+      <MoodleImportModal
+        isOpen={isMoodleModalOpen}
+        onClose={() => setIsMoodleModalOpen(false)}
+        targetMode="NEW"
+        schoolId={initialCourses[0]?.school?.id}
+        teachers={teachers}
+        academicYears={academicYears}
+        categories={categories}
+        onSuccess={() => {
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

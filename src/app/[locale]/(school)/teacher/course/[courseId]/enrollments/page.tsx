@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getCourseById } from '@/lib/actions/course';
-import { getCohorts, getStudentsInSchool } from '@/lib/actions/cohort';
+import { getEnrollmentCandidates } from '@/lib/actions/cohort';
+import { requireAuth } from '@/lib/auth-utils';
 import { CourseEnrollmentsClient } from './client';
 import { getTranslations } from 'next-intl/server';
 
@@ -16,13 +17,10 @@ export default async function CourseEnrollmentsPage({
     notFound();
   }
 
-  const isCrossSchool = Boolean(course.isCrossSchool);
-
-  const [cohorts, students, t] = await Promise.all([
-    getCohorts({ activeOnly: true, allSchools: isCrossSchool }),
-    getStudentsInSchool({ allSchools: isCrossSchool }),
-    getTranslations('teacherEnrollments'),
-  ]);
+  const session = await requireAuth();
+  const isReadOnly = session.user.role === 'SUPERVISOR';
+  const candidates = isReadOnly ? { cohorts: [], students: [] } : await getEnrollmentCandidates(courseId);
+  const t = await getTranslations('teacherEnrollments');
 
   return (
     <div className="space-y-6">
@@ -40,8 +38,9 @@ export default async function CourseEnrollmentsPage({
 
       <CourseEnrollmentsClient
         course={course}
-        availableCohorts={cohorts}
-        availableStudents={students}
+        availableCohorts={candidates.cohorts}
+        availableStudents={candidates.students}
+        isReadOnly={isReadOnly}
       />
     </div>
   );

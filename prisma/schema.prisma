@@ -54,6 +54,7 @@ model User {
   avatar           String?
   isActive         Boolean  @default(true)
   mustChangePassword Boolean @default(false)
+  sessionVersion     Int     @default(0)
   locale           String   @default("id")
   schoolId         String?
   failedLoginAttempts Int    @default(0)
@@ -138,6 +139,7 @@ model AcademicYear {
 }
 
 enum AcademicYearStatus {
+  PLANNED
   ACTIVE
   ARCHIVED
 }
@@ -208,7 +210,7 @@ model CourseRequest {
   requesterId     String
   status          CourseRequestStatus  @default(PENDING)
   adminNote       String?
-  courseId         String?
+  courseId         String? @unique
   schoolId        String
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
@@ -391,6 +393,7 @@ model QuizAttempt {
   questionSnapshot  Json?     // Snapshot of randomly selected questions for bank-soal mode
   tabSwitchCount    Int       @default(0)
   isTerminated      Boolean   @default(false)
+  isVoided          Boolean   @default(false)
   terminationReason String?
   extraTimeMinutes  Int       @default(0)
   lastActiveAt      DateTime  @default(now())
@@ -471,6 +474,8 @@ model Grade {
   maxScore  Float     @default(100)
   type      GradeType
   sourceId  String?
+  resourceKey String?
+  includeInAverage Boolean @default(false)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -479,6 +484,7 @@ model Grade {
 
   @@index([courseId])
   @@index([userId])
+  @@unique([courseId, userId, resourceKey])
 }
 
 enum GradeType {
@@ -689,6 +695,7 @@ model XpLog {
   amount     Int
   reason     String
   actionType String
+  eventKey   String? @unique
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -708,6 +715,36 @@ model LessonProgress {
 
   @@unique([userId, contentId])
   @@index([userId, courseId])
+}
+
+model FileAsset {
+  id          String @id @default(cuid())
+  filename    String @unique
+  uploaderId  String?
+  schoolId    String?
+  contentType String
+  size        Int
+  sha256      String?
+  state       String @default("STAGED")
+  createdAt   DateTime @default(now())
+  bindings    FileBinding[]
+}
+
+model FileBinding {
+  id           String @id @default(cuid())
+  assetId      String
+  resourceType String
+  resourceId   String
+  asset        FileAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  @@unique([assetId, resourceType, resourceId])
+  @@index([resourceType, resourceId])
+}
+
+model RateLimitBucket {
+  key        String @id
+  timestamps DateTime[] @db.Timestamptz(3)
+  expiresAt  DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
 }
 
 enum CalendarEventScope {

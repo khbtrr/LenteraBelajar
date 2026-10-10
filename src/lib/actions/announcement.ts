@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
+import { assertCourseAccess } from '@/lib/access';
 
 export async function createCourseAnnouncement(data: {
   courseId: string;
@@ -10,7 +11,7 @@ export async function createCourseAnnouncement(data: {
   content: string;
   isPinned?: boolean;
 }) {
-  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const { session } = await assertCourseAccess(data.courseId, 'manage');
 
   const course = await db.course.findUnique({
     where: { id: data.courseId },
@@ -59,7 +60,7 @@ export async function createCourseAnnouncement(data: {
 }
 
 export async function getCourseAnnouncements(courseId: string) {
-  await requireAuth();
+  await assertCourseAccess(courseId);
 
   return db.courseAnnouncement.findMany({
     where: { courseId },
@@ -84,7 +85,7 @@ export async function getCourseAnnouncements(courseId: string) {
 }
 
 export async function getPinnedAnnouncement(courseId: string) {
-  await requireAuth();
+  await assertCourseAccess(courseId);
 
   return db.courseAnnouncement.findFirst({
     where: { courseId, isPinned: true },
@@ -98,7 +99,9 @@ export async function getPinnedAnnouncement(courseId: string) {
 }
 
 export async function togglePinAnnouncement(announcementId: string, isPinned: boolean) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const target = await db.courseAnnouncement.findUnique({ where: { id: announcementId }, select: { courseId: true } });
+  if (!target) throw new Error('Pengumuman tidak ditemukan');
+  await assertCourseAccess(target.courseId, 'manage');
 
   const updated = await db.courseAnnouncement.update({
     where: { id: announcementId },
@@ -119,6 +122,7 @@ export async function deleteCourseAnnouncement(announcementId: string) {
   });
 
   if (!announcement) throw new Error('Pengumuman tidak ditemukan');
+  await assertCourseAccess(announcement.courseId, 'manage');
 
   await db.courseAnnouncement.delete({
     where: { id: announcementId },
@@ -132,6 +136,10 @@ export async function deleteCourseAnnouncement(announcementId: string) {
 
 export async function addAnnouncementComment(announcementId: string, content: string) {
   const session = await requireAuth();
+  const target = await db.courseAnnouncement.findUnique({ where: { id: announcementId }, select: { courseId: true } });
+  if (!target) throw new Error('Pengumuman tidak ditemukan');
+  await assertCourseAccess(target.courseId);
+  if (session.user.role === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
 
   if (!content || !content.trim()) {
     throw new Error('Komentar tidak boleh kosong');
@@ -181,6 +189,8 @@ export async function deleteAnnouncementComment(commentId: string) {
   });
 
   if (!comment) throw new Error('Komentar tidak ditemukan');
+  await assertCourseAccess(comment.announcement.courseId, comment.authorId === session.user.id ? 'read' : 'manage');
+  if (session.user.role === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
 
   if (
     comment.authorId !== session.user.id &&

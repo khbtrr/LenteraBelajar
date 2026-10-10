@@ -52,6 +52,7 @@
     "defaultQuoteAuthor": "Plutarch"
   },
   "sidebar": {
+    "navigationMenu": "Navigation menu",
     "dashboard": "Dashboard",
     "schools": "Schools",
     "users": "Users",
@@ -323,6 +324,7 @@
     "viewAllHistory": "View All Notification History →"
   },
   "dashboard": {
+    "learningCourses": "Learning Courses",
     "welcome": "Welcome, {name}!",
     "totalSchools": "Total Schools",
     "totalUsers": "Total Users",
@@ -843,6 +845,7 @@
     "btnCreateYear": "Add Academic Year",
     "activeBadge": "Active",
     "archivedBadge": "Archived",
+    "plannedBadge": "Planned",
     "coursesCount": "{count} Courses",
     "period": "Period: {start} to {end}",
     "btnSetActive": "Set as Active",

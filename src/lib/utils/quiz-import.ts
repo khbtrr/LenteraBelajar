@@ -99,7 +99,7 @@ export async function parseDocxQuestions(
         passageTargetRange = null;
       }
 
-      let cleanBlock = block
+      const cleanBlock = block
         .replace(/^\s*(?:<[^>]+>)*\s*\[(?:Cerita|Wacana)[^\]]*\]/i, '')
         .replace(/^(?:<[^>]+>)*\s*(?:Wacana|Bacaan|Cerita)\s+untuk\s+soal[^\n:<]*/i, '')
         .trim();
@@ -151,7 +151,7 @@ export async function parseDocxQuestions(
       }
 
       // Strip question number and [Essay] tag from HTML content
-      let qHtml = block
+      const qHtml = block
         .replace(/^\s*(?:<[^>]+>)*\s*(\d+)\.\s*/i, '')
         .replace(/\[Essay\]/gi, '')
         .trim();

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { sanitizeRichText } from '@/lib/rich-text';
 import { QuizAudioPlayer } from './quiz-audio-player';
 import { QuizVideoPlayer } from './quiz-video-player';
 
@@ -42,7 +43,7 @@ export function QuestionTextRenderer({
   attemptId = 'direct',
   className = '',
 }: QuestionTextRendererProps) {
-  const processedText = preprocessQuestionMedia(text);
+  const processedText = sanitizeRichText(preprocessQuestionMedia(text));
 
   // Flexible regex to match any media div placeholder regardless of extra classes (my-3) or self-closing
   const placeholderRegex = /<div\b[^>]*\bclass="[^"]*quiz-media-(audio|video)[^"]*"[^>]*>(?:<\/div>)?/gi;

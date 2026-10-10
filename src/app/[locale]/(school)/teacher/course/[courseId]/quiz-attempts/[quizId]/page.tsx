@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { getQuizAttemptsList } from '@/lib/actions/grade';
 import { getItemAnalysisData } from '@/lib/actions/item-analysis';
 import { getRemedialEligibleData } from '@/lib/actions/remedial';

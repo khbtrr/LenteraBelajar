@@ -4,7 +4,21 @@ import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { CalendarEventScope, CalendarEventCategory } from '@prisma/client';
-import { createBulkNotifications } from './notification';
+import { createBulkNotifications } from '@/lib/notifications';
+import { assertCourseAccess, assertItemAccess } from '@/lib/access';
+import type { CalendarEvent } from '@prisma/client';
+
+async function assertCalendarMutation(event: CalendarEvent) {
+  const session = await requireAuth();
+  if (session.user.role === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
+  if (event.scope === 'PERSONAL') {
+    if (event.creatorId !== session.user.id) throw new Error('Akses ditolak: Agenda pribadi pengguna lain');
+  } else if (event.scope === 'COURSE' && event.courseId) {
+    await assertCourseAccess(event.courseId, 'manage');
+  } else if (session.user.role !== 'SUPER_ADMIN' && (session.user.role !== 'ADMIN' || event.schoolId !== session.user.schoolId)) {
+    throw new Error('Akses ditolak: Agenda di luar sekolah Anda');
+  }
+}
 
 export interface CalendarItem {
   id: string;
@@ -102,6 +116,10 @@ export async function getCalendarEvents(filters?: {
     }
   }
 
+  const allowedCourseIds = await Promise.all(relevantCourseIds.map(async (id) => {
+    try { await assertCourseAccess(id); return id; } catch { return null; }
+  }));
+  relevantCourseIds = allowedCourseIds.filter((id): id is string => id !== null);
   const items: CalendarItem[] = [];
 
   // Helper for links based on role
@@ -111,6 +129,7 @@ export async function getCalendarEvents(filters?: {
   if (relevantCourseIds.length > 0 && (!filters?.category || filters.category === 'ALL' || filters.category === 'TUGAS')) {
     const assignments = await db.assignment.findMany({
       where: {
+        ...(isStudent ? { isPublished: true } : {}),
         deadline: {
           gte: startWindow,
           lte: endWindow,
@@ -130,6 +149,7 @@ export async function getCalendarEvents(filters?: {
 
     for (const a of assignments) {
       if (!a.deadline) continue;
+      if (isStudent) { try { await assertItemAccess('ASSIGNMENT', a.id); } catch { continue; } }
       items.push({
         id: `assignment-${a.id}`,
         title: `[Tugas] ${a.title}`,
@@ -154,6 +174,7 @@ export async function getCalendarEvents(filters?: {
   if (relevantCourseIds.length > 0 && (!filters?.category || filters.category === 'ALL' || filters.category === 'KUIS')) {
     const quizzes = await db.quiz.findMany({
       where: {
+        ...(isStudent ? { isPublished: true } : {}),
         deadline: {
           gte: startWindow,
           lte: endWindow,
@@ -173,6 +194,7 @@ export async function getCalendarEvents(filters?: {
 
     for (const q of quizzes) {
       if (!q.deadline) continue;
+      if (isStudent) { try { await assertItemAccess('QUIZ', q.id); } catch { continue; } }
       items.push({
         id: `quiz-${q.id}`,
         title: `[Kuis CBT] ${q.title}`,
@@ -418,9 +440,10 @@ export async function createCalendarEvent(data: {
     throw new Error('Judul agenda tidak boleh kosong');
   }
 
+  if (userRole === 'SUPERVISOR') throw new Error('Akses ditolak: Pengawas hanya membaca');
   // Scope permissions check
   if (data.scope === CalendarEventScope.SCHOOL) {
-    if (!['ADMIN', 'SUPER_ADMIN', 'SUPERVISOR'].includes(userRole)) {
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
       throw new Error('Hanya Admin atau Kepala Sekolah yang dapat membuat Agenda Sekolah');
     }
   }
@@ -432,6 +455,7 @@ export async function createCalendarEvent(data: {
     if (!data.courseId) {
       throw new Error('Mata pelajaran harus dipilih untuk agenda kelas');
     }
+    await assertCourseAccess(data.courseId, 'manage');
   }
 
   const startD = new Date(data.startDate);
@@ -508,6 +532,7 @@ export async function updateCalendarEvent(
   if (!existing) {
     throw new Error('Agenda tidak ditemukan');
   }
+  await assertCalendarMutation(existing);
 
   if (existing.creatorId !== userId && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
     throw new Error('Anda tidak memiliki izin mengubah agenda ini');
@@ -546,6 +571,7 @@ export async function deleteCalendarEvent(id: string) {
   if (!existing) {
     throw new Error('Agenda tidak ditemukan');
   }
+  await assertCalendarMutation(existing);
 
   if (existing.creatorId !== userId && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
     throw new Error('Anda tidak memiliki izin menghapus agenda ini');
@@ -584,7 +610,7 @@ export async function exportCalendarIcs(events: CalendarItem[]): Promise<string>
 
   const nowIcs = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
-  let ics = [
+  const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//LenteraBelajar LMS//ID',

@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { getTeacherActivityStats } from '@/lib/actions/monitoring';
 import { TeacherActivityClient } from './client';
 

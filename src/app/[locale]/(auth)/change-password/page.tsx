@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { signOut } from 'next-auth/react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 export default function ChangePasswordPage() {
   const t = useTranslations('auth');
   const router = useRouter();
-  const { update } = useSession();
+  const locale = useLocale();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,8 +43,7 @@ export default function ChangePasswordPage() {
         return;
       }
 
-      await update({ mustChangePassword: false });
-      window.location.href = '/';
+      await signOut({ callbackUrl: `/${locale}/login?passwordChanged=1` });
     } catch {
       setError(t('errorOccurred'));
     } finally {

@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { routing } from '@/i18n/routing';
 
 /**

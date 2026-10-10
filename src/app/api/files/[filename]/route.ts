@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { Readable } from 'node:stream';
 import path from 'node:path';
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { authorizeFileRead } from '@/lib/files';
 
 export async function GET(
   request: NextRequest,
@@ -13,28 +16,16 @@ export async function GET(
     // Sanitize filename to prevent directory traversal
     const safeFilename = path.basename(filename);
 
-    const session = await auth();
-    let isPublicLogo = false;
-    if (!session?.user) {
-      // Allow public access for school branding logos on public pages (e.g. login)
-      const schoolWithLogo = await db.school.findFirst({
-        where: { logo: { contains: safeFilename } },
-        select: { id: true },
-      });
-      if (!schoolWithLogo) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-      isPublicLogo = true;
-    }
-    const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
-    const filePath = path.join(uploadDir, safeFilename);
+    if (safeFilename !== filename) return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    const { publicLogo: isPublicLogo } = await authorizeFileRead(safeFilename);
+    const uploadDir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.UPLOAD_DIR || './uploads');
+    const filePath = path.join(/*turbopackIgnore: true*/ uploadDir, safeFilename);
 
     const fileStat = await stat(filePath);
     if (!fileStat.isFile()) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    const fileBuffer = await readFile(filePath);
 
     // Determine basic MIME type
     const ext = path.extname(safeFilename).toLowerCase();
@@ -65,7 +56,7 @@ export async function GET(
       'Content-Type': contentType,
       'Content-Length': fileStat.size.toString(),
       'Accept-Ranges': 'bytes',
-      'Cache-Control': isPublicLogo ? 'public, max-age=86400, stale-while-revalidate=604800' : 'private, max-age=3600',
+      'Cache-Control': isPublicLogo ? 'public, max-age=300' : 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
       'Content-Disposition': `inline; filename="${safeFilename}"`,
     };
@@ -74,7 +65,20 @@ export async function GET(
       headers['Content-Security-Policy'] = "default-src 'none'; sandbox";
     }
 
-    return new NextResponse(fileBuffer, { headers });
+    const range = request.headers.get('range');
+    let start = 0, end = fileStat.size - 1;
+    if (range) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+      if (!match || (!match[1] && !match[2])) return new NextResponse(null, { status: 416, headers: { 'Content-Range': `bytes */${fileStat.size}` } });
+      start = match[1] ? Number(match[1]) : Math.max(0, fileStat.size - Number(match[2]));
+      end = match[1] && match[2] ? Math.min(Number(match[2]), fileStat.size - 1) : fileStat.size - 1;
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start > end || start >= fileStat.size) return new NextResponse(null, { status: 416, headers: { 'Content-Range': `bytes */${fileStat.size}` } });
+      headers['Content-Range'] = `bytes ${start}-${end}/${fileStat.size}`;
+      headers['Content-Length'] = String(end - start + 1);
+    }
+    if (fileStat.size === 0) return new NextResponse(null, { headers });
+    const stream = createReadStream(filePath, { start, end });
+    return new NextResponse(Readable.toWeb(stream) as ReadableStream, { headers, status: range ? 206 : 200 });
   } catch (error) {
     console.error('File serve error:', error);
     return NextResponse.json({ error: 'File not found' }, { status: 404 });

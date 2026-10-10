@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { usePathname } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useSidebar } from '@/context/SidebarContext';
@@ -34,7 +36,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleSidebar } = useSidebar();
+  const t = useTranslations('sidebar');
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
@@ -44,25 +47,12 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
     setOpenSubmenus((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
-  return (
-    <aside
-      onMouseEnter={() => !isExpanded && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={cn(
-        'fixed top-0 left-0 z-50 h-screen flex flex-col',
-        'bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800',
-        'transition-all duration-300 ease-in-out',
-        // Desktop width
-        isSidebarVisible ? 'lg:w-[280px]' : 'lg:w-[88px]',
-        // Mobile drawer positioning
-        'w-[280px]',
-        isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
-      )}
-    >
+  const sidebarContent = (
+    <>
       {/* Brand Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <Link href="/" className="flex items-center gap-3 overflow-hidden">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white text-white shadow-sm flex-shrink-0 overflow-hidden border border-gray-100 dark:border-gray-800">
+          <div data-logo-surface className="flex items-center justify-center w-10 h-10 rounded-xl bg-white text-white shadow-sm flex-shrink-0 overflow-hidden border border-gray-100 dark:border-gray-800">
             {schoolLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -117,6 +107,8 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
                 <div key={item.label} className="space-y-1">
                   <button
                     onClick={() => toggleSubmenu(item.label)}
+                    aria-label={item.label}
+                    aria-expanded={Boolean(isSubmenuOpen)}
                     className={cn(
                       'menu-item group',
                       isActive ? 'menu-item-active' : 'menu-item-inactive'
@@ -172,6 +164,7 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
               <Link
                 key={item.href}
                 href={item.href}
+                aria-label={item.label}
                 className={cn(
                   'menu-item group',
                   isActive
@@ -227,6 +220,24 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
           </div>
         </div>
       )}
-    </aside>
+
+    </>
+  );
+
+  return (
+    <>
+      <aside onMouseEnter={() => !isExpanded && setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}
+        className={cn('hidden lg:flex fixed top-0 left-0 z-50 h-screen flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300', isSidebarVisible ? 'w-[280px]' : 'w-[88px]')}>
+        {sidebarContent}
+      </aside>
+      <Dialog open={isMobileOpen} onOpenChange={(open) => { if (open !== isMobileOpen) toggleMobileSidebar(); }}>
+        <DialogContent aria-describedby={undefined}
+          className="left-0 top-0 translate-x-0 translate-y-0 h-dvh max-h-none w-[min(280px,100vw)] sm:w-[280px] max-w-none rounded-none p-0 flex flex-col gap-0 lg:hidden"
+          onCloseAutoFocus={(event) => { event.preventDefault(); document.getElementById('mobile-navigation-toggle')?.focus(); }}>
+          <DialogTitle className="sr-only">{t('navigationMenu')}</DialogTitle>
+          {sidebarContent}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

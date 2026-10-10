@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { sanitizeRichText } from '@/lib/rich-text';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -162,11 +163,12 @@ export function QuestionBankClient({ courseId, course, initialData, initialStats
 
   // Import Modal States
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importTab, setImportTab] = useState<'aiken' | 'word'>('aiken');
+  const [importTab, setImportTab] = useState<'aiken' | 'word' | 'moodle'>('aiken');
   const [aikenMode, setAikenMode] = useState<'paste' | 'file'>('paste');
   const [aikenText, setAikenText] = useState('');
   const [aikenFile, setAikenFile] = useState<File | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [moodleXmlFile, setMoodleXmlFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
@@ -650,6 +652,54 @@ POINTS: 5`;
     }
   };
 
+  const handleUploadMoodleXml = async () => {
+    if (!moodleXmlFile) return;
+    setLoading(true);
+    setImportWarnings([]);
+    try {
+      const formData = new FormData();
+      formData.append('file', moodleXmlFile);
+      formData.append('courseId', courseId);
+      if (selectedCategoryId && selectedCategoryId !== 'uncategorized') {
+        formData.append('categoryId', selectedCategoryId);
+      }
+
+      const res = await fetch('/api/moodle-import/xml-questions', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setNoticeModal({
+          title: 'Gagal Memproses Moodle XML',
+          message: data.error || 'Terjadi kesalahan saat membaca berkas Moodle XML.',
+          type: 'error',
+        });
+        return;
+      }
+
+      if (data.warnings && data.warnings.length > 0) {
+        setImportWarnings(data.warnings);
+      }
+
+      if (data.questions && data.questions.length > 0) {
+        setImportPreview(data.questions);
+      } else {
+        setNoticeModal({
+          title: 'Tidak Ada Soal Valid',
+          message: 'Tidak ditemukan butir soal yang dapat diimpor dari berkas Moodle XML.',
+          type: 'warning',
+        });
+      }
+    } catch (e: any) {
+      console.error(e);
+      setNoticeModal({
+        title: 'Kesalahan Sistem',
+        message: e?.message || 'Terjadi kesalahan saat memproses berkas Moodle XML.',
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConfirmImport = async () => {
     if (importPreview.length === 0) return;
     setLoading(true);
@@ -659,6 +709,7 @@ POINTS: 5`;
       setIsImportModalOpen(false);
       setImportPreview([]);
       setImportFile(null);
+      setMoodleXmlFile(null);
       router.refresh();
     } catch (e) {
       console.error(e);
@@ -1279,6 +1330,22 @@ POINTS: 5`;
               >
                 <span>{t('tabWord')}</span>
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImportTab('moodle');
+                  setImportPreview([]);
+                  setImportWarnings([]);
+                }}
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                  importTab === 'moodle'
+                    ? 'bg-[#002446] text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <span>Moodle XML (.xml)</span>
+                <span className="bg-[#FF8928] text-white text-[10px] px-1.5 py-0.2 rounded font-bold">LMS</span>
+              </button>
             </div>
           </DialogHeader>
 
@@ -1370,7 +1437,7 @@ POINTS: 5`;
                   </div>
                 )}
               </div>
-            ) : (
+            ) : importTab === 'word' ? (
               /* Word .docx Tab */
               <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-4">
                 <div className="flex flex-col items-center justify-center">
@@ -1406,6 +1473,37 @@ POINTS: 5`;
                 {importFile && importPreview.length === 0 && (
                   <Button className="mt-2 bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-semibold h-9" onClick={handleUploadWord} disabled={loading}>
                     {loading ? t('processing') : t('previewWordBtn')}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              /* Moodle XML Tab */
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-4">
+                <div className="flex flex-col items-center justify-center">
+                  <FileUp className="w-10 h-10 text-slate-300 mb-2" />
+                  <p className="text-sm font-semibold text-slate-700">Unggah Berkas Ekspor Moodle XML</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    Format file .xml hasil ekspor Bank Soal Moodle. Mendukung Pilihan Ganda (tunggal/kompleks), Benar/Salah, dan Esai beserta gambar yang tertanam.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <Input
+                    type="file"
+                    accept=".xml"
+                    className="max-w-xs mx-auto text-xs"
+                    onChange={(e) => setMoodleXmlFile(e.target.files?.[0] || null)}
+                    disabled={loading || importPreview.length > 0}
+                  />
+                </div>
+
+                {moodleXmlFile && importPreview.length === 0 && (
+                  <Button
+                    className="mt-2 bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-semibold h-9"
+                    onClick={handleUploadMoodleXml}
+                    disabled={loading}
+                  >
+                    {loading ? 'Memproses...' : 'Pratinjau Soal Moodle XML'}
                   </Button>
                 )}
               </div>
@@ -1476,7 +1574,7 @@ POINTS: 5`;
                         </div>
                         <div
                           className="font-medium text-xs text-slate-800 line-clamp-3 whitespace-pre-line"
-                          dangerouslySetInnerHTML={{ __html: q.text }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeRichText(q.text) }}
                         />
                         {q.options && q.options.length > 0 && (
                           <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-100 flex items-center justify-between">

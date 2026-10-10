@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,7 @@ export function LeaderboardModal({ courseId, triggerButton }: LeaderboardModalPr
     currentUserRank: any | null;
   } | null>(null);
 
-  const loadLeaderboard = async () => {
+  const loadLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
       const res = await getCourseLeaderboard(courseId);
@@ -40,13 +40,13 @@ export function LeaderboardModal({ courseId, triggerButton }: LeaderboardModalPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId]);
 
   useEffect(() => {
     if (open) {
       loadLeaderboard();
     }
-  }, [open, courseId]);
+  }, [open, loadLeaderboard]);
 
   const getInitials = (name: string) => {
     return (name || 'S')

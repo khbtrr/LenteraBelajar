@@ -52,6 +52,7 @@
     "defaultQuoteAuthor": "Plutarch"
   },
   "sidebar": {
+    "navigationMenu": "Menu navigasi",
     "dashboard": "Dasbor",
     "schools": "Sekolah",
     "users": "Pengguna",
@@ -323,6 +324,7 @@
     "viewAllHistory": "Lihat Semua Riwayat Notifikasi →"
   },
   "dashboard": {
+    "learningCourses": "Kursus Pembelajaran",
     "welcome": "Selamat datang, {name}!",
     "totalSchools": "Total Sekolah",
     "totalUsers": "Total Pengguna",
@@ -843,6 +845,7 @@
     "btnCreateYear": "Tambah Tahun Ajaran",
     "activeBadge": "Aktif",
     "archivedBadge": "Arsip",
+    "plannedBadge": "Direncanakan",
     "coursesCount": "{count} Course",
     "period": "Periode: {start} s/d {end}",
     "btnSetActive": "Jadikan Aktif",

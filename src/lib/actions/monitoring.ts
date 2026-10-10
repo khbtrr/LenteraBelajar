@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { requireRole } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 

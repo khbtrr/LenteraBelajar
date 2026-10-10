@@ -79,7 +79,7 @@ export function SchoolSwitcher() {
     return (
       <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-300 max-w-[200px] truncate" title={currentSchool?.name}>
         <School className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
-        <span className="truncate">{currentSchool?.name}</span>
+          <span className="hidden sm:inline truncate">{currentSchool?.name}</span>
       </div>
     );
   }
@@ -99,7 +99,7 @@ export function SchoolSwitcher() {
           ) : (
             <School className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
           )}
-          <span className="truncate">{currentSchool?.name}</span>
+          <span className="hidden sm:inline truncate">{currentSchool?.name}</span>
           <ChevronsUpDown className="h-3 w-3 text-gray-400 shrink-0 ml-auto" />
         </Button>
       </DropdownMenuTrigger>

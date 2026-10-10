@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
@@ -237,7 +238,7 @@ export function TeacherAttendanceClient({
     });
 
     try {
-      await updateAttendanceRecord(recordId, newStatus);
+      await updateAttendanceRecord(recordId, newStatus, undefined, activeSessionDetails.id);
       router.refresh();
     } catch (err: any) {
       await showAlert(err.message || t('updateStatusFailedAlert'), { type: 'error' });
@@ -836,7 +837,7 @@ export function TeacherAttendanceClient({
           <div className="py-6 flex flex-col items-center justify-center space-y-4">
             {qrDataUrl ? (
               <div className="p-3 bg-white border-2 border-[#002446] rounded-xl shadow-md inline-block">
-                <img src={qrDataUrl} alt={t('qrAlt')} className="w-56 h-56 mx-auto" />
+                <Image unoptimized width={224} height={224} src={qrDataUrl} alt={t('qrAlt')} className="w-56 h-56 mx-auto" />
               </div>
             ) : (
               <div className="h-56 w-56 bg-gray-100 flex items-center justify-center text-xs text-gray-400">

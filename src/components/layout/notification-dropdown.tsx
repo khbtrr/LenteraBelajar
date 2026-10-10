@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   getUserNotifications,
+  getUnreadNotificationCount,
   markNotificationAsRead,
   markAllNotificationsAsRead,
 } from '@/lib/actions/notification';
@@ -43,7 +44,7 @@ export function NotificationDropdown() {
     try {
       const list = await getUserNotifications();
       setNotifications(list);
-      setUnreadCount(list.filter((n) => !n.isRead).length);
+      setUnreadCount(await getUnreadNotificationCount());
     } catch {
       // ignore if unauthenticated
     }
@@ -81,7 +82,7 @@ export function NotificationDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" aria-label={t('title')}>
           <Bell className="h-5 w-5 text-gray-600" />
           {unreadCount > 0 && (
             <Badge

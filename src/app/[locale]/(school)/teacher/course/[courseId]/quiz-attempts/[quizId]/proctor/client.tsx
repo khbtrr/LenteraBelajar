@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
@@ -587,7 +588,7 @@ export function TeacherLiveProctorClient({ initialData, courseId, quizId }: Prop
           <div className="py-6 flex flex-col items-center justify-center space-y-4">
             {tokenQrUrl ? (
               <div className="p-3 bg-white border-2 border-[#002446] rounded-xl shadow-md inline-block">
-                <img src={tokenQrUrl} alt="QR Code Token" className="w-56 h-56 mx-auto" />
+                <Image unoptimized width={224} height={224} src={tokenQrUrl} alt="QR Code Token" className="w-56 h-56 mx-auto" />
               </div>
             ) : null}
 

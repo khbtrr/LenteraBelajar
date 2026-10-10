@@ -1,0 +1,35 @@
+name: Release checks
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: lentera-qa-only
+          POSTGRES_DB: lentera_qa
+        ports: ['55432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:lentera-qa-only@127.0.0.1:55432/lentera_qa
+      AUTH_SECRET: lenterabelajar-qa-build-secret
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx prisma migrate deploy --config prisma.config.qa.ts
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run test:workers
+      - run: npm run test:migrations
+      - run: npm run build:artifact
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

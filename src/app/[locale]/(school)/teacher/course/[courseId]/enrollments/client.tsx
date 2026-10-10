@@ -65,9 +65,11 @@ export function CourseEnrollmentsClient({
   course,
   availableCohorts,
   availableStudents,
+  isReadOnly = false,
 }: {
   course: any;
   availableCohorts: CohortOption[];
+  isReadOnly?: boolean;
   availableStudents: StudentOption[];
 }) {
   const t = useTranslations('teacherEnrollments');
@@ -201,6 +203,7 @@ export function CourseEnrollmentsClient({
           {/* Main Enrollment Method: Cohort Sync */}
           <Button
             onClick={() => setIsCohortSyncOpen(true)}
+            hidden={isReadOnly}
             className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white flex items-center gap-2 font-medium"
           >
             <RefreshCw className="h-4 w-4" />
@@ -210,6 +213,7 @@ export function CourseEnrollmentsClient({
           <Button
             variant="outline"
             onClick={() => setIsManualOpen(true)}
+            hidden={isReadOnly}
             className="border-[#002446] text-[#002446] hover:bg-[#002446] hover:text-white flex items-center gap-2"
           >
             <UserPlus className="h-4 w-4" />
@@ -299,6 +303,7 @@ export function CourseEnrollmentsClient({
                         variant="ghost"
                         className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         onClick={() => handleRemoveStudent(enr.user.id, enr.user.name)}
+                        hidden={isReadOnly}
                         disabled={loading}
                       >
                         <Trash2 className="h-4 w-4" />

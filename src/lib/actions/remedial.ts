@@ -2,8 +2,11 @@
 
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
+import { assertItemAccess } from '@/lib/access';
 import { revalidatePath } from 'next/cache';
-import { createBulkNotifications } from './notification';
+import { createBulkNotifications } from '@/lib/notifications';
+import { loadQuizAnalysis, questionVersion } from '@/lib/quiz-analysis';
+import { loadCourseGrades } from '@/lib/course-grades';
 
 export interface RemedialStudentInfo {
   userId: string;
@@ -45,133 +48,27 @@ export interface RemedialEligibleData {
 }
 
 export async function getRemedialEligibleData(quizId: string): Promise<RemedialEligibleData | null> {
-  await requireAuth();
-
-  const quiz = await db.quiz.findUnique({
-    where: { id: quizId },
-    include: {
-      module: {
-        include: { course: true },
-      },
-      questions: {
-        orderBy: { order: 'asc' },
-      },
-      attempts: {
-        where: { submittedAt: { not: null } },
-        include: {
-          user: {
-            select: { id: true, name: true, nis: true, email: true },
-          },
-          answers: true,
-        },
-        orderBy: { score: 'desc' },
-      },
-      remedials: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          _count: {
-            select: { attempts: true, questions: true },
-          },
-        },
-      },
-    },
+  const { session } = await assertItemAccess('QUIZ', quizId);
+  if (session.user.role === 'STUDENT') throw new Error('Akses ditolak: Analisis khusus pengajar dan pengawas');
+  const source = await loadQuizAnalysis(quizId);
+  const grades = await loadCourseGrades(source.quiz.module.courseId, source.attempts.map((attempt) => attempt.userId));
+  const failing = source.attempts.filter((attempt) => (grades.scores.get(attempt.userId)?.quiz[quizId] ?? attempt.score!) < (source.quiz.passingGrade ?? 75));
+  const failures = new Map<string, number>();
+  const remedialStudents = failing.map((attempt) => {
+    const wrongQuestionIds = (source.snapshots.get(attempt.id) ?? []).filter((question) => {
+      const answer = attempt.answers.find((item) => item.questionId === question.id);
+      return answer?.score === null || answer?.score === undefined || answer.score < question.points * (question.type === 'ESSAY' ? 0.6 : 1);
+    }).map((question) => { const version = questionVersion(question); failures.set(version, (failures.get(version) ?? 0) + 1); return version; });
+    return { userId: attempt.userId, name: attempt.user.name, nis: attempt.user.nis, email: attempt.user.email,
+      bestScore: grades.scores.get(attempt.userId)?.quiz[quizId] ?? attempt.score!, submittedAt: attempt.submittedAt, wrongQuestionIds };
   });
-
-  if (!quiz) return null;
-
-  const passingGrade = quiz.passingGrade ?? 75;
-
-  // Group by student to find their best submitted attempt
-  const studentBestAttemptMap = new Map<string, typeof quiz.attempts[0]>();
-
-  quiz.attempts.forEach((att) => {
-    const existing = studentBestAttemptMap.get(att.userId);
-    if (!existing || (att.score !== null && (existing.score === null || att.score > existing.score))) {
-      studentBestAttemptMap.set(att.userId, att);
-    }
-  });
-
-  const remedialStudents: RemedialStudentInfo[] = [];
-  const questionFailCountMap: Record<string, number> = {};
-
-  quiz.questions.forEach((q) => {
-    questionFailCountMap[q.id] = 0;
-  });
-
-  studentBestAttemptMap.forEach((att) => {
-    const score = att.score ?? 0;
-    if (score < passingGrade) {
-      const wrongQuestionIds: string[] = [];
-
-      quiz.questions.forEach((q) => {
-        const ans = att.answers.find((a) => a.questionId === q.id);
-        const options = (q.options as any[]) || [];
-        const correctOpt = options.find((o) => o.isCorrect);
-
-        let isCorrect = false;
-        if (q.type === 'MULTIPLE_CHOICE') {
-          if (ans?.answer && correctOpt && ans.answer === correctOpt.id) {
-            isCorrect = true;
-          }
-        } else {
-          // Essay: >= 60% points considered passing
-          if (ans?.score !== null && ans?.score !== undefined && ans.score >= q.points * 0.6) {
-            isCorrect = true;
-          }
-        }
-
-        if (!isCorrect) {
-          wrongQuestionIds.push(q.id);
-          questionFailCountMap[q.id] = (questionFailCountMap[q.id] || 0) + 1;
-        }
-      });
-
-      remedialStudents.push({
-        userId: att.userId,
-        name: att.user.name,
-        nis: att.user.nis,
-        email: att.user.email,
-        bestScore: score,
-        submittedAt: att.submittedAt,
-        wrongQuestionIds,
-      });
-    }
-  });
-
-  const totalRemedialCount = remedialStudents.length;
-
-  const mostFailedQuestions = quiz.questions
-    .map((q) => {
-      const failCount = questionFailCountMap[q.id] || 0;
-      const failPercentage = totalRemedialCount > 0 ? Math.round((failCount / totalRemedialCount) * 100) : 0;
-      return {
-        questionId: q.id,
-        text: q.text,
-        type: q.type,
-        points: q.points,
-        failCount,
-        failPercentage,
-      };
-    })
-    .sort((a, b) => b.failCount - a.failCount);
-
+  const remedials = await db.quiz.findMany({ where: { parentQuizId: quizId }, include: { _count: { select: { attempts: true, questions: true } } }, orderBy: { createdAt: 'desc' } });
   return {
-    quiz: {
-      id: quiz.id,
-      title: quiz.title,
-      passingGrade,
-      courseId: quiz.module.courseId,
-      moduleId: quiz.moduleId,
-    },
+    quiz: { id: quizId, title: source.quiz.title, courseId: source.quiz.module.courseId, moduleId: source.quiz.moduleId, passingGrade: source.quiz.passingGrade ?? 75 },
     remedialStudents,
-    mostFailedQuestions,
-    existingRemedials: quiz.remedials.map((r) => ({
-      id: r.id,
-      title: r.title,
-      createdAt: r.createdAt,
-      isPublished: r.isPublished,
-      _count: r._count,
-    })),
+    mostFailedQuestions: [...source.questions].map(([version, question]) => ({ questionId: version, text: question.text, type: question.type, points: question.points,
+      failCount: failures.get(version) ?? 0, failPercentage: failing.length ? Math.round((failures.get(version) ?? 0) / failing.length * 100) : 0 })).sort((left, right) => right.failCount - left.failCount),
+    existingRemedials: remedials.map(({ id, title, createdAt, isPublished, _count }) => ({ id, title, createdAt, isPublished, _count })),
   };
 }
 
@@ -186,6 +83,7 @@ export async function generateRemedialQuiz(data: {
   passingGrade?: number;
 }) {
   const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertItemAccess('QUIZ', data.parentQuizId, 'manage');
 
   const parentQuiz = await db.quiz.findUnique({
     where: { id: data.parentQuizId },
@@ -198,9 +96,12 @@ export async function generateRemedialQuiz(data: {
   if (!parentQuiz) throw new Error('Kuis induk tidak ditemukan');
 
   // Filter questions to copy
-  const questionsToCopy = parentQuiz.questions.filter((q) =>
-    data.selectedQuestionIds.includes(q.id)
-  );
+  const source = await loadQuizAnalysis(data.parentQuizId);
+  const eligibility = await getRemedialEligibleData(data.parentQuizId);
+  const eligibleIds = new Set(eligibility?.remedialStudents.map((student) => student.userId));
+  if (!data.targetStudentIds.length || data.targetStudentIds.some((id) => !eligibleIds.has(id))) throw new Error('Peserta remedial tidak memenuhi syarat');
+  const questionsToCopy = data.selectedQuestionIds.map((id) => source.questions.get(id)).filter((question) => question !== undefined);
+  if (questionsToCopy.length !== new Set(data.selectedQuestionIds).size) throw new Error('Versi soal remedial tidak valid');
 
   if (questionsToCopy.length === 0) {
     throw new Error('Pilih minimal satu butir soal untuk kuis remedial');
@@ -232,7 +133,7 @@ export async function generateRemedialQuiz(data: {
         create: questionsToCopy.map((q, idx) => ({
           type: q.type,
           text: q.text,
-          options: q.options ? JSON.parse(JSON.stringify(q.options)) : null,
+          options: q._correctData ? JSON.parse(JSON.stringify(q._correctData)) : null,
           points: q.points,
           order: idx + 1,
         })),

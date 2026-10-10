@@ -1,5 +1,5 @@
 import { getTranslations, getLocale } from 'next-intl/server';
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { getStudentUpcomingDeadlines } from '@/lib/actions/notification';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

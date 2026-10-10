@@ -113,10 +113,11 @@ export async function getUserSchools() {
 
 export async function switchActiveSchool(schoolId: string) {
   const session = await requireAuth();
+  if (!await db.school.findUnique({ where: { id: schoolId, isActive: true }, select: { id: true } })) throw new Error('Sekolah tidak tersedia');
 
   // Validasi hak akses
   if (session.user.role !== 'SUPER_ADMIN') {
-    const isPrimary = session.user.schoolId === schoolId;
+    const isPrimary = session.user.homeSchoolId === schoolId;
     const hasAssignment = await db.userSchool.findUnique({
       where: {
         userId_schoolId: {

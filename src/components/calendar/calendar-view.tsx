@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,12 +77,14 @@ export function CalendarView({
     return d.toLocaleDateString(dateLocale, { weekday: 'short' });
   });
 
-  const loadEvents = async () => {
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  const loadEvents = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getCalendarEvents({
-        month: currentDate.getMonth(),
-        year: currentDate.getFullYear(),
+        month: currentMonth,
+        year: currentYear,
         courseId: courseFilter,
         category: categoryFilter,
       });
@@ -92,7 +94,7 @@ export function CalendarView({
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentMonth, currentYear, courseFilter, categoryFilter]);
 
   useEffect(() => {
     setEvents(initialEvents);
@@ -100,7 +102,7 @@ export function CalendarView({
 
   useEffect(() => {
     loadEvents();
-  }, [currentDate.getMonth(), currentDate.getFullYear(), courseFilter, categoryFilter]);
+  }, [loadEvents]);
 
   // Default to AGENDA view on mobile screens (< 768px)
   useEffect(() => {

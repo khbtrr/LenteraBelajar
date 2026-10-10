@@ -1,3 +1,4 @@
+import 'server-only';
 import { hashSync, compareSync } from 'bcryptjs';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -13,62 +14,52 @@ export function verifyPassword(password: string, hash: string): boolean {
   return compareSync(password, hash);
 }
 
-export async function getActiveSchoolId(): Promise<string | null> {
+export async function getServerSession(options: { allowPasswordChange?: boolean } = {}) {
   const session = await auth();
   if (!session?.user) return null;
-
-  let cookieSchoolId: string | null = null;
-  try {
-    const cookieStore = await cookies();
-    cookieSchoolId = cookieStore.get('active_school_id')?.value || null;
-  } catch {
-    // cookies() unavailable in non-request contexts
-  }
-
-  if (cookieSchoolId) {
-    if (session.user.role === 'SUPER_ADMIN') {
-      return cookieSchoolId;
-    }
-    if (cookieSchoolId === session.user.schoolId) {
-      return cookieSchoolId;
-    }
-    const hasAssignment = await db.userSchool.findUnique({
-      where: {
-        userId_schoolId: {
-          userId: session.user.id,
-          schoolId: cookieSchoolId,
-        },
-      },
-    });
-    if (hasAssignment) {
-      return cookieSchoolId;
-    }
-  }
-
-  if (session.user.schoolId) {
-    return session.user.schoolId;
-  }
-
-  if (session.user.role === 'SUPER_ADMIN') {
-    const firstSchool = await db.school.findFirst({ select: { id: true } });
-    return firstSchool?.id || null;
-  }
-
-  const firstAssignment = await db.userSchool.findFirst({
-    where: { userId: session.user.id },
-    select: { schoolId: true },
+  const account = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true, name: true, email: true, role: true, schoolId: true, isActive: true,
+      mustChangePassword: true, sessionVersion: true, locale: true,
+      assignedSchools: { select: { schoolId: true } },
+    },
   });
-  return firstAssignment?.schoolId || null;
+  if (!account?.isActive || session.user.sessionVersion !== account.sessionVersion) return null;
+  if (account.mustChangePassword && !options.allowPasswordChange) return null;
+  let requestedSchool: string | undefined;
+  try {
+    requestedSchool = (await cookies()).get('active_school_id')?.value;
+  } catch {}
+  const assignedSchoolIds = account.assignedSchools.map((assignment) => assignment.schoolId);
+  const allowed = [account.schoolId, ...assignedSchoolIds].filter((id): id is string => Boolean(id));
+  let schoolId: string | null = account.schoolId ?? assignedSchoolIds[0] ?? null;
+  if (requestedSchool && (account.role === 'SUPER_ADMIN' || allowed.includes(requestedSchool))) {
+    schoolId = requestedSchool;
+  }
+  if (!schoolId && account.role === 'SUPER_ADMIN') {
+    schoolId = (await db.school.findFirst({ where: { isActive: true }, select: { id: true } }))?.id ?? null;
+  }
+  if (!schoolId && account.role !== 'SUPER_ADMIN') return null;
+  if (schoolId && !await db.school.findUnique({ where: { id: schoolId, isActive: true }, select: { id: true } })) {
+    return null;
+  }
+  return { ...session, user: {
+    ...session.user, id: account.id, name: account.name, email: account.email,
+    role: account.role, schoolId, homeSchoolId: account.schoolId, assignedSchoolIds,
+    mustChangePassword: account.mustChangePassword, sessionVersion: account.sessionVersion, locale: account.locale,
+  } };
 }
 
-export async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect('/login');
-  }
-  const activeSchoolId = await getActiveSchoolId();
-  if (activeSchoolId) {
-    session.user.schoolId = activeSchoolId;
+export async function getActiveSchoolId(): Promise<string | null> {
+  return (await getServerSession())?.user.schoolId ?? null;
+}
+
+export async function requireAuth(options: { allowPasswordChange?: boolean } = {}) {
+  const session = await getServerSession({ allowPasswordChange: true });
+  if (!session) redirect('/login');
+  if (session.user.mustChangePassword && !options.allowPasswordChange) {
+    redirect(`/${session.user.locale || 'id'}/change-password`);
   }
   return session;
 }
@@ -76,7 +67,7 @@ export async function requireAuth() {
 export async function requireRole(...roles: Role[]) {
   const session = await requireAuth();
   if (!roles.includes(session.user.role)) {
-    redirect('/');
+    throw new Error('Akses ditolak: Peran tidak diizinkan');
   }
   return session;
 }
@@ -84,7 +75,7 @@ export async function requireRole(...roles: Role[]) {
 export async function requireSchool() {
   const session = await requireAuth();
   if (!session.user.schoolId) {
-    redirect('/');
+    throw new Error('Sekolah tidak ditemukan');
   }
   return { ...session, schoolId: session.user.schoolId };
 }

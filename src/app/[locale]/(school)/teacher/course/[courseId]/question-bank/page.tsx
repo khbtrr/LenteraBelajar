@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { getCourseById } from '@/lib/actions/course';
 import { getQuestionBankByCategory, getQuestionBankStats } from '@/lib/actions/question-bank';
 import { notFound } from 'next/navigation';

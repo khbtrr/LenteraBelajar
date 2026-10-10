@@ -19,7 +19,7 @@ export default async function SupervisorAnnouncementsPage() {
         </p>
       </div>
 
-      <AdminAnnouncementsClient key={session.schoolId} initialAnnouncements={announcements} />
+      <AdminAnnouncementsClient key={session.schoolId} initialAnnouncements={announcements} isReadOnly />
     </div>
   );
 }

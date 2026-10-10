@@ -42,6 +42,8 @@ const nextConfig: NextConfig = {
               "img-src 'self' blob: data: https:",
               "font-src 'self' data:",
               "connect-src 'self'",
+              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://wordwall.net https://learningapps.org https://h5p.org https://*.h5p.com https://quizizz.com https://wayground.com https://www.canva.com https://view.genially.com https://forms.gle https://docs.google.com",
+              "media-src 'self' https: blob:",
               "frame-ancestors 'self'",
             ].join('; '),
           },

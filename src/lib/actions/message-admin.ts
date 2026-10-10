@@ -69,10 +69,7 @@ export async function getSchoolConversations(
       }
     : {};
 
-  const where = {
-    ...schoolFilter,
-    ...searchFilter,
-  };
+  const where = { AND: [schoolFilter, searchFilter] };
 
   const total = await db.conversation.count({ where });
   const totalPages = Math.ceil(total / pageSize);

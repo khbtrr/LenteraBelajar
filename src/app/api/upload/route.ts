@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { registerUploadedFile } from '@/lib/files';
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
+    const uploadDir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.UPLOAD_DIR || './uploads');
     await mkdir(uploadDir, { recursive: true });
 
     // Use cryptographically secure UUID and sanitized basename
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
+    await registerUploadedFile(uniqueFileName, buffer, file.type || 'application/octet-stream');
 
     const fileUrl = `/api/files/${uniqueFileName}`;
 

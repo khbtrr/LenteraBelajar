@@ -9,7 +9,7 @@ import { Clock, CheckCircle2, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRigh
 import { submitQuizAttempt } from '@/lib/actions/quiz';
 import { recordTabSwitch, pingAttemptHeartbeat } from '@/lib/actions/proctor';
 import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 
 interface QuestionOption {
@@ -35,6 +35,8 @@ export function StudentQuizClient({
   questionsPerPage = 0,
   enableLockdown = false,
   maxTabSwitches = 3,
+  endAt,
+  serverNow,
 }: {
   courseId: string;
   quizId: string;
@@ -45,8 +47,11 @@ export function StudentQuizClient({
   questionsPerPage?: number;
   enableLockdown?: boolean;
   maxTabSwitches?: number;
+  endAt?: string | null;
+  serverNow?: string;
 }) {
   const t = useTranslations('studentQuiz');
+  const router = useRouter();
   const storageKey = `quiz_draft_${initialAttempt.id}`;
 
   // Check if attempt is already submitted or terminated
@@ -144,21 +149,18 @@ export function StudentQuizClient({
     return () => clearTimeout(timer);
   }, [answers, isSubmitted, isTimeUp, initialAttempt.id]);
 
+  const initialDeadline = endAt ? new Date(endAt).getTime() : durationMinutes ? new Date(initialAttempt.startedAt).getTime() + (durationMinutes + (initialAttempt.extraTimeMinutes || 0)) * 60000 : null;
+  const initialOffset = serverNow ? new Date(serverNow).getTime() - Date.now() : 0;
+  const deadlineRef = useRef<number | null>(initialDeadline);
+  const serverOffsetRef = useRef(initialOffset);
+  const autoSubmitRef = useRef<() => Promise<void>>(async () => {});
   // Countdown Timer Calculation
   const calculateRemainingSeconds = () => {
-    if (!durationMinutes) return null;
-    const startTime = new Date(initialAttempt.startedAt).getTime();
-    // Add extra proctor granted time if available
-    const extraMinutes = initialAttempt.extraTimeMinutes || 0;
-    const durationMs = (durationMinutes + extraMinutes) * 60 * 1000;
-    const endTime = startTime + durationMs;
-    const now = Date.now();
-    const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-    return remaining;
+    return deadlineRef.current === null ? null : Math.max(0, Math.ceil((deadlineRef.current - Date.now() - serverOffsetRef.current) / 1000));
   };
 
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(
-    calculateRemainingSeconds()
+    initialDeadline === null ? null : Math.max(0, Math.ceil((initialDeadline - Date.now() - initialOffset) / 1000))
   );
 
   const hasAutoSubmitted = useRef(false);
@@ -167,12 +169,27 @@ export function StudentQuizClient({
   useEffect(() => {
     if (isSubmitted || isTerminated) return;
 
-    const interval = setInterval(() => {
-      pingAttemptHeartbeat(initialAttempt.id).catch(() => {});
-    }, 15000);
+    let alive = true;
+    const ping = async () => {
+      try {
+        const result = await pingAttemptHeartbeat(initialAttempt.id);
+        if (!alive) return;
+        deadlineRef.current = result.endAt ? new Date(result.endAt).getTime() : null;
+        serverOffsetRef.current = new Date(result.serverNow).getTime() - Date.now();
+        setRemainingSeconds(calculateRemainingSeconds());
+        if (result.submittedAt) {
+          setSubmissionResult({ score: result.score, isGraded: result.isGraded });
+          setIsSubmitted(true);
+          setIsTerminated(result.isTerminated);
+          localStorage.removeItem(storageKey);
+        }
+      } catch {}
+    };
+    void ping();
+    const interval = setInterval(ping, 15000);
 
-    return () => clearInterval(interval);
-  }, [initialAttempt.id, isSubmitted, isTerminated]);
+    return () => { alive = false; clearInterval(interval); };
+  }, [initialAttempt.id, isSubmitted, isTerminated, storageKey]);
 
   // Request Fullscreen helper
   const enterFullscreen = useCallback(async () => {
@@ -289,21 +306,15 @@ export function StudentQuizClient({
   }, [enableLockdown, isSubmitted, isTerminated, enterFullscreen, handleTabViolation]);
 
   useEffect(() => {
-    if (isSubmitted || remainingSeconds === null) return;
+    if (isSubmitted) return;
 
     const timer = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev === null) return null;
-        if (prev <= 1) {
-          clearInterval(timer);
-          if (!hasAutoSubmitted.current) {
-            hasAutoSubmitted.current = true;
-            handleAutoSubmit();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
+      const remaining = calculateRemainingSeconds();
+      setRemainingSeconds(remaining);
+      if (remaining === 0 && !hasAutoSubmitted.current) {
+        hasAutoSubmitted.current = true;
+        void autoSubmitRef.current();
+      }
     }, 1000);
 
     return () => clearInterval(timer);
@@ -329,7 +340,7 @@ export function StudentQuizClient({
   };
 
   // Robust answer sender: tries REST API endpoint first to avoid Server Action deployment hash mismatch, falls back to server action
-  const sendAnswersToServer = async (answersPayload: { questionId: string; answer: string }[]) => {
+  const sendAnswersToServer = useCallback(async (answersPayload: { questionId: string; answer: string }[]) => {
     try {
       const response = await fetch('/api/quiz/submit', {
         method: 'POST',
@@ -357,9 +368,9 @@ export function StudentQuizClient({
         throw new Error(actionErr?.message || apiErr?.message || 'Gagal mengirimkan jawaban ke server.');
       }
     }
-  };
+  }, [initialAttempt.id]);
 
-  const handleAutoSubmit = async () => {
+  const handleAutoSubmit = useCallback(async () => {
     setIsTimeUp(true);
     setTimeUpLoading(true);
     setTimeUpError(null);
@@ -383,7 +394,8 @@ export function StudentQuizClient({
     } finally {
       setTimeUpLoading(false);
     }
-  };
+  }, [sendAnswersToServer, storageKey]);
+  useEffect(() => { autoSubmitRef.current = handleAutoSubmit; }, [handleAutoSubmit]);
 
   const handleOpenSubmitConfirm = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -471,7 +483,7 @@ export function StudentQuizClient({
                 {t('contactProctorNote')}
               </p>
               <div className="pt-4">
-                <Button onClick={() => window.location.href = `/student/course/${courseId}/quiz/${quizId}`} className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
+                <Button onClick={() => router.push(`/student/course/${courseId}/quiz/${quizId}`)} className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
                   <ArrowLeft className="h-4 w-4" /> {t('backToQuizDetail')}
                 </Button>
               </div>
@@ -509,7 +521,7 @@ export function StudentQuizClient({
             )}
 
             <div className="pt-4">
-              <Button onClick={() => window.location.href = `/student/course/${courseId}/quiz/${quizId}`} className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
+              <Button onClick={() => router.push(`/student/course/${courseId}/quiz/${quizId}`)} className="bg-[#002446] hover:bg-[#002446]/90 text-white flex items-center gap-2 mx-auto">
                 <ArrowLeft className="h-4 w-4" /> {t('backToQuizDetail')}
               </Button>
             </div>

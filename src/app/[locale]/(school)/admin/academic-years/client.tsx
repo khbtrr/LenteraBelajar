@@ -27,7 +27,7 @@ interface AcademicYear {
   name: string;
   startDate: Date;
   endDate: Date;
-  status: 'ACTIVE' | 'ARCHIVED';
+  status: 'ACTIVE' | 'ARCHIVED' | 'PLANNED';
   _count?: {
     courses: number;
   };
@@ -72,7 +72,7 @@ export function AcademicYearsClient({
         setYears((prev) =>
           prev.map((y) => ({
             ...y,
-            status: 'ARCHIVED',
+            status: y.status === 'ACTIVE' ? 'ARCHIVED' : y.status,
           }))
         );
       }
@@ -108,7 +108,7 @@ export function AcademicYearsClient({
       setYears((prev) =>
         prev.map((y) => ({
           ...y,
-          status: y.id === id ? 'ACTIVE' : 'ARCHIVED',
+          status: y.id === id ? 'ACTIVE' : y.status === 'ACTIVE' ? 'ARCHIVED' : y.status,
         }))
       );
       await showAlert(t('activateSuccessAlert'), { type: 'success' });
@@ -178,7 +178,7 @@ export function AcademicYearsClient({
                       : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                   }
                 >
-                  {year.status === 'ACTIVE' ? t('activeBadge') : t('archivedBadge')}
+                  {year.status === 'ACTIVE' ? t('activeBadge') : year.status === 'PLANNED' ? t('plannedBadge') : t('archivedBadge')}
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-4">

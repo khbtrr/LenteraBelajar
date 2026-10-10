@@ -56,13 +56,13 @@ export function GamificationChip({ userRole }: GamificationChipProps) {
     <TooltipProvider delayDuration={300}>
       <Link
         href="/student/achievements"
-        className="flex items-center gap-1.5 sm:gap-2 focus:outline-none"
+        className="flex items-center gap-1.5 sm:gap-2 focus-visible:ring-2 focus-visible:ring-brand-500 rounded-md"
       >
         {/* Streak Flame Chip */}
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 font-extrabold text-xs hover:bg-orange-500/20 transition-all cursor-pointer">
-              <Flame className="h-3.5 w-3.5 fill-orange-500 text-orange-500 animate-pulse" />
+              <Flame className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
               <span>{profile.streakDays}</span>
             </div>
           </TooltipTrigger>

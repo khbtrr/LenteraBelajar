@@ -4,8 +4,9 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { AttendanceStatus } from '@prisma/client';
-import { awardXp } from './gamification';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { awardXp } from '@/lib/gamification';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
+import { assertCourseAccess } from '@/lib/access';
 
 export interface AttendanceSessionItem {
   id: string;
@@ -29,8 +30,8 @@ export interface AttendanceSessionItem {
   };
 }
 
-async function assertCourseAttendanceAccess(courseId: string) {
-  const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+async function assertCourseAttendanceAccess(courseId: string, readOnly = false) {
+  const session = readOnly ? (await assertCourseAccess(courseId, 'roster')).session : await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
 
   const course = await db.course.findUnique({
     where: { id: courseId },
@@ -57,7 +58,7 @@ async function assertCourseAttendanceAccess(courseId: string) {
     return { session, course };
   }
 
-  if (session.user.role === 'ADMIN') {
+  if (session.user.role === 'ADMIN' || (readOnly && session.user.role === 'SUPERVISOR')) {
     if (course.schoolId !== session.user.schoolId) {
       throw new Error('Akses ditolak: Kelas tidak berada dalam sekolah Anda');
     }
@@ -217,8 +218,20 @@ export async function deleteAttendanceSession(sessionId: string) {
 export async function updateAttendanceRecord(
   recordId: string,
   status: AttendanceStatus,
-  notes?: string
+  notes?: string,
+  sessionId?: string
 ) {
+  if (recordId.startsWith('temp-')) {
+    if (!sessionId) throw new Error('Sesi presensi wajib diisi');
+    const { attSession } = await assertAttendanceSessionAccess(sessionId);
+    const userId = recordId.slice(5);
+    if (!await db.enrollment.findUnique({ where: { courseId_userId: { courseId: attSession.courseId, userId } } })) throw new Error('Siswa tidak terdaftar di sesi ini');
+    return db.attendanceRecord.upsert({ where: { sessionId_userId: { sessionId, userId } },
+      create: { sessionId, userId, status, notes, checkInAt: status === AttendanceStatus.PRESENT ? new Date() : null },
+      update: { status, notes, checkInAt: status === AttendanceStatus.PRESENT ? new Date() : null },
+      include: { session: { select: { courseId: true } } },
+    });
+  }
   const { record } = await assertAttendanceRecordAccess(recordId);
 
   const updated = await db.attendanceRecord.update({
@@ -242,11 +255,15 @@ export async function bulkUpdateAttendanceRecords(
   updates: Array<{ recordId: string; status: AttendanceStatus; notes?: string }>
 ) {
   const { attSession } = await assertAttendanceSessionAccess(sessionId);
+  const recordCount = await db.attendanceRecord.count({ where: { sessionId, id: { in: [...new Set(updates.map((item) => item.recordId))] } } });
+  if (recordCount !== new Set(updates.map((item) => item.recordId)).size) {
+    throw new Error('Akses ditolak: Data presensi bukan bagian sesi ini');
+  }
 
   await db.$transaction(
     updates.map((item) =>
       db.attendanceRecord.update({
-        where: { id: item.recordId },
+        where: { id: item.recordId, sessionId },
         data: {
           status: item.status,
           notes: item.notes,
@@ -266,7 +283,7 @@ export async function studentCheckIn(sessionId: string, token: string) {
   const userId = userSession.user.id;
 
   // Rate limit: max 5 check-in attempts per minute per user to prevent token brute-forcing
-  const rateLimit = checkRateLimit(`attendance-checkin:${userId}`, 5, 60 * 1000);
+  const rateLimit = await checkSharedRateLimit(`attendance-checkin:${userId}`, 5, 60 * 1000);
   if (!rateLimit.success) {
     return {
       success: false,
@@ -305,6 +322,9 @@ export async function studentCheckIn(sessionId: string, token: string) {
     return { success: false, error: 'Kode token presensi tidak sesuai.' };
   }
 
+  if (attendanceSession.startTime && new Date() < attendanceSession.startTime) {
+    return { success: false, error: 'Sesi presensi belum dimulai.' };
+  }
   // Check end time if defined
   if (attendanceSession.endTime && new Date() > new Date(attendanceSession.endTime)) {
     return { success: false, error: 'Batas waktu sesi presensi telah berakhir.' };
@@ -348,7 +368,8 @@ export async function studentCheckIn(sessionId: string, token: string) {
         15,
         `Melakukan presensi mandiri: ${attendanceSession.title}`,
         'ATTENDANCE',
-        attendanceSession.courseId
+        attendanceSession.courseId,
+        `ATTENDANCE:${sessionId}:${userId}`
       );
     } catch (xpErr) {
       console.error('Failed to award XP for attendance check-in:', xpErr);
@@ -382,8 +403,9 @@ export async function getCourseAttendanceSessions(courseId: string): Promise<Att
   const isEnrolled = course.enrollments.length > 0;
   const isAdmin = session.user.role === 'ADMIN' && course.schoolId === session.user.schoolId;
   const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
+  const isSupervisor = session.user.role === 'SUPERVISOR' && course.schoolId === session.user.schoolId;
 
-  if (!isTeacher && !isEnrolled && !isAdmin && !isSuperAdmin) {
+  if (!isTeacher && !isEnrolled && !isAdmin && !isSuperAdmin && !isSupervisor) {
     throw new Error('Akses ditolak');
   }
 
@@ -462,8 +484,9 @@ export async function getSessionDetails(sessionId: string) {
   const isEnrolled = session.course.enrollments.some((e) => e.user.id === sessionUser.user.id);
   const isAdmin = sessionUser.user.role === 'ADMIN' && session.course.schoolId === sessionUser.user.schoolId;
   const isSuperAdmin = sessionUser.user.role === 'SUPER_ADMIN';
+  const isSupervisor = sessionUser.user.role === 'SUPERVISOR' && session.course.schoolId === sessionUser.user.schoolId;
 
-  if (!isTeacher && !isEnrolled && !isAdmin && !isSuperAdmin) {
+  if (!isTeacher && !isEnrolled && !isAdmin && !isSuperAdmin && !isSupervisor) {
     throw new Error('Akses ditolak');
   }
 
@@ -487,17 +510,19 @@ export async function getSessionDetails(sessionId: string) {
 
   return {
     ...session,
+    course: sessionUser.user.role === 'STUDENT' ? { ...session.course, enrollments: session.course.enrollments.filter((enrollment) => enrollment.userId === sessionUser.user.id) } : session.course,
     token: (isTeacher || isAdmin || isSuperAdmin) ? session.token : null,
-    records: combinedRecords,
+    records: sessionUser.user.role === 'STUDENT' ? combinedRecords.filter((record) => record.userId === sessionUser.user.id) : combinedRecords,
   };
 }
 
 export async function getStudentAttendanceOverview(courseId: string, targetStudentId?: string) {
+  await assertCourseAccess(courseId);
   const session = await requireAuth();
   const studentId = targetStudentId || session.user.id;
 
   if (targetStudentId && targetStudentId !== session.user.id) {
-    if (!['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!['TEACHER', 'ADMIN', 'SUPER_ADMIN', 'SUPERVISOR'].includes(session.user.role)) {
       throw new Error('Akses ditolak');
     }
   }
@@ -550,7 +575,7 @@ export async function getStudentAttendanceOverview(courseId: string, targetStude
 }
 
 export async function getCourseAttendanceRecap(courseId: string) {
-  const { course } = await assertCourseAttendanceAccess(courseId);
+  const { course } = await assertCourseAttendanceAccess(courseId, true);
 
   const totalSessions = course.attendanceSessions.length;
 
@@ -606,6 +631,7 @@ export async function syncAttendanceToGradebook(
   maxScore: number = 100
 ) {
   await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  if (!Number.isFinite(maxScore) || maxScore <= 0) throw new Error('Skala nilai tidak valid');
 
   const recap = await getCourseAttendanceRecap(courseId);
 
@@ -631,6 +657,7 @@ export async function syncAttendanceToGradebook(
           label,
           score,
           maxScore,
+          includeInAverage: true,
         },
       });
     } else {
@@ -642,6 +669,7 @@ export async function syncAttendanceToGradebook(
           score,
           maxScore,
           type: 'ATTENDANCE',
+          includeInAverage: true,
         },
       });
     }

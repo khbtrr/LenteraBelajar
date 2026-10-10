@@ -6,6 +6,7 @@ import { compare, hash } from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { validatePassword } from '@/lib/password-policy';
 import { recordAuditLog } from '@/lib/audit-log';
+import { assertFileReferences, bindFileReferences } from '@/lib/files';
 
 export interface UserProfileData {
   id: string;
@@ -169,6 +170,7 @@ export async function updateUserProfile(data: {
 }): Promise<{ success: boolean; name?: string; avatar?: string | null }> {
   const session = await requireAuth();
   const userId = session.user.id;
+  await assertFileReferences(data.avatar);
 
   const updateData: { name?: string; avatar?: string | null } = {};
 
@@ -193,6 +195,7 @@ export async function updateUserProfile(data: {
   });
 
   revalidatePath('/profile');
+  if (data.avatar !== undefined) await bindFileReferences('AVATAR', userId, data.avatar);
   revalidatePath('/', 'layout');
 
   return { success: true, ...updateData };
@@ -209,6 +212,7 @@ export async function removeUserAvatar(): Promise<{ success: boolean }> {
     where: { id: userId },
     data: { avatar: null },
   });
+  await bindFileReferences('AVATAR', userId, null);
 
   revalidatePath('/profile');
   revalidatePath('/', 'layout');
@@ -223,7 +227,7 @@ export async function changeUserPassword(data: {
   currentPassword: string;
   newPassword: string;
 }): Promise<{ success: boolean }> {
-  const session = await requireAuth();
+  const session = await requireAuth({ allowPasswordChange: true });
   const userId = session.user.id;
 
   const { currentPassword, newPassword } = data;
@@ -259,6 +263,7 @@ export async function changeUserPassword(data: {
     data: {
       passwordHash: hashedNewPassword,
       mustChangePassword: false,
+      sessionVersion: { increment: 1 },
     },
   });
 

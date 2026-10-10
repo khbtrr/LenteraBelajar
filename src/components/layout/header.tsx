@@ -54,12 +54,14 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors">
+    <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-2 sm:px-4 md:px-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors">
       {/* Left side: Hamburger menu + mobile brand + School Switcher */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 min-w-0">
         {/* Mobile Hamburger toggle */}
         <button
           onClick={toggleMobileSidebar}
+          id="mobile-navigation-toggle"
+          aria-expanded={isMobileOpen}
           aria-label="Toggle Mobile Menu"
           className="flex lg:hidden items-center justify-center w-10 h-10 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
         >
@@ -76,7 +78,7 @@ export function Header({
         </button>
 
         {/* Mobile Brand Link */}
-        <Link href="/" className="flex items-center gap-2 lg:hidden">
+        <Link href="/" className="hidden sm:flex items-center gap-2 lg:hidden">
           <span className="font-bold text-base text-gray-900 dark:text-white">
             LenteraBelajar
           </span>
@@ -87,7 +89,7 @@ export function Header({
       </div>
 
       {/* Right side: Tools, Switcher, Theme, Notifications & User */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1 sm:gap-3 shrink-0">
         {/* Language Switcher */}
         <LanguageSwitcher />
 
@@ -98,7 +100,7 @@ export function Header({
         <NotificationDropdown />
 
         {/* Gamification Streak & Level Chip (Students) */}
-        <GamificationChip userRole={userRole} />
+        <div className="hidden sm:block"><GamificationChip userRole={userRole} /></div>
 
         <div className="h-6 w-[1px] bg-gray-200 dark:bg-gray-800 hidden sm:block mx-1" />
 
@@ -107,6 +109,7 @@ export function Header({
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
+              aria-label={`${t('sidebar.profile')}: ${userName}`}
               className="flex items-center gap-3 px-2 py-1.5 h-auto rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <Avatar className="h-9 w-9 border border-gray-200 dark:border-gray-700 shadow-xs">

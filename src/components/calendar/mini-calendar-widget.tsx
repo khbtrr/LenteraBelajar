@@ -29,13 +29,15 @@ export function MiniCalendarWidget() {
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<CalendarItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
 
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     getCalendarEvents({
-      month: currentDate.getMonth(),
-      year: currentDate.getFullYear(),
+      month: currentMonth,
+      year: currentYear,
     })
       .then((data) => {
         if (isMounted) {
@@ -50,7 +52,7 @@ export function MiniCalendarWidget() {
     return () => {
       isMounted = false;
     };
-  }, [currentDate.getMonth(), currentDate.getFullYear()]);
+  }, [currentMonth, currentYear]);
 
   // Calendar math
   const year = currentDate.getFullYear();

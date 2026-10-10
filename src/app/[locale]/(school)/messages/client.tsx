@@ -32,9 +32,7 @@ export function MessagesClient({ initialConversations }: MessagesClientProps) {
 
   // Sync selectedId with URL parameter
   useEffect(() => {
-    if (conversationParam !== selectedId) {
-      setSelectedId(conversationParam);
-    }
+    setSelectedId(conversationParam);
   }, [conversationParam]);
 
   // Refresh conversations list periodically (every 10s)

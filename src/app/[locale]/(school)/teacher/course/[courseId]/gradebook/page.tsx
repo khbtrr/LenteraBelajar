@@ -1,4 +1,4 @@
-﻿import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { getCourseGradebook } from '@/lib/actions/grade';
 import { notFound } from 'next/navigation';
 import { TeacherGradebookClient } from './client';

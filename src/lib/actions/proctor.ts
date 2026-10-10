@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
+import { finalizeSystemAttempt, heartbeatQuiz, recordQuizViolation, extendQuizTime, voidQuizAttempt } from '@/lib/cbt';
 
 export interface ProctorStudentData {
   userId: string;
@@ -172,83 +173,11 @@ export async function verifyQuizToken(quizId: string, token: string) {
 }
 
 export async function recordTabSwitch(attemptId: string) {
-  const session = await requireAuth();
-
-  const attempt = await db.quizAttempt.findUnique({
-    where: { id: attemptId },
-    include: {
-      quiz: {
-        include: {
-          questions: true,
-        },
-      },
-      answers: true,
-    },
-  });
-
-  if (!attempt) throw new Error('Attempt tidak ditemukan');
-  if (attempt.userId !== session.user.id) throw new Error('Akses ditolak');
-  if (attempt.submittedAt !== null) {
-    return { tabSwitchCount: attempt.tabSwitchCount, isTerminated: true, message: 'Kuis telah selesai.' };
-  }
-
-  const updatedCount = attempt.tabSwitchCount + 1;
-  const maxAllowed = attempt.quiz.maxTabSwitches || 3;
-  const reachedLimit = attempt.quiz.enableLockdown && updatedCount >= maxAllowed;
-
-  if (reachedLimit) {
-    // Auto-terminate / auto-submit attempt
-    // Compute score for existing answers
-    let totalScore = 0;
-    for (const ans of attempt.answers) {
-      if (ans.score !== null) totalScore += ans.score;
-    }
-
-    await db.quizAttempt.update({
-      where: { id: attemptId },
-      data: {
-        tabSwitchCount: updatedCount,
-        isTerminated: true,
-        terminationReason: `Melebihi batas toleransi meninggalkan layar ujian (${updatedCount}/${maxAllowed})`,
-        submittedAt: new Date(),
-        score: totalScore,
-        isGraded: true,
-      },
-    });
-
-    return {
-      tabSwitchCount: updatedCount,
-      isTerminated: true,
-      remainingSwitches: 0,
-      message: `Ujian Anda otomatis dihentikan dan dikumpulkan karena berpindah tab sebanyak ${updatedCount} kali.`,
-    };
-  } else {
-    await db.quizAttempt.update({
-      where: { id: attemptId },
-      data: {
-        tabSwitchCount: updatedCount,
-        lastActiveAt: new Date(),
-      },
-    });
-
-    return {
-      tabSwitchCount: updatedCount,
-      isTerminated: false,
-      remainingSwitches: Math.max(0, maxAllowed - updatedCount),
-      message: `Peringatan: Anda meninggalkan layar ujian (${updatedCount}/${maxAllowed}). Ujian akan otomatis di-submit jika Anda melanggar lagi!`,
-    };
-  }
+  return recordQuizViolation(attemptId);
 }
 
 export async function pingAttemptHeartbeat(attemptId: string) {
-  const session = await requireAuth();
-
-  await db.quizAttempt.updateMany({
-    where: { id: attemptId, userId: session.user.id },
-    data: { lastActiveAt: new Date() },
-  });
-
-  return { success: true };
+  return heartbeatQuiz(attemptId);
 }
 
 export async function getLiveProctorData(quizId: string): Promise<LiveProctorData> {
@@ -301,7 +230,7 @@ export async function getLiveProctorData(quizId: string): Promise<LiveProctorDat
       submittedAt: latestAttempt?.submittedAt || null,
       tabSwitchCount: latestAttempt?.tabSwitchCount || 0,
       extraTimeMinutes: latestAttempt?.extraTimeMinutes || 0,
-      score: latestAttempt?.score || null,
+      score: latestAttempt?.score ?? null,
       isOnline,
       lastActiveAt: latestAttempt?.lastActiveAt || null,
       remainingSeconds,
@@ -337,55 +266,18 @@ export async function getLiveProctorData(quizId: string): Promise<LiveProctorDat
 }
 
 export async function grantExtraTime(attemptId: string, minutes: number) {
-  const { attempt } = await assertAttemptProctorAccess(attemptId);
-
-  const updated = await db.quizAttempt.update({
-    where: { id: attemptId },
-    data: {
-      extraTimeMinutes: attempt.extraTimeMinutes + minutes,
-    },
-  });
-
-  revalidatePath(`/[locale]/teacher/course/[courseId]/quiz-attempts/${attempt.quizId}/proctor`, 'page');
-  return updated;
+  await assertAttemptProctorAccess(attemptId);
+  return extendQuizTime(attemptId, minutes);
 }
 
 export async function forceSubmitAttempt(attemptId: string, reason?: string) {
-  const { attempt } = await assertAttemptProctorAccess(attemptId);
-
-  let totalScore = 0;
-  for (const ans of attempt.answers) {
-    if (ans.score !== null) totalScore += ans.score;
-  }
-
-  const updated = await db.quizAttempt.update({
-    where: { id: attemptId },
-    data: {
-      submittedAt: new Date(),
-      score: totalScore,
-      isGraded: true,
-      terminationReason: reason || 'Dihentikan dan dikumpulkan secara paksa oleh Pengawas Ujian.',
-    },
-  });
-
-  revalidatePath(`/[locale]/teacher/course/[courseId]/quiz-attempts/${attempt.quizId}/proctor`, 'page');
-  return updated;
+  await assertAttemptProctorAccess(attemptId);
+  return finalizeSystemAttempt(attemptId, 'PROCTOR', reason);
 }
 
 export async function resetStudentAttempt(attemptId: string) {
-  const { attempt } = await assertAttemptProctorAccess(attemptId);
-
-  // Delete answers first, then attempt
-  await db.quizAnswer.deleteMany({
-    where: { attemptId },
-  });
-
-  await db.quizAttempt.delete({
-    where: { id: attemptId },
-  });
-
-  revalidatePath(`/[locale]/teacher/course/[courseId]/quiz-attempts/${attempt.quizId}/proctor`, 'page');
-  return { success: true };
+  await assertAttemptProctorAccess(attemptId);
+  return voidQuizAttempt(attemptId);
 }
 
 export async function updateQuizSecuritySettings(

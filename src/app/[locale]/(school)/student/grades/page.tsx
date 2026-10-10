@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { getStudentGradesOverview } from '@/lib/actions/grade';
 import { StudentGradesClient } from './client';
 import { getTranslations } from 'next-intl/server';

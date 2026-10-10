@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { signOut } from 'next-auth/react';
 import { changeUserPassword } from '@/lib/actions/profile';
 import { validatePassword } from '@/lib/password-policy';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import {
 
 export function SecurityTab() {
   const t = useTranslations('profile');
+  const locale = useLocale();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -73,6 +75,7 @@ export function SecurityTab() {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+        await signOut({ callbackUrl: `/${locale}/login?passwordChanged=1` });
       } catch (err: any) {
         setStatus({
           type: 'error',

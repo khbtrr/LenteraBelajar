@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { sanitizeRichText } from '@/lib/rich-text';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -49,11 +50,13 @@ import {
   Eye,
   Users,
   Sparkles,
+  FileArchive,
 } from 'lucide-react';
 import { QuestionTextRenderer } from '@/components/quiz/question-text-renderer';
 import { createModule, deleteModule, createContent, deleteContent, getCourseModules } from '@/lib/actions/module';
 import { ModuleCohortAccessModal } from '@/components/course/module-cohort-access-modal';
 import { parseInteractiveContent } from '@/lib/interactive-utils';
+import { MoodleImportModal } from '@/components/moodle/moodle-import-modal';
 
 function extractMediaFromText(text: string) {
   if (!text) return { type: 'NONE' as const, url: '', maxPlay: null, cleanText: '' };
@@ -110,7 +113,7 @@ import { getQuestionBankByCategory } from '@/lib/actions/question-bank';
 import { createAssignment, updateAssignment, deleteAssignment } from '@/lib/actions/assignment';
 import { RichTextEditor } from '@/components/editor/rich-text-editor';
 import { ContentType, QuestionType } from '@prisma/client';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 
 const ASSIGNMENT_FILE_CATEGORIES = [
@@ -187,6 +190,7 @@ export function TeacherCourseModulesClient({
   const t = useTranslations('teacherModules');
   const tCohort = useTranslations('cohortAccess');
   const locale = useLocale();
+  const router = useRouter();
 
   const [modules, setModules] = useState<any[]>(initialModules);
   const [loading, setLoading] = useState(false);
@@ -194,6 +198,7 @@ export function TeacherCourseModulesClient({
 
   // Modals state
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
+  const [isMoodleImportOpen, setIsMoodleImportOpen] = useState(false);
   const [moduleTitle, setModuleTitle] = useState('');
 
   // Active module for adding items
@@ -1137,6 +1142,14 @@ export function TeacherCourseModulesClient({
 
         {!isReadOnly && (
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsMoodleImportOpen(true)}
+              className="border-slate-300 text-[#002446] hover:bg-slate-50 flex items-center gap-2"
+            >
+              <FileArchive className="h-4 w-4 text-[#FF8928]" />
+              <span>Import Moodle (.mbz)</span>
+            </Button>
             <Link href={`/teacher/course/${course.id}/question-bank`}>
               <Button variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-100">
                 {t('bankSoalBtn')}
@@ -1161,12 +1174,22 @@ export function TeacherCourseModulesClient({
               {t('emptyDesc')}
             </p>
             {!isReadOnly && (
-              <Button
-                onClick={() => setIsModuleModalOpen(true)}
-                className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white"
-              >
-                {t('createFirstBtn')}
-              </Button>
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  onClick={() => setIsModuleModalOpen(true)}
+                  className="bg-[#FF8928] hover:bg-[#FF8928]/90 text-white"
+                >
+                  {t('createFirstBtn')}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsMoodleImportOpen(true)}
+                  className="border-slate-300 text-[#002446] hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FileArchive className="h-4 w-4 text-[#FF8928]" />
+                  <span>Import dari Moodle (.mbz)</span>
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -2512,7 +2535,7 @@ export function TeacherCourseModulesClient({
                                           </div>
                                           <div
                                             className="text-gray-800 line-clamp-2 [&_img]:max-h-16 [&_img]:rounded [&_img]:my-1"
-                                            dangerouslySetInnerHTML={{ __html: bankQ.text }}
+                                            dangerouslySetInnerHTML={{ __html: sanitizeRichText(bankQ.text) }}
                                           />
                                         </div>
                                       </div>
@@ -2615,7 +2638,7 @@ export function TeacherCourseModulesClient({
                                       </div>
                                       <div
                                         className="text-gray-800 line-clamp-2 [&_img]:max-h-16 [&_img]:rounded [&_img]:my-1"
-                                        dangerouslySetInnerHTML={{ __html: bankQ.text }}
+                                        dangerouslySetInnerHTML={{ __html: sanitizeRichText(bankQ.text) }}
                                       />
                                     </div>
                                   </div>
@@ -2664,7 +2687,7 @@ export function TeacherCourseModulesClient({
                           </Badge>
                           <div
                             className="inline text-gray-800 [&_img]:inline-block [&_img]:max-h-8 [&_img]:rounded [&_img]:align-middle [&_img]:mr-1"
-                            dangerouslySetInnerHTML={{ __html: q.text }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeRichText(q.text) }}
                           />
                         </div>
                         <Button
@@ -3702,6 +3725,20 @@ export function TeacherCourseModulesClient({
           }}
         />
       )}
+
+      {/* Modal Import Moodle */}
+      <MoodleImportModal
+        isOpen={isMoodleImportOpen}
+        onClose={() => setIsMoodleImportOpen(false)}
+        courseId={course.id}
+        courseTitle={course.title}
+        targetMode="EXISTING"
+        onSuccess={async () => {
+          const updatedModules = await getCourseModules(course.id);
+          setModules(updatedModules);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

@@ -45,7 +45,7 @@ function getValidLocale(pathname: string, request: NextRequest): string {
   return routing.defaultLocale;
 }
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Skip all API routes (auth, upload, files, etc.)

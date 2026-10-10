@@ -50,6 +50,9 @@ export async function createCategory(data: {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
+  if (data.parentId && !await db.category.findFirst({ where: { id: data.parentId, schoolId } })) {
+    throw new Error('Akses ditolak: Kategori induk bukan bagian sekolah');
+  }
 
   const slug = data.name
     .toLowerCase()

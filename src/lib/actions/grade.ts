@@ -1,9 +1,12 @@
 'use server';
 
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { createNotification } from './notification';
+import { createNotification } from '@/lib/notifications';
+import { assertCourseAccess, assertItemAccess } from '@/lib/access';
+import { gradeEssay } from '@/lib/cbt';
+import { loadCourseGrades, meanScore } from '@/lib/course-grades';
 
 export interface StudentGradeItem {
   id: string;
@@ -37,229 +40,36 @@ export interface CourseGradebookData {
 }
 
 export async function getCourseGradebook(courseId: string): Promise<CourseGradebookData | null> {
-  const session = await auth();
-  if (!session?.user) throw new Error('Unauthorized');
-
-  if (session.user.role === 'STUDENT') {
-    throw new Error('Akses ditolak: Siswa tidak diizinkan mengakses buku nilai kelas.');
-  }
-
+  await assertCourseAccess(courseId, 'roster');
   const course = await db.course.findUnique({
     where: { id: courseId },
-    include: {
-      academicYear: true,
-      category: true,
-      modules: {
-        include: {
-          quizzes: {
-            select: {
-              id: true,
-              title: true,
-              order: true,
-              cohortAccess: { select: { cohortId: true } },
-            },
-          },
-          assignments: {
-            select: {
-              id: true,
-              title: true,
-              maxScore: true,
-              order: true,
-              cohortAccess: { select: { cohortId: true } },
-            },
-          },
-        },
-      },
-      enrollments: {
-        include: {
-          cohort: { select: { id: true } },
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              nis: true,
-            },
-          },
-        },
-        orderBy: {
-          user: { name: 'asc' },
-        },
-      },
-    },
+    include: { academicYear: true, category: true, modules: { select: { id: true, title: true } },
+      enrollments: { include: { user: { select: { id: true, name: true, email: true, nis: true } } }, orderBy: { user: { name: 'asc' } } } },
   });
-
   if (!course) return null;
-
-  // Flatten quizzes & assignments
-  const quizzes = course.modules
-    .flatMap((m) => m.quizzes)
-    .sort((a, b) => a.order - b.order);
-
-  const assignments = course.modules
-    .flatMap((m) => m.assignments)
-    .sort((a, b) => a.order - b.order);
-
-  const quizIds = quizzes.map((q) => q.id);
-  const assignmentIds = assignments.map((a) => a.id);
-  const studentIds = course.enrollments.map((e) => e.user.id);
-
-  // Fetch all quiz attempts, assignment submissions, cohort memberships, and overrides in bulk
-  const [quizAttempts, submissions, cohortMembers, itemOverrides] = await Promise.all([
-    quizIds.length > 0 && studentIds.length > 0
-      ? db.quizAttempt.findMany({
-          where: {
-            quizId: { in: quizIds },
-            userId: { in: studentIds },
-            submittedAt: { not: null },
-          },
-          orderBy: { startedAt: 'desc' },
-        })
-      : [],
-    assignmentIds.length > 0 && studentIds.length > 0
-      ? db.assignmentSubmission.findMany({
-          where: {
-            assignmentId: { in: assignmentIds },
-            userId: { in: studentIds },
-          },
-        })
-      : [],
-    studentIds.length > 0
-      ? db.cohortMember.findMany({
-          where: { userId: { in: studentIds } },
-          select: { userId: true, cohortId: true },
-        })
-      : [],
-    studentIds.length > 0
-      ? db.itemAccessOverride.findMany({
-          where: { userId: { in: studentIds } },
-          select: { userId: true, itemType: true, itemId: true },
-        })
-      : [],
-  ]);
-
-  // Map quiz scores: userId -> quizId -> best score
-  const quizMap: Record<string, Record<string, number>> = {};
-  for (const attempt of quizAttempts) {
-    if (attempt.score !== null) {
-      if (!quizMap[attempt.userId]) quizMap[attempt.userId] = {};
-      const current = quizMap[attempt.userId][attempt.quizId];
-      if (current === undefined || attempt.score > current) {
-        quizMap[attempt.userId][attempt.quizId] = attempt.score;
-      }
-    }
-  }
-
-  // Map assignment scores: userId -> assignmentId -> score
-  const assignMap: Record<string, Record<string, number>> = {};
-  for (const sub of submissions) {
-    if (sub.score !== null) {
-      if (!assignMap[sub.userId]) assignMap[sub.userId] = {};
-      assignMap[sub.userId][sub.assignmentId] = sub.score;
-    }
-  }
-
-  const allAverages: number[] = [];
-
-  const students: StudentGradeItem[] = course.enrollments.map((e) => {
-    const u = e.user;
-    const studentQuizScores: Record<string, number | null> = {};
-    const studentAssignScores: Record<string, number | null> = {};
-
-    const studentCohortIds = new Set<string>();
-    if (e.cohort?.id) studentCohortIds.add(e.cohort.id);
-    for (const cm of cohortMembers.filter((m) => m.userId === u.id)) {
-      studentCohortIds.add(cm.cohortId);
-    }
-    const studentOverrides = new Set<string>(
-      itemOverrides.filter((io) => io.userId === u.id).map((io) => `${io.itemType}_${io.itemId}`)
-    );
-
-    let totalScore = 0;
-    let totalItems = 0;
-
-    for (const q of quizzes) {
-      const hasAccess =
-        !q.cohortAccess ||
-        q.cohortAccess.length === 0 ||
-        studentOverrides.has(`QUIZ_${q.id}`) ||
-        q.cohortAccess.some((ca: any) => studentCohortIds.has(ca.cohortId));
-
-      if (hasAccess) {
-        const s = quizMap[u.id]?.[q.id] ?? null;
-        studentQuizScores[q.id] = s;
-        if (s !== null) {
-          totalScore += s;
-          totalItems++;
-        }
-      } else {
-        studentQuizScores[q.id] = null;
-      }
-    }
-
-    for (const a of assignments) {
-      const hasAccess =
-        !a.cohortAccess ||
-        a.cohortAccess.length === 0 ||
-        studentOverrides.has(`ASSIGNMENT_${a.id}`) ||
-        a.cohortAccess.some((ca: any) => studentCohortIds.has(ca.cohortId));
-
-      if (hasAccess) {
-        const s = assignMap[u.id]?.[a.id] ?? null;
-        studentAssignScores[a.id] = s;
-        if (s !== null) {
-          totalScore += s;
-          totalItems++;
-        }
-      } else {
-        studentAssignScores[a.id] = null;
-      }
-    }
-
-    const avg = totalItems > 0 ? Math.round((totalScore / totalItems) * 10) / 10 : null;
-    if (avg !== null) allAverages.push(avg);
-
-    return {
-      id: u.id,
-      name: u.name,
-      nis: u.nis,
-      email: u.email,
-      quizScores: studentQuizScores,
-      assignmentScores: studentAssignScores,
-      average: avg,
-    };
-  });
-
-  const classAverage =
-    allAverages.length > 0
-      ? Math.round((allAverages.reduce((a, b) => a + b, 0) / allAverages.length) * 10) / 10
-      : null;
-  const highestScore = allAverages.length > 0 ? Math.max(...allAverages) : null;
-  const lowestScore = allAverages.length > 0 ? Math.min(...allAverages) : null;
-
+  const grades = await loadCourseGrades(courseId, course.enrollments.map((enrollment) => enrollment.userId));
+  const students = course.enrollments.map(({ user }) => ({
+    ...user, quizScores: grades.scores.get(user.id)!.quiz,
+    assignmentScores: grades.scores.get(user.id)!.assignment, average: grades.scores.get(user.id)!.average,
+  }));
+  const averages = students.map((student) => student.average).filter((value): value is number => value !== null);
   return {
-    course: {
-      id: course.id,
-      title: course.title,
-      academicYear: { name: course.academicYear.name },
-      category: course.category ? { name: course.category.name } : null,
-    },
-    modules: course.modules.map((m) => ({
-      id: m.id,
-      title: m.title,
-      quizzes: m.quizzes.map((q) => ({ id: q.id, title: q.title })),
-      assignments: m.assignments.map((a) => ({ id: a.id, title: a.title, maxScore: a.maxScore })),
+    course: { id: course.id, title: course.title, academicYear: { name: course.academicYear.name }, category: course.category },
+    modules: course.modules.map((module) => ({ ...module,
+      quizzes: grades.quizzes.filter((quiz) => quiz.moduleId === module.id).map(({ id, title }) => ({ id, title })),
+      assignments: grades.assignments.filter((assignment) => assignment.moduleId === module.id).map(({ id, title, maxScore }) => ({ id, title, maxScore })),
     })),
-    quizzes,
-    assignments,
-    students,
-    classAverage,
-    highestScore,
-    lowestScore,
+    quizzes: grades.quizzes.map(({ id, title }) => ({ id, title })),
+    assignments: grades.assignments.map(({ id, title, maxScore }) => ({ id, title, maxScore })),
+    students, classAverage: meanScore(averages),
+    highestScore: averages.length ? Math.max(...averages) : null,
+    lowestScore: averages.length ? Math.min(...averages) : null,
   };
 }
 
 export async function getAssignmentSubmissionsList(assignmentId: string) {
+  const access = await assertItemAccess('ASSIGNMENT', assignmentId);
+  if (access.session.user.role === 'STUDENT') throw new Error('Akses ditolak');
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
 
@@ -410,9 +220,11 @@ export async function gradeAssignmentSubmission(
 
   const rawScore = Number(data.score);
   const maxScore = submission.assignment.maxScore || 100;
-  const validatedScore = isNaN(rawScore) ? 0 : Math.max(0, Math.min(rawScore, maxScore));
+  if (!Number.isFinite(rawScore) || rawScore < 0 || rawScore > maxScore) throw new Error('Nilai di luar skala tugas');
+  const validatedScore = rawScore;
 
-  const updated = await db.assignmentSubmission.update({
+  const updated = await db.$transaction(async (tx) => {
+  const updated = await tx.assignmentSubmission.update({
     where: { id: submissionId },
     data: {
       score: validatedScore,
@@ -422,24 +234,27 @@ export async function gradeAssignmentSubmission(
   });
 
   // Upsert to Grade table
-  await db.grade.upsert({
+  await tx.grade.upsert({
     where: {
-      id: `grade-assign-${submissionId}`,
+      courseId_userId_resourceKey: { courseId: submission.assignment.module.courseId, userId: submission.userId, resourceKey: `ASSIGNMENT:${submission.assignmentId}` },
     },
     update: {
-      score: data.score,
+      score: validatedScore,
       maxScore: submission.assignment.maxScore,
     },
     create: {
-      id: `grade-assign-${submissionId}`,
       courseId: submission.assignment.module.courseId,
       userId: submission.userId,
       label: submission.assignment.title,
-      score: data.score,
+      score: validatedScore,
+      resourceKey: `ASSIGNMENT:${submission.assignmentId}`,
+      includeInAverage: true,
       maxScore: submission.assignment.maxScore,
       type: 'ASSIGNMENT',
       sourceId: submission.assignmentId,
     },
+  });
+  return updated;
   });
 
   // Notify student
@@ -461,6 +276,8 @@ export async function gradeAssignmentSubmission(
 }
 
 export async function getQuizAttemptsList(quizId: string) {
+  const access = await assertItemAccess('QUIZ', quizId);
+  if (access.session.user.role === 'STUDENT') throw new Error('Akses ditolak');
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
 
@@ -476,7 +293,7 @@ export async function getQuizAttemptsList(quizId: string) {
         },
       },
       attempts: {
-        where: { submittedAt: { not: null } },
+        where: { submittedAt: { not: null }, isVoided: false },
         include: {
           user: {
             select: { id: true, name: true, email: true, nis: true },
@@ -511,7 +328,7 @@ export async function getQuizAttemptsList(quizId: string) {
   const attemptsWithQuestions = quiz.attempts.map((att) => {
     // If bank soal snapshot exists, merge its questions into local lookup
     const localMap = new Map(questionMap);
-    if (quiz.useQuestionBank && att.questionSnapshot && Array.isArray(att.questionSnapshot)) {
+    if (att.questionSnapshot && Array.isArray(att.questionSnapshot)) {
       for (const sq of att.questionSnapshot as any[]) {
         if (sq?.id) {
           localMap.set(sq.id, { id: sq.id, type: sq.type, text: sq.text, points: sq.points || 1 });
@@ -552,249 +369,39 @@ export async function getQuizAttemptsList(quizId: string) {
   };
 }
 
-export async function gradeQuizEssayAnswer(
-  answerId: string,
-  data: { score: number; teacherNote?: string }
-) {
-  const session = await auth();
-  if (!session?.user) throw new Error('Unauthorized');
-
-  if (!['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
-    throw new Error('Akses ditolak: Hanya pengajar atau administrator yang dapat menilai kuis.');
-  }
-
-  const answer = await db.quizAnswer.findUnique({
-    where: { id: answerId },
-    include: {
-      attempt: {
-        include: {
-          answers: true,
-          quiz: {
-            include: {
-              questions: true,
-              module: {
-                include: {
-                  course: {
-                    select: { id: true, teacherId: true, schoolId: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!answer) throw new Error('Answer not found');
-
-  const course = answer.attempt.quiz.module.course;
-  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
-    throw new Error('Akses ditolak: Anda bukan pengajar untuk mata pelajaran ini.');
-  }
-  if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
-    throw new Error('Akses ditolak: Kuis ini tidak berada dalam sekolah Anda.');
-  }
-
-  const rawScore = Number(data.score);
-  const validatedScore = isNaN(rawScore) ? 0 : Math.max(0, rawScore);
-
-  await db.quizAnswer.update({
-    where: { id: answerId },
-    data: {
-      score: validatedScore,
-      teacherNote: data.teacherNote,
-    },
-  });
-
-  // Recalculate total score for attempt (supporting both standard questions and question bank snapshots)
-  const updatedAnswers = await db.quizAnswer.findMany({
-    where: { attemptId: answer.attemptId },
-  });
-
-  const activeQuestions: any[] = (answer.attempt.quiz.useQuestionBank && answer.attempt.questionSnapshot)
-    ? (answer.attempt.questionSnapshot as any[])
-    : answer.attempt.quiz.questions;
-
-  const totalPoints = activeQuestions.reduce((acc, q) => acc + (q.points || 1), 0);
-  const earnedPoints = updatedAnswers.reduce((acc, a) => acc + (a.score || 0), 0);
-  const finalPercentage = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
-
-  // Check if all essay questions have scores
-  const allGraded = updatedAnswers.every((a) => a.score !== null);
-
-  await db.quizAttempt.update({
-    where: { id: answer.attemptId },
-    data: {
-      score: finalPercentage,
-      isGraded: allGraded,
-    },
-  });
-
-  // Upsert to Grade table
-  await db.grade.upsert({
-    where: {
-      id: `grade-quiz-${answer.attemptId}`,
-    },
-    update: {
-      score: finalPercentage,
-    },
-    create: {
-      id: `grade-quiz-${answer.attemptId}`,
-      courseId: answer.attempt.quiz.module.courseId,
-      userId: answer.attempt.userId,
-      label: answer.attempt.quiz.title,
-      score: finalPercentage,
-      maxScore: 100,
-      type: 'QUIZ',
-      sourceId: answer.attempt.quizId,
-    },
-  });
-
-  // Notify student if all essay answers have been graded
-  if (allGraded) {
-    try {
-      await createNotification({
-        userId: answer.attempt.userId,
-        title: `Koreksi Kuis Selesai: ${answer.attempt.quiz.title}`,
-        message: `Guru telah selesai menilai jawaban essay Anda. Nilai akhir: ${finalPercentage}/100.`,
-        type: 'GRADE',
-        link: `/student/course/${answer.attempt.quiz.module.courseId}/quiz/${answer.attempt.quiz.id}`,
-      });
-    } catch (err) {
-      console.error('Failed to notify student on gradeQuizEssayAnswer:', err);
-    }
-  }
-
-  revalidatePath(`/teacher/course/${answer.attempt.quiz.module.courseId}/quiz-attempts/${answer.attempt.quizId}`);
-  revalidatePath(`/teacher/course/${answer.attempt.quiz.module.courseId}/gradebook`);
-  return { success: true, score: finalPercentage };
+export async function gradeQuizEssayAnswer(answerId: string, data: { score: number; teacherNote?: string }) {
+  const result = await gradeEssay(answerId, Number(data.score), data.teacherNote);
+  revalidatePath('/[locale]/teacher/course/[courseId]/quiz-attempts/[quizId]', 'page');
+  return result;
 }
 
 export async function getStudentGradesOverview(userId: string) {
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
-
-  if (session.user.role === 'STUDENT' && session.user.id !== userId) {
-    throw new Error('Akses ditolak: Anda hanya dapat melihat ikhtisar nilai Anda sendiri.');
-  }
-
-  const [enrollments, userCohortMembers, userOverrides] = await Promise.all([
-    db.enrollment.findMany({
-      where: { userId },
-      include: {
-        cohort: { select: { id: true } },
-        course: {
-          include: {
-            teacher: { select: { name: true } },
-            academicYear: true,
-            modules: {
-              include: {
-                quizzes: {
-                  include: {
-                    cohortAccess: { select: { cohortId: true } },
-                    attempts: {
-                      where: { userId, submittedAt: { not: null } },
-                      orderBy: { startedAt: 'desc' },
-                      take: 1,
-                    },
-                  },
-                },
-                assignments: {
-                  include: {
-                    cohortAccess: { select: { cohortId: true } },
-                    submissions: {
-                      where: { userId },
-                      take: 1,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    }),
-    db.cohortMember.findMany({
-      where: { userId },
-      select: { cohortId: true },
-    }),
-    db.itemAccessOverride.findMany({
-      where: { userId },
-      select: { itemType: true, itemId: true },
-    }),
-  ]);
-
-  const memberCohortIds = new Set(userCohortMembers.map((m) => m.cohortId));
-  const overrideSet = new Set(userOverrides.map((o) => `${o.itemType}_${o.itemId}`));
-
-  return enrollments.map((e) => {
-    const c = e.course;
-    const studentCohortIds = new Set(memberCohortIds);
-    if (e.cohort?.id) studentCohortIds.add(e.cohort.id);
-
-    const quizzes = c.modules.flatMap((m) =>
-      m.quizzes
-        .filter((q) => {
-          if (!q.cohortAccess || q.cohortAccess.length === 0) return true;
-          if (overrideSet.has(`QUIZ_${q.id}`)) return true;
-          return q.cohortAccess.some((ca: any) => studentCohortIds.has(ca.cohortId));
-        })
-        .map((q) => {
-          const attempt = q.attempts[0];
-          return {
-            id: q.id,
-            title: q.title,
-            score: attempt ? attempt.score : null,
-            isGraded: attempt ? attempt.isGraded : false,
-            submittedAt: attempt ? attempt.submittedAt : null,
-          };
-        })
-    );
-
-    const assignments = c.modules.flatMap((m) =>
-      m.assignments
-        .filter((a) => {
-          if (!a.cohortAccess || a.cohortAccess.length === 0) return true;
-          if (overrideSet.has(`ASSIGNMENT_${a.id}`)) return true;
-          return a.cohortAccess.some((ca: any) => studentCohortIds.has(ca.cohortId));
-        })
-        .map((a) => {
-          const sub = a.submissions[0];
-          return {
-            id: a.id,
-            title: a.title,
-            maxScore: a.maxScore,
-            score: sub ? sub.score : null,
-            teacherNote: sub ? sub.teacherNote : null,
-            submittedAt: sub ? sub.submittedAt : null,
-            gradedAt: sub ? sub.gradedAt : null,
-          };
-        })
-    );
-
-    // Calculate course average
-    const allScores: number[] = [];
-    quizzes.forEach((q) => {
-      if (q.score !== null) allScores.push(q.score);
-    });
-    assignments.forEach((a) => {
-      if (a.score !== null) allScores.push(a.score);
-    });
-
-    const average =
-      allScores.length > 0
-        ? Math.round((allScores.reduce((acc, s) => acc + s, 0) / allScores.length) * 10) / 10
-        : null;
-
-    return {
-      courseId: c.id,
-      courseTitle: c.title,
-      teacherName: c.teacher.name,
-      academicYear: c.academicYear.name,
-      average,
-      quizzes,
-      assignments,
-    };
+  if (session.user.role === 'STUDENT' && session.user.id !== userId) throw new Error('Akses ditolak');
+  const enrollments = await db.enrollment.findMany({
+    where: { userId }, include: { course: { include: { teacher: { select: { name: true } }, academicYear: true } } },
   });
+  const results = [];
+  for (const enrollment of enrollments) {
+    try { await assertCourseAccess(enrollment.courseId); } catch { continue; }
+    const { course } = enrollment;
+    const grades = await loadCourseGrades(course.id, [userId]);
+    const values = grades.scores.get(userId)!;
+    results.push({
+      courseId: course.id, courseTitle: course.title, teacherName: course.teacher.name,
+      academicYear: course.academicYear.name, average: values.average,
+      quizzes: grades.quizzes.map((quiz) => {
+        const latest = grades.attempts.find((attempt) => attempt.userId === userId && attempt.quizId === quiz.id);
+        return { id: quiz.id, title: quiz.title, score: values.quiz[quiz.id], isGraded: values.quiz[quiz.id] !== null, submittedAt: latest?.submittedAt ?? null };
+      }),
+      assignments: grades.assignments.map((assignment) => {
+        const latest = grades.submissions.find((submission) => submission.userId === userId && submission.assignmentId === assignment.id);
+        return { id: assignment.id, title: assignment.title, maxScore: assignment.maxScore,
+          score: values.assignment[assignment.id], teacherNote: latest?.teacherNote ?? null,
+          submittedAt: latest?.submittedAt ?? null, gradedAt: latest?.gradedAt ?? null };
+      }),
+    });
+  }
+  return results;
 }

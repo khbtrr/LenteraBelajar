@@ -1,4 +1,5 @@
 'use client';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -137,7 +138,6 @@ export function StudentCourseModulesClient({
             <div>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
                 <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
@@ -277,7 +277,7 @@ export function StudentCourseModulesClient({
                         {cnt.type === 'TEXT' && cnt.body && (
                           <div
                             className="prose max-w-none text-sm text-gray-700 bg-white p-4 rounded-md border border-gray-100 leading-relaxed"
-                            dangerouslySetInnerHTML={{ __html: cnt.body }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeRichText(cnt.body) }}
                           />
                         )}
 

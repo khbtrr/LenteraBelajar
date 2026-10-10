@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { redirect } from 'next/navigation';
 import { getConversations } from '@/lib/actions/message';
 import { MessagesClient } from './client';

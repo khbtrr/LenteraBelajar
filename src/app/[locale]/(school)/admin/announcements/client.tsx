@@ -1,4 +1,5 @@
 'use client';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -67,8 +68,10 @@ interface AnnouncementItem {
 
 export function AdminAnnouncementsClient({
   initialAnnouncements,
+  isReadOnly = false,
 }: {
   initialAnnouncements: AnnouncementItem[];
+  isReadOnly?: boolean;
 }) {
   const t = useTranslations('adminAnnouncements');
   const locale = useLocale();
@@ -245,6 +248,7 @@ export function AdminAnnouncementsClient({
 
         <Button
           onClick={handleOpenCreate}
+          hidden={isReadOnly}
           className="bg-[#002446] hover:bg-[#001b33] text-white flex items-center gap-1.5 text-xs font-semibold"
         >
           <Plus className="w-4 h-4" />
@@ -349,7 +353,7 @@ export function AdminAnnouncementsClient({
                             ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'
                         }`}
-                        onClick={() => handleToggleActive(item)}
+                        onClick={isReadOnly ? undefined : () => handleToggleActive(item)}
                         title={t('btnToggleActive')}
                       >
                         {item.isActive ? t('statusActive') : t('statusInactive')}
@@ -371,6 +375,7 @@ export function AdminAnnouncementsClient({
                           size="sm"
                           variant="ghost"
                           onClick={() => handleOpenEdit(item)}
+                          hidden={isReadOnly}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-amber-600"
                           title={t('btnEdit')}
                         >
@@ -380,6 +385,7 @@ export function AdminAnnouncementsClient({
                           size="sm"
                           variant="ghost"
                           onClick={() => handleDelete(item)}
+                          hidden={isReadOnly}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-rose-600"
                           title={t('btnDelete')}
                         >
@@ -556,7 +562,7 @@ export function AdminAnnouncementsClient({
 
           <div className="py-4 prose prose-sm dark:prose-invert max-w-none text-xs">
             {previewItem && (
-              <div dangerouslySetInnerHTML={{ __html: previewItem.content }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeRichText(previewItem.content) }} />
             )}
           </div>
 

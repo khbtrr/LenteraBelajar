@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { QuestionType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { assertCourseAccess, assertBankResource } from '@/lib/access';
+import { assertFileReferences, bindFileReferences, bindRecentCourseAssets } from '@/lib/files';
 
 export async function getQuestionBankByCategory(courseId: string) {
   const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
@@ -47,7 +49,7 @@ export async function getQuestionBankByCategory(courseId: string) {
 }
 
 export async function createQuestionBankCategory(courseId: string, name: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertCourseAccess(courseId, 'manage');
 
   if (!name.trim()) {
     throw new Error('Nama kategori tidak boleh kosong');
@@ -65,7 +67,7 @@ export async function createQuestionBankCategory(courseId: string, name: string)
 }
 
 export async function updateQuestionBankCategory(categoryId: string, name: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertBankResource('category', categoryId);
 
   if (!name.trim()) {
     throw new Error('Nama kategori tidak boleh kosong');
@@ -81,7 +83,7 @@ export async function updateQuestionBankCategory(categoryId: string, name: strin
 }
 
 export async function deleteQuestionBankCategory(categoryId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertBankResource('category', categoryId);
 
   // Pertanyaan di dalam kategori ini akan menjadi "uncategorized" (categoryId menjadi null)
   // berdasarkan aturan Prisma schema: onDelete: SetNull
@@ -101,7 +103,13 @@ export async function addQuestionToBank(data: {
   options?: { id: string; text: string; isCorrect: boolean }[];
   points?: number;
 }) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertCourseAccess(data.courseId, 'manage');
+  await assertFileReferences(data);
+  if (data.points !== undefined && (!Number.isFinite(data.points) || data.points <= 0)) throw new Error('Poin soal tidak valid');
+  if (data.categoryId) {
+    const { course } = await assertBankResource('category', data.categoryId);
+    if (course.id !== data.courseId) throw new Error('Akses ditolak: Kategori bukan bagian course');
+  }
 
   if (!data.text.trim()) {
     throw new Error('Teks pertanyaan tidak boleh kosong');
@@ -119,6 +127,7 @@ export async function addQuestionToBank(data: {
   });
 
   revalidatePath('/[locale]/teacher/course/[courseId]', 'layout');
+  await bindFileReferences('BANK_QUESTION', question.id, question);
   return question;
 }
 
@@ -132,7 +141,13 @@ export async function updateBankQuestion(
     categoryId?: string | null;
   }
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const { course } = await assertBankResource('question', questionId);
+  await assertFileReferences(data);
+  if (data.points !== undefined && (!Number.isFinite(data.points) || data.points <= 0)) throw new Error('Poin soal tidak valid');
+  if (data.categoryId) {
+    const target = await assertBankResource('category', data.categoryId);
+    if (target.course.id !== course.id) throw new Error('Akses ditolak: Kategori bukan bagian course');
+  }
 
   if (data.text !== undefined && !data.text.trim()) {
     throw new Error('Teks pertanyaan tidak boleh kosong');
@@ -150,11 +165,12 @@ export async function updateBankQuestion(
   });
 
   revalidatePath('/[locale]/teacher/course/[courseId]', 'layout');
+  await bindFileReferences('BANK_QUESTION', question.id, question);
   return question;
 }
 
 export async function deleteBankQuestion(questionId: string) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertBankResource('question', questionId);
 
   const deleted = await db.questionBank.delete({
     where: { id: questionId },
@@ -174,7 +190,13 @@ export async function bulkAddQuestionsToBank(
     points?: number;
   }[]
 ) {
-  await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  await assertCourseAccess(courseId, 'manage');
+  const startedAt = new Date();
+  await assertFileReferences(questions);
+  if (categoryId) {
+    const target = await assertBankResource('category', categoryId);
+    if (target.course.id !== courseId) throw new Error('Akses ditolak: Kategori bukan bagian course');
+  }
 
   if (!questions || questions.length === 0) {
     throw new Error('Tidak ada pertanyaan untuk ditambahkan');
@@ -192,11 +214,12 @@ export async function bulkAddQuestionsToBank(
   });
 
   revalidatePath('/[locale]/teacher/course/[courseId]', 'layout');
+  await bindRecentCourseAssets(courseId, startedAt);
   return created;
 }
 
 export async function getQuestionBankStats(courseId: string) {
-  await requireAuth();
+  await assertCourseAccess(courseId, 'roster');
 
   const [totalCount, typeGroups, categoryGroups] = await Promise.all([
     db.questionBank.count({ where: { courseId } }),

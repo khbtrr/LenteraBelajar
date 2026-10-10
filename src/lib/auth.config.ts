@@ -11,9 +11,7 @@ export const authConfig: NextAuthConfig = {
         token.schoolId = (user as { schoolId: string | null }).schoolId;
         token.mustChangePassword = (user as { mustChangePassword: boolean }).mustChangePassword;
         token.locale = (user as { locale: string }).locale;
-      }
-      if (trigger === 'update' && session?.mustChangePassword !== undefined) {
-        token.mustChangePassword = session.mustChangePassword;
+        token.sessionVersion = (user as { sessionVersion: number }).sessionVersion;
       }
       return token;
     },
@@ -24,6 +22,7 @@ export const authConfig: NextAuthConfig = {
         session.user.schoolId = (token.schoolId as string | null) ?? null;
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
         session.user.locale = (token.locale as string) || 'id';
+        session.user.sessionVersion = token.sessionVersion as number;
       }
       return session;
     },

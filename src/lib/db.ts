@@ -1,5 +1,4 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
 import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {
@@ -8,8 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
-  const pool = new Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
+  const adapter = new PrismaPg({ connectionString, max: Number(process.env.DB_POOL_MAX ?? 5) });
   return new PrismaClient({ adapter });
 }
 

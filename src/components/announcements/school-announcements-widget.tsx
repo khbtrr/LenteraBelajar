@@ -1,4 +1,5 @@
 'use client';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,7 +181,7 @@ export function SchoolAnnouncementsWidget({
                   <div
                     className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 max-w-xl"
                     dangerouslySetInnerHTML={{
-                      __html: item.content.replace(/<[^>]+>/g, ' ').slice(0, 120),
+                      __html: sanitizeRichText(item.content.replace(/<[^>]+>/g, ' ').slice(0, 120)),
                     }}
                   />
                 </div>
@@ -231,7 +232,7 @@ export function SchoolAnnouncementsWidget({
 
               <div
                 className="prose dark:prose-invert max-w-none text-sm leading-relaxed border-t border-b border-gray-100 dark:border-gray-800 py-4"
-                dangerouslySetInnerHTML={{ __html: selectedItem.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeRichText(selectedItem.content) }}
               />
 
               <DialogFooter>

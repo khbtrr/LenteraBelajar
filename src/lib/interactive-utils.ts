@@ -23,6 +23,8 @@ export function detectPlatform(url: string): string {
 
 export function normalizeInteractiveUrl(rawUrl: string): string {
   let url = rawUrl.trim();
+  const parsed = new URL(url, 'https://local.invalid');
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Tautan harus menggunakan HTTP atau HTTPS');
 
   // YouTube normalization to embed
   if (url.includes('youtube.com/watch?v=')) {

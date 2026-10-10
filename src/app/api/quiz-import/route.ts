@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getServerSession as auth } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { parseDocxQuestions, ImageHandler } from '@/lib/utils/quiz-import';
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
+import { registerUploadedFile, bindRecentCourseAssets } from '@/lib/files';
+import { unpackArchiveToMemory } from '@/lib/utils/moodle-parser';
 
 export async function POST(req: NextRequest) {
   try {
+    const startedAt = new Date();
     // Authorize user
     const session = await auth();
     if (!session?.user) {
@@ -32,13 +35,15 @@ export async function POST(req: NextRequest) {
     if (!file.name.toLowerCase().endsWith('.docx')) {
       return NextResponse.json({ error: 'Format file tidak didukung. Harap unggah file .docx' }, { status: 400 });
     }
+    if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: 'Dokumen melebihi batas 50 MB' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    await unpackArchiveToMemory(buffer);
 
     // Image handler: compress images to WebP (max width 1200px, 80% quality) and save to uploads/
     const imageHandler: ImageHandler = async (imgBuffer: Buffer, contentType: string) => {
       try {
-        const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
+        const uploadDir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.UPLOAD_DIR || './uploads');
         await mkdir(uploadDir, { recursive: true });
 
         let processedBuffer: Buffer = imgBuffer;
@@ -66,6 +71,7 @@ export async function POST(req: NextRequest) {
         const filePath = path.join(uploadDir, fileName);
 
         await writeFile(filePath, processedBuffer);
+        await registerUploadedFile(fileName, processedBuffer, `image/${ext === 'jpg' ? 'jpeg' : ext}`);
         return `/api/files/${fileName}`;
       } catch (err) {
         console.error('Error saving imported image:', err);
@@ -86,6 +92,29 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'courseId wajib diisi untuk menyimpan soal' }, { status: 400 });
       }
 
+      const course = await db.course.findUnique({
+        where: { id: courseId },
+        select: { id: true, teacherId: true, schoolId: true },
+      });
+
+      if (!course) {
+        return NextResponse.json({ error: 'Kursus tidak ditemukan' }, { status: 404 });
+      }
+
+      if (role === 'TEACHER' && course.teacherId !== session.user.id) {
+        return NextResponse.json(
+          { error: 'Akses ditolak: Anda bukan pengajar untuk kelas ini' },
+          { status: 403 }
+        );
+      }
+
+      if (role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
+        return NextResponse.json(
+          { error: 'Akses ditolak: Kursus berada di luar sekolah Anda' },
+          { status: 403 }
+        );
+      }
+
       if (questions.length === 0) {
         return NextResponse.json({ error: 'Tidak ada soal valid yang ditemukan untuk diimpor' }, { status: 400 });
       }
@@ -104,6 +133,7 @@ export async function POST(req: NextRequest) {
           })
         )
       );
+      await bindRecentCourseAssets(courseId, startedAt);
 
       return NextResponse.json({
         message: 'Berhasil mengimpor soal',
