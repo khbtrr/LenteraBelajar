@@ -75,4 +75,12 @@ Baseline: QA-AUDIT-2026-10-09.md. Implementasi dilakukan pada working tree yang 
 
 ## Batas sign-off
 
+### Pembaruan 12 Oktober 2026
+
+Review salinan demo dan perbaikan gate dicatat di `QA-VALIDATION-2026-10-12.md`. Preflight memakai validator grading yang sama; validasi snapshot/key diperketat dan worker menerima error review yang konsisten. Grade identity yang bisa ditelusuri mendapat proposal tanpa perubahan skor, sedangkan sumber hilang/snapshot/cohort tidak valid memblokir gate. Rekonsiliasi file mencakup snapshot dan binding registry serta memeriksa target port/schema/user dan evidence saat apply.
+
+`release:baseline` menyediakan upgrade terkontrol untuk drift Docker demo dengan proposal/hash/backup/maintenance serta verifikasi baseline; tidak resolve DB dengan history existing atau drift yang tidak dikenal. Rehearsal tiga jalur lulus, termasuk gate schema/data. `deploy.sh` menjalankan gate sebelum mengganti artifact atau memulai PM2. Data demo dengan snapshot aktif null kini ditolak gate; data tersebut tidak termasuk rencana produksi yang mulai dari DB kosong.
+
+Verifikasi terbaru: 190 unit test dan 27 integration test lulus; build/typecheck/lint lulus; 19 browser scenario lulus pada candidate perbaikan. Integration test mencakup CLI nyata: JSON null/key rusak/voided, nonfinite scale, target port salah, identity score preservation/stale evidence, file binding/reference/snapshot, dan cohort scope. Hasil ini menambah bukti untuk QA-52/QA-55 serta LV-01–LV-06; status temuan lain tidak otomatis berubah menjadi verified.
+
 Target produksi belum diperiksa atau diubah. Proposal rekonsiliasi belum di-apply. `fixed` yang belum mempunyai test khusus tetap memerlukan verifikasi lanjutan; tidak seluruh56 dinyatakan verified. Kapasitas peserta nyata, semua kombinasi feature/role/browser, dan data legacy ambigu belum ditutup oleh fixture QA ini. Runbook menjelaskan gate dan rollback sebelum membuka rilis.

@@ -6,6 +6,7 @@ import { QuestionType } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { assertCourseAccess, assertBankResource } from '@/lib/access';
 import { assertFileReferences, bindFileReferences, bindRecentCourseAssets } from '@/lib/files';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 export async function getQuestionBankByCategory(courseId: string) {
   const session = await requireRole('TEACHER', 'ADMIN', 'SUPER_ADMIN');
@@ -115,13 +116,21 @@ export async function addQuestionToBank(data: {
     throw new Error('Teks pertanyaan tidak boleh kosong');
   }
 
+  const sanitizedText = sanitizeRichText(data.text);
+  const sanitizedOptions = Array.isArray(data.options)
+    ? data.options.map((opt: any) => ({
+        ...opt,
+        text: typeof opt.text === 'string' ? sanitizeRichText(opt.text) : opt.text,
+      }))
+    : data.options ? (data.options as any) : undefined;
+
   const question = await db.questionBank.create({
     data: {
       courseId: data.courseId,
       categoryId: data.categoryId || null,
       type: data.type,
-      text: data.text,
-      options: data.options ? (data.options as any) : undefined,
+      text: sanitizedText,
+      options: sanitizedOptions,
       points: data.points ? Number(data.points) : 1,
     },
   });
@@ -153,12 +162,20 @@ export async function updateBankQuestion(
     throw new Error('Teks pertanyaan tidak boleh kosong');
   }
 
+  const sanitizedText = data.text !== undefined ? sanitizeRichText(data.text) : undefined;
+  const sanitizedOptions = Array.isArray(data.options)
+    ? data.options.map((opt: any) => ({
+        ...opt,
+        text: typeof opt.text === 'string' ? sanitizeRichText(opt.text) : opt.text,
+      }))
+    : data.options !== undefined ? data.options : undefined;
+
   const question = await db.questionBank.update({
     where: { id: questionId },
     data: {
-      ...(data.text && { text: data.text }),
+      ...(sanitizedText !== undefined && { text: sanitizedText }),
       ...(data.type && { type: data.type }),
-      ...(data.options !== undefined && { options: data.options }),
+      ...(sanitizedOptions !== undefined && { options: sanitizedOptions }),
       ...(data.points !== undefined && { points: Number(data.points) }),
       ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
     },

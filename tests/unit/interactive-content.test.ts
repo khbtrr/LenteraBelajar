@@ -69,12 +69,13 @@ describe('Interactive Learning Content & Embed Handling', () => {
     });
 
     it('extracts and normalizes URL from raw iframe embed snippet', () => {
-      const iframeSnippet = '<iframe width="560" height="315" src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" frameborder="0"></iframe>';
+      const iframeSnippet = '<iframe width="560" height="315" src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" frameborder="0"></iframe><script>alert(1)</script>';
       const parsed = parseInteractiveContent(iframeSnippet);
 
       expect(parsed.platform).toBe('YouTube');
       expect(parsed.url).toBe('https://www.youtube.com/embed/dQw4w9WgXcQ');
-      expect(parsed.embedCode).toBe(iframeSnippet);
+      expect(parsed.embedCode).toContain('<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"');
+      expect(parsed.embedCode).not.toContain('<script>');
     });
   });
 });

@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { awardXp } from '@/lib/gamification';
 import { assertCourseAccess } from '@/lib/access';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 export interface ForumCommentItem {
   id: string;
@@ -187,7 +188,7 @@ export async function createForumThread(data: {
       moduleId: data.moduleId && data.moduleId !== 'ALL' ? data.moduleId : null,
       authorId: session.user.id,
       title: data.title.trim(),
-      content: data.content.trim(),
+      content: sanitizeRichText(data.content.trim()),
       isPinned: false,
     },
   });
@@ -254,7 +255,7 @@ export async function addForumComment(data: {
       threadId: data.threadId,
       authorId: session.user.id,
       parentId: data.parentId || null,
-      content: data.content.trim(),
+      content: sanitizeRichText(data.content.trim()),
     },
     include: {
       author: {

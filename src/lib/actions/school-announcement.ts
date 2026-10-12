@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole, requireSchool } from '@/lib/auth-utils';
 import { AnnouncementPriority, AnnouncementTarget, Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 export async function getSchoolAnnouncements() {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN', 'SUPERVISOR');
@@ -53,7 +54,7 @@ export async function createSchoolAnnouncement(data: {
       schoolId,
       authorId: session.user.id,
       title: data.title.trim(),
-      content: data.content,
+      content: sanitizeRichText(data.content),
       targetRole,
       priority,
       isPinned: Boolean(data.isPinned),
@@ -132,7 +133,7 @@ export async function updateSchoolAnnouncement(
     where: { id, schoolId },
     data: {
       title: data.title.trim(),
-      content: data.content,
+      content: sanitizeRichText(data.content),
       targetRole: data.targetRole,
       priority: data.priority,
       isPinned: data.isPinned,

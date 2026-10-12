@@ -10,6 +10,7 @@ import { checkStudentItemAccess } from './cohort-access';
 import { assertItemAccess, assertModuleAccess, assertCourseAccess } from '@/lib/access';
 import { startQuiz, submitQuiz } from '@/lib/cbt';
 import { assertFileReferences, bindFileReferences } from '@/lib/files';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 export async function getQuizById(quizId: string) {
   const { session } = await assertItemAccess('QUIZ', quizId);
@@ -61,23 +62,8 @@ export async function getQuizById(quizId: string) {
 
     quiz.token = null;
     quiz.attempts = quiz.attempts.map((attempt) => ({ ...attempt, questionSnapshot: null }));
-
-    // Sanitize question options so students cannot inspect correct answers before taking quiz
-    if (quiz.questions && Array.isArray(quiz.questions)) {
-      quiz.questions = quiz.questions.map((q) => {
-        let sanitizedOptions = null;
-        if (q.options && Array.isArray(q.options)) {
-          sanitizedOptions = (q.options as any[]).map((opt) => ({
-            id: opt.id,
-            text: opt.text,
-          }));
-        }
-        return {
-          ...q,
-          options: sanitizedOptions,
-        };
-      });
-    }
+    // Do not disclose questions/choices to student before active attempt countdown starts
+    quiz.questions = [];
   }
 
   return quiz;
@@ -319,13 +305,21 @@ export async function addQuizQuestion(
   await assertFileReferences(data);
   if (!Number.isFinite(data.points) || data.points <= 0) throw new Error('Poin soal harus lebih dari nol');
 
+  const sanitizedText = sanitizeRichText(data.text);
+  const sanitizedOptions = Array.isArray(data.options)
+    ? data.options.map((opt) => ({
+        ...opt,
+        text: typeof opt.text === 'string' ? sanitizeRichText(opt.text) : opt.text,
+      }))
+    : data.options ?? undefined;
+
   const question = await db.quizQuestion.create({
     data: {
       quizId,
       type: data.type,
-      text: data.text,
+      text: sanitizedText,
       points: Number(data.points || 1),
-      options: data.options ?? undefined,
+      options: sanitizedOptions,
       order: count,
     },
   });
@@ -348,12 +342,20 @@ export async function updateQuizQuestion(
   await assertFileReferences(data);
   if (data.points !== undefined && (!Number.isFinite(data.points) || data.points <= 0)) throw new Error('Poin soal tidak valid');
 
+  const sanitizedText = data.text !== undefined ? sanitizeRichText(data.text) : undefined;
+  const sanitizedOptions = Array.isArray(data.options)
+    ? data.options.map((opt) => ({
+        ...opt,
+        text: typeof opt.text === 'string' ? sanitizeRichText(opt.text) : opt.text,
+      }))
+    : data.options !== undefined ? data.options : undefined;
+
   const question = await db.quizQuestion.update({
     where: { id: questionId },
     data: {
-      text: data.text,
+      text: sanitizedText,
       type: data.type,
-      options: data.options ?? undefined,
+      options: sanitizedOptions,
       points: data.points ? Number(data.points) : undefined,
     },
   });

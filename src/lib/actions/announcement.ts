@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { assertCourseAccess } from '@/lib/access';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 export async function createCourseAnnouncement(data: {
   courseId: string;
@@ -29,7 +30,7 @@ export async function createCourseAnnouncement(data: {
       courseId: data.courseId,
       authorId: session.user.id,
       title: data.title,
-      content: data.content,
+      content: sanitizeRichText(data.content),
       isPinned: data.isPinned ?? false,
     },
     include: {
@@ -149,7 +150,7 @@ export async function addAnnouncementComment(announcementId: string, content: st
     data: {
       announcementId,
       authorId: session.user.id,
-      content: content.trim(),
+      content: sanitizeRichText(content.trim()),
     },
     include: {
       author: {

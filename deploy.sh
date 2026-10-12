@@ -16,8 +16,9 @@ test -f "$RELEASE_ARTIFACT_DIR/server.js"
 test -f "$RELEASE_ARTIFACT_DIR/.release-manifest.json"
 
 cd "$RELEASE_SOURCE_DIR"
-npm run release:preflight
+npm run release:preflight -- --before-migrate
 node node_modules/prisma/build/index.js migrate deploy --config prisma.config.release.ts
+npm run release:gate
 
 ln -sfn "$RELEASE_ARTIFACT_DIR" "$APP_CURRENT_DIR"
 cd "$APP_CURRENT_DIR"

@@ -210,12 +210,22 @@ export async function submitAssignment(data: {
     }
   }
 
+  // Enforce assignment deadline
+  if (assignment.deadline && new Date() > new Date(assignment.deadline)) {
+    throw new Error('Batas waktu pengumpulan tugas telah berakhir.');
+  }
+
   const existing = await db.assignmentSubmission.findFirst({
     where: {
       assignmentId: data.assignmentId,
       userId: session.user.id,
     },
   });
+
+  // Prevent overwriting submission that has already been graded
+  if (existing && (existing.score !== null || existing.gradedAt !== null)) {
+    throw new Error('Tugas yang sudah dinilai tidak dapat diubah atau dikumpulkan ulang.');
+  }
 
   let submission;
   if (existing) {

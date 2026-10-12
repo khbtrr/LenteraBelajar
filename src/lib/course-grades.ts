@@ -7,16 +7,16 @@ export function meanScore(values: Array<number | null>): number | null {
   return graded.length ? Math.round(graded.reduce((sum, value) => sum + value, 0) / graded.length * 10) / 10 : null;
 }
 
-export async function loadCourseGrades(courseId: string, userIds: string[]) {
+export async function loadCourseGrades(courseId: string, userIds: string[], client = db) {
   const [allQuizzes, assignments, attempts, submissions, extras, enrollments, members, overrides] = await Promise.all([
-    db.quiz.findMany({ where: { module: { courseId }, isPublished: true }, include: { cohortAccess: true }, orderBy: { order: 'asc' } }),
-    db.assignment.findMany({ where: { module: { courseId }, isPublished: true }, include: { cohortAccess: true }, orderBy: { order: 'asc' } }),
-    db.quizAttempt.findMany({ where: { userId: { in: userIds }, quiz: { module: { courseId } }, isGraded: true, isVoided: false, submittedAt: { not: null }, score: { not: null } }, orderBy: { submittedAt: 'desc' } }),
-    db.assignmentSubmission.findMany({ where: { userId: { in: userIds }, assignment: { module: { courseId } }, gradedAt: { not: null }, score: { not: null } }, orderBy: { gradedAt: 'desc' } }),
-    db.grade.findMany({ where: { courseId, userId: { in: userIds }, type: { in: ['MANUAL', 'ATTENDANCE'] }, includeInAverage: true } }),
-    db.enrollment.findMany({ where: { courseId, userId: { in: userIds } }, select: { userId: true, cohortId: true } }),
-    db.cohortMember.findMany({ where: { userId: { in: userIds } }, select: { userId: true, cohortId: true } }),
-    db.itemAccessOverride.findMany({ where: { userId: { in: userIds } }, select: { userId: true, itemType: true, itemId: true } }),
+    client.quiz.findMany({ where: { module: { courseId }, isPublished: true }, include: { cohortAccess: true }, orderBy: { order: 'asc' } }),
+    client.assignment.findMany({ where: { module: { courseId }, isPublished: true }, include: { cohortAccess: true }, orderBy: { order: 'asc' } }),
+    client.quizAttempt.findMany({ where: { userId: { in: userIds }, quiz: { module: { courseId } }, isGraded: true, isVoided: false, submittedAt: { not: null }, score: { not: null } }, orderBy: { submittedAt: 'desc' } }),
+    client.assignmentSubmission.findMany({ where: { userId: { in: userIds }, assignment: { module: { courseId } }, gradedAt: { not: null }, score: { not: null } }, orderBy: { gradedAt: 'desc' } }),
+    client.grade.findMany({ where: { courseId, userId: { in: userIds }, type: { in: ['MANUAL', 'ATTENDANCE'] }, includeInAverage: true } }),
+    client.enrollment.findMany({ where: { courseId, userId: { in: userIds } }, select: { userId: true, cohortId: true } }),
+    client.cohortMember.findMany({ where: { userId: { in: userIds } }, select: { userId: true, cohortId: true } }),
+    client.itemAccessOverride.findMany({ where: { userId: { in: userIds } }, select: { userId: true, itemType: true, itemId: true } }),
   ]);
   const quizzes = allQuizzes.filter((quiz) => !quiz.isRemedial);
   const scores = new Map<string, { quiz: Record<string, number | null>; assignment: Record<string, number | null>; average: number | null }>();

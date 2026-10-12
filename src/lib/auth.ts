@@ -85,6 +85,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const email = String(credentials.email).trim().toLowerCase();
 
+        // 1b. Account-level Rate Limiting: Max 10 attempts per minute per email to prevent brute-force via IP rotation
+        const accountRateLimit = await checkSharedRateLimit(`login:account:${email}`, 10, 60 * 1000);
+        if (!accountRateLimit.success) {
+          await recordAuditLog({
+            action: 'LOGIN_FAILED',
+            userEmail: email,
+            ipAddress,
+            userAgent,
+            details: `Account rate limit exceeded. Reset in ${accountRateLimit.resetInSeconds}s`,
+          });
+          throw new Error(`RATE_LIMIT:${accountRateLimit.resetInSeconds}`);
+        }
+
         const user = await db.user.findUnique({
           where: { email },
         });

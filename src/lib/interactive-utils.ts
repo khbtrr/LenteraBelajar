@@ -55,9 +55,10 @@ export function parseInteractiveContent(input: string): ParsedInteractiveContent
   const iframeMatch = trimmed.match(/<iframe[^>]+src=["']([^"']+)["'][^>]*>/i);
   if (iframeMatch && iframeMatch[1]) {
     const extractedUrl = normalizeInteractiveUrl(iframeMatch[1]);
+    const safeEmbedCode = `<iframe src="${extractedUrl}" allow="fullscreen; autoplay; clipboard-write" allowfullscreen class="w-full h-full border-0"></iframe>`;
     return {
       url: extractedUrl,
-      embedCode: trimmed,
+      embedCode: safeEmbedCode,
       platform: detectPlatform(extractedUrl),
     };
   }

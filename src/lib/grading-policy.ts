@@ -33,13 +33,24 @@ export function readSnapshot(raw: unknown): SnapshotQuestion[] {
   if (!Array.isArray(raw) || raw.length === 0) throw new Error('LEGACY_SNAPSHOT_REVIEW: Snapshot soal perlu ditinjau pengajar');
   const ids = new Set<string>();
   return raw.map((value) => {
-    if (!value || typeof value !== 'object' || typeof value.id !== 'string' || ids.has(value.id)
+    if (!value || typeof value !== 'object' || typeof value.id !== 'string' || !value.id.trim() || ids.has(value.id)
       || !['MULTIPLE_CHOICE', 'MULTIPLE_CHOICE_COMPLEX', 'ESSAY'].includes(value.type)
-      || !Number.isFinite(value.points) || value.points <= 0) throw new Error('Snapshot soal tidak valid');
+      || !Number.isFinite(value.points) || value.points <= 0) throw new Error('LEGACY_SNAPSHOT_REVIEW: Snapshot soal tidak valid');
     ids.add(value.id);
     const correct = value._correctData ?? value.options;
-    if (value.type !== 'ESSAY' && (!Array.isArray(correct) || correct.some((option) => typeof option.id !== 'string' || typeof option.isCorrect !== 'boolean'))) {
+    if (value.type !== 'ESSAY' && (!Array.isArray(correct) || !correct.length
+      || correct.some((option) => !option || typeof option.id !== 'string' || !option.id.trim() || typeof option.isCorrect !== 'boolean')
+      || new Set(correct.map((option) => option.id.trim().toUpperCase())).size !== correct.length
+      || !correct.some((option) => option.isCorrect)
+      || (value.type === 'MULTIPLE_CHOICE' && correct.filter((option) => option.isCorrect).length !== 1))) {
       throw new Error('LEGACY_SNAPSHOT_REVIEW: Kunci snapshot tidak tersedia');
+    }
+    if (value.type !== 'ESSAY' && value.options != null && (!Array.isArray(value.options)
+      || value.options.length !== correct.length
+      || value.options.some((option: { id: string }) => !option || typeof option.id !== 'string'
+        || !correct.some((key: { id: string }) => key.id === option.id))
+      || new Set(value.options.map((option: { id: string }) => option.id)).size !== value.options.length)) {
+      throw new Error('LEGACY_SNAPSHOT_REVIEW: Pilihan snapshot tidak cocok dengan kunci');
     }
     return {
       id: value.id, type: value.type, text: sanitizeRichText(String(value.text ?? '')), points: value.points,
