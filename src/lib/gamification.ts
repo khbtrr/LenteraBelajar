@@ -174,6 +174,29 @@ export async function checkAndUnlockAchievements(userId: string) {
  */
 export async function awardXp(userId: string, amount: number, reason: string,
   actionType: 'QUIZ' | 'ASSIGNMENT' | 'LESSON' | 'ATTENDANCE' | 'FORUM', courseId?: string, eventKey?: string) {
+  // Prevent forum XP farming by imposing a daily limit of 30 XP for forum activities
+  if (actionType === 'FORUM') {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayForumXp = await db.xpLog.aggregate({
+      where: {
+        userId,
+        actionType: 'FORUM',
+        createdAt: { gte: todayStart },
+      },
+      _sum: { amount: true },
+    });
+
+    const currentForumTotal = todayForumXp._sum.amount || 0;
+    const MAX_DAILY_FORUM_XP = 30;
+    if (currentForumTotal >= MAX_DAILY_FORUM_XP) {
+      return; // Daily cap reached
+    }
+    // Cap to remaining allowed amount if necessary
+    amount = Math.min(amount, MAX_DAILY_FORUM_XP - currentForumTotal);
+  }
+
   const result = await db.$transaction((tx) => awardXpInTransaction(tx, {
     userId, amount, reason, actionType, courseId, eventKey: eventKey ?? `${actionType}:${userId}:${courseId ?? ''}:${reason}`,
   }));

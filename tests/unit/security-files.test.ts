@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import path from 'path';
+import { validateFileMagicBytes } from '@/lib/file-security';
 
 describe('File Security & Upload Whitelist (BUG-06)', () => {
   const ALLOWED_EXTENSIONS = new Set([
@@ -99,6 +100,50 @@ describe('File Security & Upload Whitelist (BUG-06)', () => {
       expect(safeName).not.toContain('/');
       expect(safeName).not.toContain('\\');
       expect(safeName.endsWith('.pdf')).toBe(true);
+    });
+  });
+
+  describe('File Magic Bytes & Signature Verification', () => {
+    it('accepts authentic PDF buffer starting with %PDF-', () => {
+      const validPdf = Buffer.from('%PDF-1.4\n%test pdf content');
+      const res = validateFileMagicBytes(validPdf, '.pdf');
+      expect(res.valid).toBe(true);
+      expect(res.detectedMime).toBe('application/pdf');
+    });
+
+    it('rejects fake PDF buffer containing disguised script or HTML', () => {
+      const fakePdf = Buffer.from('<html><script>alert(1)</script></html>');
+      const res = validateFileMagicBytes(fakePdf, '.pdf');
+      expect(res.valid).toBe(false);
+      expect(res.error).toBeDefined();
+    });
+
+    it('detects Windows PE binary headers (MZ) and blocks them regardless of extension', () => {
+      const peBuffer = Buffer.from([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00]);
+      const res = validateFileMagicBytes(peBuffer, '.docx');
+      expect(res.valid).toBe(false);
+      expect(res.error).toContain('MZ');
+    });
+
+    it('detects Linux ELF binary headers and blocks them', () => {
+      const elfBuffer = Buffer.from([0x7F, 0x45, 0x4C, 0x46, 0x02, 0x01]);
+      const res = validateFileMagicBytes(elfBuffer, '.png');
+      expect(res.valid).toBe(false);
+      expect(res.error).toContain('ELF');
+    });
+
+    it('accepts authentic PNG and JPEG images', () => {
+      const pngHeader = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00]);
+      expect(validateFileMagicBytes(pngHeader, '.png').valid).toBe(true);
+
+      const jpegHeader = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]);
+      expect(validateFileMagicBytes(jpegHeader, '.jpg').valid).toBe(true);
+    });
+
+    it('accepts authentic ZIP and Office XML documents', () => {
+      const zipHeader = Buffer.from([0x50, 0x4B, 0x03, 0x04, 0x0A, 0x00]);
+      expect(validateFileMagicBytes(zipHeader, '.zip').valid).toBe(true);
+      expect(validateFileMagicBytes(zipHeader, '.docx').valid).toBe(true);
     });
   });
 });

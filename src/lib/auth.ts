@@ -102,8 +102,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { email },
         });
 
-        // 2. User exists & active check
+        // Pre-computed constant bcrypt hash (cost factor 12) for constant-time dummy verification
+        const DUMMY_HASH = '$2a$12$e8w4GjQ0LgC5l9wE7m7J0.XF4uQvGqJb.o1a2s3d4f5g6h7j8k9l0';
+
+        // 2. User exists & active check (with constant-time dummy bcrypt evaluation)
         if (!user || !user.isActive) {
+          await compare(credentials.password as string, DUMMY_HASH).catch(() => false);
           await recordAuditLog({
             action: 'LOGIN_FAILED',
             userEmail: email,

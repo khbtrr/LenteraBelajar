@@ -2,6 +2,7 @@
 
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
 import { revalidatePath } from 'next/cache';
 import { finalizeSystemAttempt, heartbeatQuiz, recordQuizViolation, extendQuizTime, voidQuizAttempt } from '@/lib/cbt';
 
@@ -165,6 +166,13 @@ export async function verifyQuizToken(quizId: string, token: string) {
   }
 
   if (!quiz.requireToken) return { valid: true };
+
+  // Rate limit token verification to prevent brute force attacks (max 5 attempts per minute per user)
+  const rateLimitKey = `quiz-token:${session.user.id}:${quizId}`;
+  const rateLimit = await checkSharedRateLimit(rateLimitKey, 5, 60 * 1000);
+  if (!rateLimit.success) {
+    throw new Error(`Terlalu banyak percobaan token ujian. Silakan coba lagi dalam ${rateLimit.resetInSeconds} detik.`);
+  }
 
   const inputToken = token.trim().toUpperCase();
   const quizToken = (quiz.token || '').trim().toUpperCase();

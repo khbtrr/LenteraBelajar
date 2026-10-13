@@ -58,6 +58,8 @@ export async function saveImageFile(
   return `/api/files/${fileName}`;
 }
 
+import { isAllowedFileExtension, validateFileMagicBytes } from '@/lib/file-security';
+
 export async function saveDocumentFile(
   buffer: Buffer,
   originalFilename: string
@@ -66,6 +68,15 @@ export async function saveDocumentFile(
   const uploadDir = getUploadDirectory();
 
   const ext = path.extname(originalFilename).toLowerCase();
+  if (!isAllowedFileExtension(ext)) {
+    throw new Error(`Format file '${ext || 'tanpa ekstensi'}' pada paket Moodle tidak diizinkan demi keamanan.`);
+  }
+
+  const magicCheck = validateFileMagicBytes(buffer, ext);
+  if (!magicCheck.valid) {
+    throw new Error(`Berkas '${originalFilename}' dalam Moodle ditolak: ${magicCheck.error || 'signature mismatch'}`);
+  }
+
   const sanitizedBase = path.basename(originalFilename, ext)
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .slice(0, 50);
@@ -73,7 +84,8 @@ export async function saveDocumentFile(
   const filePath = path.join(uploadDir, uniqueName);
 
   await writeFile(filePath, buffer);
-  await registerUploadedFile(uniqueName, buffer, 'application/octet-stream');
+  const resolvedMime = magicCheck.detectedMime || 'application/octet-stream';
+  await registerUploadedFile(uniqueName, buffer, resolvedMime);
 
   return {
     fileUrl: `/api/files/${uniqueName}`,

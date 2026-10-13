@@ -70,7 +70,7 @@ async function finalizeLocked(tx: Prisma.TransactionClient, attempt: LoadedAttem
     if (graded.score !== null && graded.score >= (attempt.quiz.passingGrade ?? 75)) {
       await awardXpInTransaction(tx, {
         userId: attempt.userId, amount: graded.score === 100 ? 100 : 50,
-        eventKey: `QUIZ:${attempt.id}`, reason: `Menyelesaikan kuis: ${attempt.quiz.title}`,
+        eventKey: `QUIZ:${attempt.userId}:${attempt.quizId}`, reason: `Menyelesaikan kuis: ${attempt.quiz.title}`,
         actionType: 'QUIZ', courseId: attempt.quiz.module.courseId,
       });
     }

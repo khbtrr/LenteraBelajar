@@ -3,6 +3,7 @@ import { getServerSession as auth } from '@/lib/auth-utils';
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { registerUploadedFile } from '@/lib/files';
+import { isAllowedFileExtension, validateFileMagicBytes } from '@/lib/file-security';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,18 +28,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Enforce allowed file extensions for LMS
-    const ALLOWED_EXTENSIONS = new Set([
-      '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv',
-      '.jpg', '.jpeg', '.png', '.webp', '.gif',
-      '.mp3', '.mp4', '.wav', '.ogg', '.webm', '.m4a',
-      '.zip', '.rar', '.7z'
-    ]);
-
     const ext = path.extname(file.name).toLowerCase();
-    if (!ALLOWED_EXTENSIONS.has(ext)) {
+    if (!isAllowedFileExtension(ext)) {
       return NextResponse.json(
         { error: `Format file '${ext || 'tanpa ekstensi'}' tidak diizinkan demi keamanan.` },
+        { status: 400 }
+      );
+    }
+
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Validate file header / magic bytes against claimed extension
+    const magicCheck = validateFileMagicBytes(buffer, ext);
+    if (!magicCheck.valid) {
+      return NextResponse.json(
+        { error: magicCheck.error || 'Konten file tidak sesuai dengan format ekstensi.' },
         { status: 400 }
       );
     }
@@ -51,10 +56,9 @@ export async function POST(request: NextRequest) {
     const uniqueFileName = `${crypto.randomUUID()}_${sanitizedBase}${ext}`;
     const filePath = path.join(uploadDir, uniqueFileName);
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
-    await registerUploadedFile(uniqueFileName, buffer, file.type || 'application/octet-stream');
+    const resolvedMime = magicCheck.detectedMime || file.type || 'application/octet-stream';
+    await registerUploadedFile(uniqueFileName, buffer, resolvedMime);
 
     const fileUrl = `/api/files/${uniqueFileName}`;
 

@@ -14,9 +14,10 @@ export interface LockoutStatus {
 
 /**
  * Check lockout status and failed attempt count for a given email address
- * Used by login form to display clear user-friendly error messages
+ * Restricted to administrators to prevent public user enumeration
  */
 export async function getAccountLockoutStatus(email: string): Promise<LockoutStatus> {
+  await requireRole('ADMIN', 'SUPER_ADMIN');
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail) {
     return { isLocked: false, remainingMinutes: 0, failedAttempts: 0, maxAttempts: 5 };

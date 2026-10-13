@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
-import { getAccountLockoutStatus } from '@/lib/actions/auth-lockout';
 import { AlertCircle, Lock, Mail, GraduationCap, School } from 'lucide-react';
 
 interface SchoolBranding {
@@ -191,16 +190,8 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
       });
 
       if (result?.error) {
-        const status = await getAccountLockoutStatus(email);
-        if (status.isLocked) {
-          setIsLocked(true);
-          setError(t('accountLocked', { minutes: status.remainingMinutes }));
-        } else if (status.failedAttempts > 0) {
-          const remaining = Math.max(0, status.maxAttempts - status.failedAttempts);
-          setError(t('remainingAttempts', { remaining }));
-        } else {
-          setError(t('loginError'));
-        }
+        // Prevent pre-auth account enumeration: standardize invalid credential error messages
+        setError(t('loginError'));
       } else {
         router.push('/');
         router.refresh();
