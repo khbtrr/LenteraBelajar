@@ -285,7 +285,36 @@ export function AdminCoursesClient({
 
     setLoading(true);
     try {
-      await deleteCourse(course.id);
+      const res = await deleteCourse(course.id, false);
+      if ((res as any).requiresForce) {
+        setLoading(false);
+        const stats = (res as any).stats;
+        const forceConfirmed = await showConfirm(
+          t('forceDeleteCourseConfirmDesc', {
+            title: course.title,
+            students: stats?.enrollments || 0,
+            modules: stats?.modules || 0,
+          }),
+          {
+            title: t('forceDeleteCourseConfirmTitle'),
+            confirmText: t('confirmForceDeleteCourse'),
+            cancelText: t('cancelButton'),
+            type: 'error',
+            confirmVariant: 'destructive',
+          }
+        );
+        if (!forceConfirmed) return;
+
+        setLoading(true);
+        const forceRes = await deleteCourse(course.id, true);
+        if (!forceRes.success) {
+          await showAlert(forceRes.error || t('courseDeleteFailedAlert'), { type: 'error' });
+          return;
+        }
+      } else if (!res.success) {
+        await showAlert(res.error || t('courseDeleteFailedAlert'), { type: 'error' });
+        return;
+      }
       setCourses((prev) => prev.filter((c) => c.id !== course.id));
       await showAlert(t('courseDeletedAlert', { title: course.title }), { type: 'success' });
     } catch (err: any) {

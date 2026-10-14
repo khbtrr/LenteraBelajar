@@ -469,6 +469,7 @@
     "resetPasswordTitle": "Reset Password",
     "deactivateUserTitle": "Nonaktifkan Pengguna",
     "alreadyInactiveTitle": "Pengguna Sudah Nonaktif",
+    "permanentDeleteUserTitle": "Hapus Pengguna Permanen",
     "addUserModalTitle": "Tambah Pengguna Baru",
     "editUserModalTitle": "Edit Data Pengguna",
     "fullNameLabel": "Nama Lengkap",
@@ -497,6 +498,11 @@
     "confirmDeactivate": "Ya, Nonaktifkan",
     "userDeactivatedAlert": "Pengguna {name} berhasil dinonaktifkan.",
     "userDeactivateFailedAlert": "Gagal menonaktifkan pengguna",
+    "permanentDeleteConfirmTitle": "Konfirmasi Hapus Pengguna Permanen",
+    "permanentDeleteConfirmDesc": "Pengguna \"{name}\" saat ini sudah berstatus Nonaktif. Apakah Anda yakin ingin menghapus akun ini secara permanen dari sistem?\n\nTindakan ini tidak dapat dibatalkan. Jika pengguna memiliki riwayat akademik, sistem akan melindungi integritas data tersebut.",
+    "confirmPermanentDelete": "Ya, Hapus Permanen",
+    "userDeletedAlert": "Pengguna {name} berhasil dihapus secara permanen.",
+    "userDeleteFailedAlert": "Gagal menghapus pengguna",
     "statusUpdateFailedAlert": "Gagal memperbarui status",
     "resetConfirmTitle": "Konfirmasi Reset Password",
     "resetConfirmDesc": "Reset password {name} ke default: {defaultText}?\n\nPengguna akan diminta mengganti password saat login berikutnya.",
@@ -807,7 +813,10 @@
     "deleteConfirmDesc": "Apakah Anda yakin ingin menghapus course \"{title}\"? Aksi ini tidak dapat dibatalkan.",
     "confirmArchive": "Ya, Arsipkan",
     "confirmUnarchive": "Ya, Pulihkan",
-    "confirmDelete": "Hapus Course"
+    "confirmDelete": "Hapus Course",
+    "forceDeleteCourseConfirmTitle": "Konfirmasi Hapus Permanen Seluruh Data Kelas",
+    "forceDeleteCourseConfirmDesc": "Kelas \"{title}\" saat ini memiliki {students} siswa terdaftar dan {modules} modul pembelajaran.\n\nApakah Anda benar-benar yakin ingin MENGHAPUS PERMANEN kelas ini beserta seluruh materi, tugas, dan riwayat nilai di dalamnya?\n\nTindakan ini bersifat final dan tidak dapat dibatalkan.",
+    "confirmForceDeleteCourse": "Ya, Hapus Permanen Semua Data"
   },
   "adminCourseRequests": {
     "pageTitle": "Persetujuan Pengajuan Course",

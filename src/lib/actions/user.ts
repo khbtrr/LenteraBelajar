@@ -338,60 +338,85 @@ export async function updateUser(
 }
 
 export async function deleteUser(userId: string, hardDelete = false) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
-  const schoolId = session.user.schoolId;
-  if (!schoolId) throw new Error('No school selected');
+  try {
+    const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+    const schoolId = session.user.schoolId;
+    if (!schoolId && session.user.role !== 'SUPER_ADMIN') {
+      return { success: false, error: 'Tidak ada sekolah aktif yang dipilih.' };
+    }
 
-  const user = await db.user.findUnique({ where: { id: userId, schoolId } });
-  if (!user) throw new Error('Pengguna tidak ditemukan');
+    const user = await db.user.findFirst({
+      where: {
+        id: userId,
+        ...(session.user.role !== 'SUPER_ADMIN' ? { schoolId: schoolId || undefined } : {}),
+      },
+    });
+    if (!user) {
+      return { success: false, error: 'Pengguna tidak ditemukan.' };
+    }
 
-  if (user.id === session.user.id) {
-    throw new Error('Anda tidak dapat menghapus akun Anda sendiri');
-  }
+    if (user.id === session.user.id) {
+      return { success: false, error: 'Anda tidak dapat menghapus akun Anda sendiri.' };
+    }
 
-  if (hardDelete) {
-    try {
-      await db.user.delete({
-        where: { id: userId },
+    if (hardDelete) {
+      // 1. Validasi: Jangan izinkan hapus jika pengguna masih menjadi guru pengampu kelas
+      const teachingCoursesCount = await db.course.count({
+        where: { teacherId: userId },
       });
+      if (teachingCoursesCount > 0) {
+        return {
+          success: false,
+          error: `Pengguna tidak dapat dihapus permanen karena masih tercatat sebagai guru pengampu di ${teachingCoursesCount} kelas. Silakan ubah guru pengampu kelas tersebut terlebih dahulu.`,
+        };
+      }
+
+      // 2. Transaksi cascade delete menyeluruh untuk seluruh data akademik pengguna
+      await db.$transaction(async (tx) => {
+        // a. Hapus pesan langsung yang dikirim oleh pengguna
+        await tx.directMessage.deleteMany({ where: { senderId: userId } });
+
+        // b. Hapus data kuis, tugas, dan nilai siswa
+        await tx.quizAnswer.deleteMany({ where: { attempt: { userId } } });
+        await tx.quizAttempt.deleteMany({ where: { userId } });
+        await tx.assignmentSubmission.deleteMany({ where: { userId } });
+        await tx.grade.deleteMany({ where: { userId } });
+
+        // c. Hapus pengajuan kelas & penugasan multi-sekolah
+        await tx.courseRequest.deleteMany({ where: { requesterId: userId } });
+        await tx.userSchool.deleteMany({ where: { userId } });
+
+        // d. Hapus record pengguna (akan meng-cascade relasi lain seperti membership, progress, dll.)
+        await tx.user.delete({ where: { id: userId } });
+      });
+
       await recordAuditLog({
         action: 'USER_DELETED',
         userId: user.id,
         userEmail: user.email,
-        details: `User hard-deleted by admin (${session.user.email})`,
+        details: `User hard-deleted (permanently purged) by admin (${session.user.email})`,
       });
+
       revalidatePath('/[locale]/admin/users', 'page');
       return { success: true, mode: 'deleted' as const };
-    } catch (err: any) {
+    } else {
       await db.user.update({
         where: { id: userId },
         data: { isActive: false, sessionVersion: { increment: 1 } },
       });
+
       await recordAuditLog({
-        action: 'USER_STATUS_TOGGLE',
+        action: 'USER_DELETED',
         userId: user.id,
         userEmail: user.email,
-        details: `User deactivated due to academic foreign key constraints by admin (${session.user.email})`,
+        details: `User soft-deleted (deactivated) by admin (${session.user.email})`,
       });
+
       revalidatePath('/[locale]/admin/users', 'page');
-      return {
-        success: true,
-        mode: 'deactivated' as const,
-        message: 'Pengguna memiliki data riwayat pembelajaran/akademik. Pengguna dialihkan ke status Nonaktif untuk menjaga integritas data.',
-      };
+      return { success: true, mode: 'deactivated' as const };
     }
-  } else {
-    await db.user.update({
-      where: { id: userId },
-      data: { isActive: false, sessionVersion: { increment: 1 } },
-    });
-    await recordAuditLog({
-      action: 'USER_DELETED',
-      userId: user.id,
-      userEmail: user.email,
-      details: `User soft-deleted (deactivated) by admin (${session.user.email})`,
-    });
-    revalidatePath('/[locale]/admin/users', 'page');
-    return { success: true, mode: 'deactivated' as const };
+  } catch (err: any) {
+    console.error('deleteUser error:', err);
+    return { success: false, error: err?.message || 'Gagal menghapus pengguna.' };
   }
 }

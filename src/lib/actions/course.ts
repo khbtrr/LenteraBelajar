@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { createNotification } from '@/lib/notifications';
 import { assertCourseAccess, assertAcademicReferences } from '@/lib/access';
 import { getCourseModules } from '@/lib/actions/module';
+import { recordAuditLog } from '@/lib/audit-log';
 
 export async function getCourses(filters?: {
   status?: CourseStatus;
@@ -340,46 +341,81 @@ export async function toggleArchiveCourse(courseId: string) {
   return updated;
 }
 
-export async function deleteCourse(courseId: string) {
-  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
-  const schoolId = session.user.schoolId;
-  if (!schoolId) throw new Error('No school selected');
+export async function deleteCourse(courseId: string, force = false) {
+  try {
+    const session = await requireRole('ADMIN', 'SUPER_ADMIN');
+    const schoolId = session.user.schoolId;
+    if (!schoolId && session.user.role !== 'SUPER_ADMIN') {
+      return { success: false, error: 'Tidak ada sekolah aktif yang dipilih.' };
+    }
 
-  const course = await db.course.findUnique({
-    where: { id: courseId, schoolId },
-    include: {
-      _count: {
-        select: {
-          enrollments: true,
-          modules: true,
-          grades: true,
-          attendanceSessions: true,
-          forumThreads: true,
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+      include: {
+        _count: {
+          select: {
+            enrollments: true,
+            modules: true,
+            grades: true,
+            attendanceSessions: true,
+            forumThreads: true,
+          },
         },
       },
-    },
-  });
-  if (!course) throw new Error('Course tidak ditemukan');
+    });
 
-  const hasHistory =
-    course._count.enrollments > 0 ||
-    course._count.modules > 0 ||
-    course._count.grades > 0 ||
-    course._count.attendanceSessions > 0 ||
-    course._count.forumThreads > 0;
+    if (!course) {
+      return { success: false, error: 'Course tidak ditemukan.' };
+    }
 
-  if (hasHistory) {
-    throw new Error(
-      'Course tidak dapat dihapus karena sudah memiliki siswa terdaftar, modul pembelajaran, atau riwayat nilai. Silakan gunakan fitur Arsip untuk menyembunyikan course ini.'
-    );
+    if (session.user.role !== 'SUPER_ADMIN' && course.schoolId !== schoolId) {
+      return { success: false, error: 'Akses ditolak: Kelas tidak berada dalam sekolah Anda.' };
+    }
+
+    const hasHistory =
+      course._count.enrollments > 0 ||
+      course._count.modules > 0 ||
+      course._count.grades > 0 ||
+      course._count.attendanceSessions > 0 ||
+      course._count.forumThreads > 0;
+
+    if (hasHistory && !force) {
+      return {
+        success: false,
+        requiresForce: true,
+        stats: {
+          enrollments: course._count.enrollments,
+          modules: course._count.modules,
+          grades: course._count.grades,
+        },
+        error:
+          'Course tidak dapat dihapus karena sudah memiliki siswa terdaftar, modul pembelajaran, atau riwayat nilai.',
+      };
+    }
+
+    // Putuskan referensi courseRequest jika ada
+    await db.courseRequest.updateMany({
+      where: { courseId },
+      data: { courseId: null },
+    });
+
+    await db.course.delete({
+      where: { id: courseId },
+    });
+
+    await recordAuditLog({
+      action: 'COURSE_DELETED',
+      userId: session.user.id,
+      userEmail: session.user.email,
+      details: `Course "${course.title}" (${course.id}) permanently deleted by ${session.user.email}${force ? ' (Force cascade)' : ''}`,
+    });
+
+    revalidatePath('/[locale]/admin/courses', 'page');
+    revalidatePath('/[locale]/admin/dashboard', 'page');
+    revalidatePath('/[locale]/teacher/my-courses', 'page');
+    return { success: true };
+  } catch (err: any) {
+    console.error('deleteCourse error:', err);
+    return { success: false, error: err?.message || 'Gagal menghapus course.' };
   }
-
-  await db.course.delete({
-    where: { id: courseId },
-  });
-
-  revalidatePath('/[locale]/admin/courses', 'page');
-  revalidatePath('/[locale]/admin/dashboard', 'page');
-  revalidatePath('/[locale]/teacher/my-courses', 'page');
-  return { success: true };
 }

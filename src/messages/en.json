@@ -469,6 +469,7 @@
     "resetPasswordTitle": "Reset Password",
     "deactivateUserTitle": "Deactivate User",
     "alreadyInactiveTitle": "User is Already Inactive",
+    "permanentDeleteUserTitle": "Permanently Delete User",
     "addUserModalTitle": "Add New User",
     "editUserModalTitle": "Edit User Details",
     "fullNameLabel": "Full Name",
@@ -497,6 +498,11 @@
     "confirmDeactivate": "Yes, Deactivate",
     "userDeactivatedAlert": "User {name} successfully deactivated.",
     "userDeactivateFailedAlert": "Failed to deactivate user",
+    "permanentDeleteConfirmTitle": "Confirm Permanent User Deletion",
+    "permanentDeleteConfirmDesc": "User \"{name}\" is currently Inactive. Are you sure you want to permanently delete this account from the system?\n\nThis action cannot be undone. If the user has academic records (grades, coursework, attendance), the system will preserve data integrity.",
+    "confirmPermanentDelete": "Yes, Delete Permanently",
+    "userDeletedAlert": "User {name} has been permanently deleted.",
+    "userDeleteFailedAlert": "Failed to delete user",
     "statusUpdateFailedAlert": "Failed to update status",
     "resetConfirmTitle": "Confirm Password Reset",
     "resetConfirmDesc": "Reset password of {name} to default: {defaultText}?\n\nThe user will be prompted to change their password upon their next login.",
@@ -807,7 +813,10 @@
     "deleteConfirmDesc": "Are you sure you want to delete course \"{title}\"? This action cannot be undone.",
     "confirmArchive": "Yes, Archive",
     "confirmUnarchive": "Yes, Restore",
-    "confirmDelete": "Delete Course"
+    "confirmDelete": "Delete Course",
+    "forceDeleteCourseConfirmTitle": "Confirm Permanent Deletion of All Course Data",
+    "forceDeleteCourseConfirmDesc": "The course \"{title}\" currently has {students} enrolled students and {modules} learning modules.\n\nAre you sure you want to PERMANENTLY DELETE this course along with all materials, assignments, and grade history inside it?\n\nThis action is final and cannot be undone.",
+    "confirmForceDeleteCourse": "Yes, Permanently Delete All Data"
   },
   "adminCourseRequests": {
     "pageTitle": "Course Request Approvals",

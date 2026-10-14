@@ -50,9 +50,23 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
   const sidebarContent = (
     <>
       {/* Brand Header */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <Link href="/" className="flex items-center gap-3 overflow-hidden">
-          <div data-logo-surface className="flex items-center justify-center w-10 h-10 rounded-xl bg-white text-white shadow-sm flex-shrink-0 overflow-hidden border border-gray-100 dark:border-gray-800">
+      <div
+        className={cn(
+          'flex items-center h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-200',
+          isSidebarVisible ? 'justify-between px-4' : 'justify-center px-2'
+        )}
+      >
+        <Link
+          href="/"
+          className={cn(
+            'flex items-center min-w-0',
+            isSidebarVisible ? 'gap-3 overflow-hidden' : 'justify-center'
+          )}
+        >
+          <div
+            data-logo-surface
+            className="flex items-center justify-center w-10 h-10 rounded-xl bg-white text-white shadow-sm flex-shrink-0 overflow-hidden border border-gray-100 dark:border-gray-800"
+          >
             {schoolLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -78,18 +92,20 @@ export function Sidebar({ items, title, schoolName, schoolLogo }: SidebarProps) 
           )}
         </Link>
 
-        {/* Toggle Button for Desktop */}
-        <button
-          onClick={toggleSidebar}
-          aria-label="Toggle Sidebar"
-          className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
-        >
-          {isExpanded ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </button>
+        {/* Toggle Button for Desktop (only visible when expanded) */}
+        {isSidebarVisible && (
+          <button
+            onClick={toggleSidebar}
+            aria-label="Toggle Sidebar"
+            className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+          >
+            {isExpanded ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Navigation List */}

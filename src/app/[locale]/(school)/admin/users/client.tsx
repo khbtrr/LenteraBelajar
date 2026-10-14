@@ -196,31 +196,76 @@ export function AdminUsersClient({
   };
 
   const handleDelete = async (user: UserItem) => {
-    const confirmed = await showConfirm(
-      t('deactivateConfirmDesc', { name: user.name }),
-      {
-        title: t('deactivateConfirmTitle'),
-        confirmText: t('confirmDeactivate'),
-        cancelText: t('cancelButton'),
-      }
-    );
-    if (!confirmed) return;
+    if (user.isActive) {
+      const confirmed = await showConfirm(
+        t('deactivateConfirmDesc', { name: user.name }),
+        {
+          title: t('deactivateConfirmTitle'),
+          confirmText: t('confirmDeactivate'),
+          cancelText: t('cancelButton'),
+        }
+      );
+      if (!confirmed) return;
 
-    setLoading(true);
-    try {
-      const res = await deleteUser(user.id, false);
-      setUsers((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, isActive: false } : u))
+      setLoading(true);
+      try {
+        const res = await deleteUser(user.id, false);
+        if (!res.success) {
+          await showAlert(res.error || t('userDeactivateFailedAlert'), { type: 'error' });
+          return;
+        }
+        setUsers((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, isActive: false } : u))
+        );
+        await showAlert(
+          (res as any).message || t('userDeactivatedAlert', { name: user.name }),
+          { type: 'success' }
+        );
+      } catch (err: any) {
+        console.error(err);
+        await showAlert(err?.message || t('userDeactivateFailedAlert'), { type: 'error' });
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      const confirmed = await showConfirm(
+        t('permanentDeleteConfirmDesc', { name: user.name }),
+        {
+          title: t('permanentDeleteConfirmTitle'),
+          confirmText: t('confirmPermanentDelete'),
+          cancelText: t('cancelButton'),
+          type: 'error',
+          confirmVariant: 'destructive',
+        }
       );
-      await showAlert(
-        res.message || t('userDeactivatedAlert', { name: user.name }),
-        { type: 'success' }
-      );
-    } catch (err: any) {
-      console.error(err);
-      await showAlert(err?.message || t('userDeactivateFailedAlert'), { type: 'error' });
-    } finally {
-      setLoading(false);
+      if (!confirmed) return;
+
+      setLoading(true);
+      try {
+        const res = await deleteUser(user.id, true);
+        if (!res.success) {
+          await showAlert(res.error || t('userDeleteFailedAlert'), { type: 'error' });
+          return;
+        }
+
+        if (res.mode === 'deleted') {
+          setUsers((prev) => prev.filter((u) => u.id !== user.id));
+          await showAlert(
+            t('userDeletedAlert', { name: user.name }),
+            { type: 'success' }
+          );
+        } else {
+          await showAlert(
+            (res as any).message || t('userDeactivatedAlert', { name: user.name }),
+            { type: 'info' }
+          );
+        }
+      } catch (err: any) {
+        console.error(err);
+        await showAlert(err?.message || t('userDeleteFailedAlert'), { type: 'error' });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -608,7 +653,7 @@ export function AdminUsersClient({
                           size="sm"
                           variant="ghost"
                           onClick={() => handleDelete(user)}
-                          title={user.isActive ? t('deactivateUserTitle') : t('alreadyInactiveTitle')}
+                          title={user.isActive ? t('deactivateUserTitle') : t('permanentDeleteUserTitle')}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
