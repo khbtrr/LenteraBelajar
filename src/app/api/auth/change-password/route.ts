@@ -6,6 +6,7 @@ import { getClientIp } from '@/lib/rate-limit';
 import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
 import { validatePassword } from '@/lib/password-policy';
 import { recordAuditLog } from '@/lib/audit-log';
+import { recordFailedPassword } from '@/lib/login-security';
 
 export async function POST(request: Request) {
   try {
@@ -52,8 +53,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Pengguna tidak ditemukan' }, { status: 404 });
     }
 
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const remainingMinutes = Math.max(
+        1,
+        Math.ceil((user.lockedUntil.getTime() - Date.now()) / (60 * 1000))
+      );
+      return NextResponse.json(
+        { error: `Akun sedang dikunci sementara selama ${remainingMinutes} menit.` },
+        { status: 423 }
+      );
+    }
+
     const isCurrentPasswordValid = await compare(currentPassword, user.passwordHash);
     if (!isCurrentPasswordValid) {
+      const failure = await recordFailedPassword(user.id);
+      await recordAuditLog({
+        action: failure.lockoutMinutes ? 'ACCOUNT_LOCKED' : 'LOGIN_FAILED',
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress,
+        userAgent,
+        details: `Failed change-password attempt. Attempt ${failure.failed}/5`,
+      });
+
+      if (failure.lockoutMinutes) {
+        return NextResponse.json(
+          { error: `Terlalu banyak percobaan gagal. Akun dikunci sementara selama ${failure.lockoutMinutes} menit.` },
+          { status: 423 }
+        );
+      }
+
       return NextResponse.json(
         { error: 'Kata sandi saat ini tidak tepat' },
         { status: 400 }
@@ -67,6 +96,8 @@ export async function POST(request: Request) {
       data: {
         passwordHash: hashedNewPassword,
         mustChangePassword: false,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
         sessionVersion: { increment: 1 },
       },
     });

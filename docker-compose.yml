@@ -21,19 +21,31 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.25'
+          memory: 512M
     restart: unless-stopped
 
   migrate:
     build:
       context: .
       dockerfile: Dockerfile
-      target: builder
-    command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+      target: migrator
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-lenterabelajar}?schema=public
     depends_on:
       db:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
     restart: "no"
 
   db:
@@ -49,6 +61,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.25'
+          memory: 512M
     restart: unless-stopped
 
 volumes:

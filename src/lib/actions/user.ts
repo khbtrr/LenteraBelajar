@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireSchool, requireRole, hashPassword } from '@/lib/auth-utils';
 import { generateDefaultPassword } from '@/lib/password-policy';
+import { recordAuditLog } from '@/lib/audit-log';
 import { Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
@@ -117,7 +118,7 @@ export async function bulkImportUsers(
     if (!item.email || !item.name) continue;
     const existingUser = await db.user.findUnique({ where: { email: item.email.trim().toLowerCase() } });
     if (existingUser && (existingUser.role === 'SUPER_ADMIN' || existingUser.schoolId !== schoolId)) {
-      throw new Error(`Akses ditolak: Akun ${item.email} berada di luar scope impor`);
+      throw new Error(`Gagal mengimpor: Email ${item.email} sudah terdaftar`);
     }
     if (session.user.role !== 'SUPER_ADMIN' && item.role === 'SUPER_ADMIN') {
       throw new Error('Akses ditolak: Peran Super Admin tidak dapat diimpor');
@@ -136,7 +137,9 @@ export async function bulkImportUsers(
         : item.role || Role.STUDENT;
 
     const existingNow = await db.user.findUnique({ where: { email: item.email.trim().toLowerCase() } });
-    if (existingNow && (existingNow.schoolId !== schoolId || existingNow.role === 'SUPER_ADMIN' || existingNow.role !== targetRole)) throw new Error('Akses ditolak: Scope atau peran akun impor tidak cocok');
+    if (existingNow && (existingNow.schoolId !== schoolId || existingNow.role === 'SUPER_ADMIN' || existingNow.role !== targetRole)) {
+      throw new Error(`Gagal mengimpor: Email ${item.email} sudah terdaftar atau peran tidak sesuai`);
+    }
     const user = existingNow ? await db.user.update({
       where: { id: existingNow.id, schoolId, role: { not: 'SUPER_ADMIN' } },
       data: { name: item.name, nis: item.nis ?? null, nip: item.nip ?? null },
@@ -211,6 +214,13 @@ export async function toggleUserActive(userId: string) {
     select: userSelect,
   });
 
+  await recordAuditLog({
+    action: 'USER_STATUS_TOGGLE',
+    userId: user.id,
+    userEmail: user.email,
+    details: `User status changed to ${!user.isActive ? 'ACTIVE' : 'INACTIVE'} by admin (${session.user.email})`,
+  });
+
   revalidatePath('/[locale]/admin/users', 'page');
   return updated;
 }
@@ -234,6 +244,13 @@ export async function resetUserPassword(userId: string) {
       sessionVersion: { increment: 1 },
     },
     select: userSelect,
+  });
+
+  await recordAuditLog({
+    action: 'USER_PASSWORD_RESET',
+    userId: user.id,
+    userEmail: user.email,
+    details: `Password reset by admin (${session.user.email}) for user ${user.email} (${user.id})`,
   });
 
   revalidatePath('/[locale]/admin/users', 'page');
@@ -337,12 +354,24 @@ export async function deleteUser(userId: string, hardDelete = false) {
       await db.user.delete({
         where: { id: userId },
       });
+      await recordAuditLog({
+        action: 'USER_DELETED',
+        userId: user.id,
+        userEmail: user.email,
+        details: `User hard-deleted by admin (${session.user.email})`,
+      });
       revalidatePath('/[locale]/admin/users', 'page');
       return { success: true, mode: 'deleted' as const };
     } catch (err: any) {
       await db.user.update({
         where: { id: userId },
         data: { isActive: false, sessionVersion: { increment: 1 } },
+      });
+      await recordAuditLog({
+        action: 'USER_STATUS_TOGGLE',
+        userId: user.id,
+        userEmail: user.email,
+        details: `User deactivated due to academic foreign key constraints by admin (${session.user.email})`,
       });
       revalidatePath('/[locale]/admin/users', 'page');
       return {
@@ -355,6 +384,12 @@ export async function deleteUser(userId: string, hardDelete = false) {
     await db.user.update({
       where: { id: userId },
       data: { isActive: false, sessionVersion: { increment: 1 } },
+    });
+    await recordAuditLog({
+      action: 'USER_DELETED',
+      userId: user.id,
+      userEmail: user.email,
+      details: `User soft-deleted (deactivated) by admin (${session.user.email})`,
     });
     revalidatePath('/[locale]/admin/users', 'page');
     return { success: true, mode: 'deactivated' as const };

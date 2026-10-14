@@ -14,18 +14,27 @@ export async function getCourses(filters?: {
   academicYearId?: string;
 }) {
   const session = await requireSchool();
+  const isStudent = session.user.role === Role.STUDENT;
+
   return db.course.findMany({
     where: {
       OR: [
         { schoolId: session.schoolId },
         { isCrossSchool: true },
       ],
-      ...(filters?.status && { status: filters.status }),
-      ...(filters?.teacherId && { teacherId: filters.teacherId }),
+      ...(isStudent
+        ? {
+            status: CourseStatus.ACTIVE,
+            enrollments: { some: { userId: session.user.id } },
+          }
+        : {
+            ...(filters?.status && { status: filters.status }),
+            ...(filters?.teacherId && { teacherId: filters.teacherId }),
+          }),
       ...(filters?.academicYearId && { academicYearId: filters.academicYearId }),
     },
     include: {
-      teacher: { select: { id: true, name: true, email: true } },
+      teacher: { select: { id: true, name: true, ...(isStudent ? {} : { email: true }) } },
       category: { select: { id: true, name: true } },
       academicYear: { select: { id: true, name: true, status: true } },
       school: { select: { id: true, name: true, code: true } },

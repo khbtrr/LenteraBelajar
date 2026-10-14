@@ -6,6 +6,7 @@ import { createNotification } from '@/lib/notifications';
 import { assertCourseAccess, assertItemAccess } from '@/lib/access';
 import { awardXpInTransaction } from '@/lib/rewards';
 import { revalidatePath } from 'next/cache';
+import { getLocalDateString } from '@/lib/date-utils';
 
 import {
   LEVEL_TIERS,
@@ -26,7 +27,7 @@ export async function touchDailyStreak(userId: string) {
   if (!user) return;
 
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getLocalDateString(now, 'Asia/Jakarta');
 
   if (!user.lastActiveDate) {
     await db.user.update({
@@ -36,7 +37,7 @@ export async function touchDailyStreak(userId: string) {
     return 1;
   }
 
-  const lastActiveStr = new Date(user.lastActiveDate).toISOString().split('T')[0];
+  const lastActiveStr = getLocalDateString(new Date(user.lastActiveDate), 'Asia/Jakarta');
 
   if (todayStr === lastActiveStr) {
     // Already touched today
@@ -44,7 +45,7 @@ export async function touchDailyStreak(userId: string) {
   }
 
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdayStr = getLocalDateString(yesterday, 'Asia/Jakarta');
 
   let newStreak = 1;
   if (lastActiveStr === yesterdayStr) {

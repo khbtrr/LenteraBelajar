@@ -16,7 +16,21 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
-# Stage 2: Runner
+# Stage 2: Migrator (Unprivileged database migration execution)
+FROM node:22-alpine AS migrator
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
+USER nextjs
+CMD ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+
+# Stage 3: Runner
 FROM node:22-alpine AS runner
 WORKDIR /app
 

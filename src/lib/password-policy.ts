@@ -22,6 +22,10 @@ export function validatePassword(password: string): PasswordValidationResult {
     return { isValid: false, error: 'Kata sandi harus memiliki minimal 8 karakter' };
   }
 
+  if (password.length > 72) {
+    return { isValid: false, error: 'Kata sandi tidak boleh melebihi 72 karakter' };
+  }
+
   if (!/[A-Z]/.test(password)) {
     return { isValid: false, error: 'Kata sandi harus mengandung minimal 1 huruf besar (A-Z)' };
   }

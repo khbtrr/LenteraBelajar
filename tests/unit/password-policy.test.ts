@@ -14,6 +14,13 @@ describe('Password Policy & Default Generation', () => {
       expect(result.error).toBe('Kata sandi harus memiliki minimal 8 karakter');
     });
 
+    it('rejects passwords exceeding 72 characters to prevent bcrypt DoS', () => {
+      const longPassword = 'A1a' + 'x'.repeat(70);
+      const result = validatePassword(longPassword);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe('Kata sandi tidak boleh melebihi 72 karakter');
+    });
+
     it('rejects passwords missing uppercase letters', () => {
       const result = validatePassword('password123');
       expect(result.isValid).toBe(false);

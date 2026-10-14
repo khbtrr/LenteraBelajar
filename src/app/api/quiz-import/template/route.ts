@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
-import * as fs from 'fs';
-import * as path from 'path';
+import { getServerSession } from '@/lib/auth-utils';
 
 export async function GET() {
+  const session = await getServerSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const doc = new Document({
       sections: [
@@ -105,17 +109,6 @@ export async function GET() {
     });
 
     const buffer = await Packer.toBuffer(doc);
-
-    // Save a copy to public/templates for direct static serving as well
-    try {
-      const publicDir = path.resolve(process.cwd(), 'public/templates');
-      if (!fs.existsSync(publicDir)) {
-        fs.mkdirSync(publicDir, { recursive: true });
-      }
-      fs.writeFileSync(path.join(publicDir, 'template-soal-kuis.docx'), buffer);
-    } catch {
-      // Ignore file system write errors if in read-only environment
-    }
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,

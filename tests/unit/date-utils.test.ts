@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDate, formatDateTime, formatTime } from '@/lib/date-utils';
+import { formatDate, formatDateTime, formatTime, getLocalDateString } from '@/lib/date-utils';
 
 describe('Localized Date & Time Formatting Utilities', () => {
   const testIso = '2026-10-09T07:30:00.000Z';
@@ -44,6 +44,22 @@ describe('Localized Date & Time Formatting Utilities', () => {
 
     it('returns hyphen for invalid time inputs', () => {
       expect(formatTime('invalid')).toBe('-');
+    });
+  });
+
+  describe('getLocalDateString', () => {
+    it('formats date correctly in Asia/Jakarta timezone', () => {
+      // 2026-10-14 23:30 UTC is 2026-10-15 06:30 WIB
+      const lateUtc = new Date('2026-10-14T23:30:00.000Z');
+      expect(getLocalDateString(lateUtc, 'Asia/Jakarta')).toBe('2026-10-15');
+
+      // 2026-10-14 02:00 UTC is 2026-10-14 09:00 WIB
+      const earlyUtc = new Date('2026-10-14T02:00:00.000Z');
+      expect(getLocalDateString(earlyUtc, 'Asia/Jakarta')).toBe('2026-10-14');
+    });
+
+    it('handles invalid dates gracefully', () => {
+      expect(getLocalDateString('invalid')).toBe('');
     });
   });
 });

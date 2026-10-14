@@ -4,12 +4,28 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { registerUploadedFile } from '@/lib/files';
 import { isAllowedFileExtension, validateFileMagicBytes } from '@/lib/file-security';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+    const rateLimitKey = `upload:${session.user.id || ipAddress}`;
+    const rateLimit = await checkSharedRateLimit(rateLimitKey, 15, 60 * 1000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak permintaan upload. Silakan tunggu beberapa saat.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimit.resetInSeconds),
+          },
+        }
+      );
     }
 
     const formData = await request.formData();

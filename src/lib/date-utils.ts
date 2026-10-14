@@ -34,3 +34,20 @@ export function formatTime(
   const resolvedLocale = locale === 'en' ? 'en-US' : 'id-ID';
   return d.toLocaleTimeString(resolvedLocale, options);
 }
+
+/**
+ * Return date string in YYYY-MM-DD format for a given timezone (defaults to Asia/Jakarta)
+ */
+export function getLocalDateString(
+  date: Date | string | number = new Date(),
+  timeZone = 'Asia/Jakarta'
+): string {
+  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}

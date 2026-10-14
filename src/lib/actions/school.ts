@@ -1,8 +1,9 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { requireRole } from '@/lib/auth-utils';
+import { requireAuth, requireRole, getActiveSchoolId } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 
 export async function getSchools() {
   await requireRole('SUPER_ADMIN');
@@ -54,9 +55,6 @@ export async function toggleSchoolActive(schoolId: string) {
   revalidatePath('/[locale]/platform/schools', 'page');
   return updated;
 }
-
-import { cookies } from 'next/headers';
-import { requireAuth, getActiveSchoolId } from '@/lib/auth-utils';
 
 export async function getUserSchools() {
   const session = await requireAuth();
@@ -160,6 +158,7 @@ export async function getActiveSchoolDetail() {
 }
 
 export async function getAllActiveSchools() {
+  await requireAuth();
   return db.school.findMany({
     where: { isActive: true },
     select: {

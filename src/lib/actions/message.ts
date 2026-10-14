@@ -448,22 +448,9 @@ export async function getMessages(
   }
 
   const isParticipant = conv.participants.some((p) => p.userId === currentUserId);
-  const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
-  const isAdminOrSupervisor = ['ADMIN', 'SUPERVISOR'].includes(session.user.role);
 
   if (!isParticipant) {
-    if (isSuperAdmin) {
-      // Super admin can access any conversation
-    } else if (isAdminOrSupervisor && session.user.schoolId) {
-      const hasSchoolParticipant = conv.participants.some(
-        (p) => p.user.schoolId === session.user.schoolId
-      );
-      if (!hasSchoolParticipant) {
-        throw new Error('Anda tidak memiliki akses ke percakapan ini');
-      }
-    } else {
-      throw new Error('Anda tidak memiliki akses ke percakapan ini');
-    }
+    throw new Error('Anda tidak memiliki akses ke percakapan ini');
   }
 
   const rawMessages = await db.directMessage.findMany({

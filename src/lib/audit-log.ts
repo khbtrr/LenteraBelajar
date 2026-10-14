@@ -5,7 +5,10 @@ export type AuditAction =
   | 'LOGIN_FAILED'
   | 'ACCOUNT_LOCKED'
   | 'ACCOUNT_UNLOCKED'
-  | 'PASSWORD_CHANGED';
+  | 'PASSWORD_CHANGED'
+  | 'USER_PASSWORD_RESET'
+  | 'USER_STATUS_TOGGLE'
+  | 'USER_DELETED';
 
 export interface AuditLogParams {
   action: AuditAction;
