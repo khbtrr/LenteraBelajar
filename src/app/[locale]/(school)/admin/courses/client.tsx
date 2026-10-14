@@ -45,6 +45,7 @@ import { CourseStatus } from '@prisma/client';
 import { Link, useRouter } from '@/i18n/navigation';
 import { useDialog } from '@/context/DialogContext';
 import { MoodleImportModal } from '@/components/moodle/moodle-import-modal';
+import { getSchoolBadgeLabel, getSchoolBadgeStyle } from '@/lib/school-utils';
 
 interface CourseItem {
   id: string;
@@ -377,8 +378,8 @@ export function AdminCoursesClient({
                           {course.title}
                         </span>
                         {course.school && (
-                          <Badge variant="secondary" className="text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-                            {course.school.code.startsWith('REG') ? 'Reguler' : 'SMA Plus'}
+                          <Badge variant="secondary" className={`text-[10px] font-semibold border ${getSchoolBadgeStyle(course.school)}`}>
+                            {getSchoolBadgeLabel(course.school)}
                           </Badge>
                         )}
                         {course.isCrossSchool && (

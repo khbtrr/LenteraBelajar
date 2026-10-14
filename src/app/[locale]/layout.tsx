@@ -4,13 +4,13 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { Providers } from '@/components/providers';
-import { db } from '@/lib/db';
+import { getIndukSchool } from '@/lib/school';
 import '@/app/globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const school = await db.school.findFirst({
-    where: { isActive: true },
-    select: { name: true, logo: true },
+  const school = await getIndukSchool({
+    name: true,
+    logo: true,
   });
 
   const appTitle = school?.name ? `${school.name} - LenteraBelajar` : 'LenteraBelajar';

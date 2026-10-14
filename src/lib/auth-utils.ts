@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import type { Role } from '@prisma/client';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
+import { getIndukSchool } from '@/lib/school';
 
 export function hashPassword(password: string): string {
   return hashSync(password, 12);
@@ -38,7 +39,7 @@ export async function getServerSession(options: { allowPasswordChange?: boolean 
     schoolId = requestedSchool;
   }
   if (!schoolId && account.role === 'SUPER_ADMIN') {
-    schoolId = (await db.school.findFirst({ where: { isActive: true }, select: { id: true } }))?.id ?? null;
+    schoolId = (await getIndukSchool({ id: true }))?.id ?? null;
   }
   if (!schoolId && account.role !== 'SUPER_ADMIN') return null;
   if (schoolId && !await db.school.findUnique({ where: { id: schoolId, isActive: true }, select: { id: true } })) {

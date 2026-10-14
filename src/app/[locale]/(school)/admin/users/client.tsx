@@ -50,6 +50,7 @@ import { generateDefaultPassword } from '@/lib/password-policy';
 import { Role } from '@prisma/client';
 import * as XLSX from 'xlsx';
 import { useDialog } from '@/context/DialogContext';
+import { getSchoolBadgeLabel, getSchoolBadgeStyle } from '@/lib/school-utils';
 
 interface UserSchoolItem {
   id: string;
@@ -514,14 +515,17 @@ export function AdminUsersClient({
                       </div>
                       {user.assignedSchools && user.assignedSchools.length > 1 ? (
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {user.assignedSchools.map((as) => (
-                            <span
-                              key={as.schoolId}
-                              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900"
-                            >
-                              {as.school?.code?.startsWith('REG') ? 'Reguler' : 'Plus'}
-                            </span>
-                          ))}
+                          {user.assignedSchools.map((as) => {
+                            const badge = getSchoolBadgeLabel(as.school);
+                            return (
+                              <span
+                                key={as.schoolId}
+                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border ${getSchoolBadgeStyle(badge)}`}
+                              >
+                                {badge}
+                              </span>
+                            );
+                          })}
                         </div>
                       ) : null}
                     </TableCell>

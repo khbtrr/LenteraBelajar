@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import { db } from '@/lib/db';
+import { getIndukSchool } from '@/lib/school';
 import { LoginForm } from './login-form';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const school = await db.school.findFirst({
-    where: { isActive: true },
-    select: { name: true, logo: true },
+  const school = await getIndukSchool({
+    name: true,
+    logo: true,
   });
 
   const title = school?.name ? `Masuk - ${school.name}` : 'Masuk - LenteraBelajar';
@@ -22,14 +22,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage() {
-  const school = await db.school.findFirst({
-    where: { isActive: true },
-    select: {
-      name: true,
-      logo: true,
-      loginQuote: true,
-      loginQuoteAuthor: true,
-    },
+  const school = await getIndukSchool({
+    name: true,
+    logo: true,
+    loginQuote: true,
+    loginQuoteAuthor: true,
   });
 
   return <LoginForm school={school} />;

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { getUserSchools, switchActiveSchool } from '@/lib/actions/school';
+import { getSchoolBadgeLabel, getSchoolBadgeStyle } from '@/lib/school-utils';
 
 interface SchoolItem {
   id: string;
@@ -117,9 +118,16 @@ export function SchoolSwitcher() {
               className="flex items-center justify-between text-xs py-2 cursor-pointer font-medium"
             >
               <div className="flex flex-col gap-0.5 truncate pr-2">
-                <span className="truncate font-semibold text-gray-900 dark:text-white">
-                  {school.name}
-                </span>
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="truncate font-semibold text-gray-900 dark:text-white">
+                    {school.name}
+                  </span>
+                  <span
+                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${getSchoolBadgeStyle(school)}`}
+                  >
+                    {getSchoolBadgeLabel(school)}
+                  </span>
+                </div>
                 <span className="text-[10px] text-gray-500 font-mono">
                   Kode: {school.code}
                 </span>
