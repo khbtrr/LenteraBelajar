@@ -30,8 +30,8 @@
     "logout": "Keluar",
     "email": "Email",
     "password": "Kata Sandi",
-    "loginTitle": "Masuk ke LenteraBelajar",
-    "loginSubtitle": "Masukkan email dan kata sandi Anda",
+    "loginTitle": "Selamat Datang",
+    "loginSubtitle": "Masukkan email dan kata sandi Anda untuk melanjutkan",
     "loginButton": "Masuk",
     "loginTo": "Masuk ke",
     "loginError": "Email atau kata sandi salah",
@@ -49,7 +49,15 @@
     "errorOccurred": "Terjadi kesalahan saat memproses permintaan",
     "deptTik": "Dept. TIK SMA Plus PGRI Cibinong",
     "defaultQuote": "Belajar bukan tentang mengisi wadah, melainkan menyalakan api.",
-    "defaultQuoteAuthor": "Plutarch"
+    "defaultQuoteAuthor": "Plutarch",
+    "rememberMe": "Ingat saya",
+    "needHelp": "Butuh bantuan akun? Hubungi Administrator Sekolah",
+    "learningAccessPortal": "Portal Akses Pembelajaran",
+    "lmsPortal": "Portal LMS",
+    "signingIn": "Memproses masuk...",
+    "footerLms": "LenteraBelajar LMS",
+    "showPassword": "Lihat kata sandi",
+    "hidePassword": "Sembunyikan kata sandi"
   },
   "sidebar": {
     "navigationMenu": "Menu navigasi",

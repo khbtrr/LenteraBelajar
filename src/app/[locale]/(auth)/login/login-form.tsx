@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
-import { AlertCircle, Lock, Mail, GraduationCap, School } from 'lucide-react';
+import { AlertCircle, Lock, Mail, GraduationCap, School, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 interface SchoolBranding {
   name: string | null;
@@ -169,6 +169,8 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -190,15 +192,42 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
       });
 
       if (result?.error) {
-        // Prevent pre-auth account enumeration: standardize invalid credential error messages
-        setError(t('loginError'));
+        const errorMsg = String(result.error);
+        if (errorMsg.includes('ACCOUNT_LOCKED')) {
+          const minutes = errorMsg.split(':')[1] || '15';
+          setError(t('accountLocked', { minutes }));
+          setIsLocked(true);
+        } else if (errorMsg.includes('RATE_LIMIT')) {
+          setError(t('rateLimit'));
+        } else if (errorMsg.includes('INVALID_CREDENTIALS')) {
+          const remaining = errorMsg.split(':')[1];
+          if (remaining && parseInt(remaining) < 5 && parseInt(remaining) > 0) {
+            setError(t('remainingAttempts', { remaining }));
+          } else {
+            setError(t('loginError'));
+          }
+        } else {
+          setError(t('loginError'));
+        }
       } else {
         router.push('/');
         router.refresh();
       }
     } catch (err: any) {
-      if (err?.message?.includes('RATE_LIMIT')) {
+      const errorMsg = String(err?.message || '');
+      if (errorMsg.includes('ACCOUNT_LOCKED')) {
+        const minutes = errorMsg.split(':')[1] || '15';
+        setError(t('accountLocked', { minutes }));
+        setIsLocked(true);
+      } else if (errorMsg.includes('RATE_LIMIT')) {
         setError(t('rateLimit'));
+      } else if (errorMsg.includes('INVALID_CREDENTIALS')) {
+        const remaining = errorMsg.split(':')[1];
+        if (remaining && parseInt(remaining) < 5 && parseInt(remaining) > 0) {
+          setError(t('remainingAttempts', { remaining }));
+        } else {
+          setError(t('loginError'));
+        }
       } else {
         setError(t('loginError'));
       }
@@ -211,15 +240,13 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
     <div className="min-h-screen bg-[#F0F2F5] dark:bg-gray-950 flex flex-col justify-center items-center p-3 sm:p-6 lg:p-8 selection:bg-[#FF8928]/30">
       {/* Floating Language Switcher in top right */}
       <div className="fixed top-4 right-4 z-40">
-        <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xs border border-gray-200 dark:border-gray-800 rounded-xl p-0.5 shadow-xs">
-          <LanguageSwitcher />
-        </div>
+        <LanguageSwitcher variant="pill" />
       </div>
 
       {/* Main Dual-Card Wrapper */}
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch my-auto">
         {/* Sisi Kiri: Branding Showcase Card (Deep Navy) */}
-        <div className="hidden lg:flex lg:col-span-7 bg-[#002446] rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden flex-col justify-between shadow-sm min-h-[620px]">
+        <div className="hidden lg:flex lg:col-span-7 bg-[#002446] rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden flex-col justify-between shadow-sm min-h-[620px] h-full">
           {/* Top: Header Branding & Quote */}
           <div className="relative z-10 space-y-5">
             <div className="flex items-center gap-3.5">
@@ -241,17 +268,17 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
                 <span className="text-base font-bold tracking-tight text-white block truncate">
                   {school?.name || 'LenteraBelajar'}
                 </span>
-                <span className="text-xs text-white/70 block">
-                  LMS Portal
+                <span className="text-sm text-white/90 block font-medium">
+                  {t('lmsPortal')}
                 </span>
               </div>
             </div>
 
             <div className="space-y-2 max-w-lg pt-1">
-              <h2 className="text-2xl xl:text-3xl font-semibold tracking-tight leading-snug text-white/95">
+              <h2 className="text-2xl xl:text-3xl font-semibold tracking-tight leading-snug text-white">
                 &ldquo;{activeQuote}&rdquo;
               </h2>
-              <p className="text-sm font-medium text-white/75 tracking-wide">
+              <p className="text-[15px] font-semibold text-white/95 tracking-wide">
                 ({activeAuthor})
               </p>
             </div>
@@ -260,25 +287,30 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
           {/* Center: Lantern of Knowledge Illustration */}
           <LanternIllustration />
 
-          {/* Bottom Card (Sisi Kiri): Info Pengembang & Platform */}
-          <div className="relative z-10 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 sm:p-5">
-            <p className="text-sm font-semibold tracking-wide text-white/95">
-              LenteraBelajar LMS
-            </p>
-            <p className="text-xs text-white/70 mt-0.5">
-              {t('deptTik')}
-            </p>
+          {/* Bottom Footer (Sisi Kiri): Info Pengembang & Platform (Statis / Non-interaktif) */}
+          <div className="relative z-10 pt-4 border-t border-white/15 flex items-center justify-between text-white/90">
+            <div>
+              <p className="text-sm font-semibold tracking-wide text-white">
+                {t('footerLms')}
+              </p>
+              <p className="text-xs text-white/85 mt-0.5 font-medium">
+                {t('deptTik')}
+              </p>
+            </div>
+            <span className="text-xs tracking-wider uppercase font-bold text-accent-300 bg-white/15 px-3 py-1 rounded-lg border border-white/20">
+              {t('lmsPortal')}
+            </span>
           </div>
         </div>
 
-        {/* Sisi Kanan: Form Card Saja (Card di bawah form dihapus) */}
-        <div className="w-full lg:col-span-5 flex flex-col justify-center">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-200/80 dark:border-gray-800 flex flex-col justify-center min-h-[620px]">
-            {/* School Branding / Header */}
-            <div className="mb-8">
-              <div className="flex items-center gap-3.5 mb-5">
+        {/* Sisi Kanan: Form Card */}
+        <div className="w-full lg:col-span-5 bg-white dark:bg-gray-900 rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-200/80 dark:border-gray-800 flex flex-col justify-between min-h-[620px] h-full">
+          {/* Centered Form Content (Pusatkan vertikal agar seimbang tanpa ruang kosong janggal) */}
+          <div className="my-auto py-2">
+              {/* Mobile-Only School Logo Badge (Disembunyikan di desktop karena panel kiri sudah menampilkannya) */}
+              <div className="flex items-center gap-3.5 mb-6 lg:hidden">
                 {school?.logo ? (
-                  <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 shadow-xs flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 shadow-xs flex items-center justify-center overflow-hidden shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={school.logo}
@@ -287,8 +319,8 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
                     />
                   </div>
                 ) : (
-                  <div className="w-14 h-14 rounded-2xl bg-[#002446] dark:bg-brand-600 flex items-center justify-center shadow-xs shrink-0">
-                    <GraduationCap className="h-7 w-7 text-white" />
+                  <div className="w-12 h-12 rounded-2xl bg-[#002446] dark:bg-brand-600 flex items-center justify-center shadow-xs shrink-0">
+                    <GraduationCap className="h-6 w-6 text-white" />
                   </div>
                 )}
                 <div>
@@ -296,91 +328,142 @@ export function LoginForm({ school }: { school: SchoolBranding | null }) {
                     {school?.name || 'LenteraBelajar'}
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400 block">
-                    Portal Akses Pembelajaran
+                    {t('learningAccessPortal')}
                   </span>
                 </div>
               </div>
 
-              <h1 className="text-2xl font-bold tracking-tight text-[#002446] dark:text-white">
-                {school?.name ? `${t('loginTo')} ${school.name}` : t('loginTitle')}
-              </h1>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {t('loginSubtitle')}
-              </p>
+              {/* Form Header Title & Subtitle */}
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold tracking-tight text-[#002446] dark:text-white">
+                  {t('loginTitle')}
+                </h1>
+                <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400">
+                  {t('loginSubtitle')}
+                </p>
+              </div>
+
+              {/* Form Input Fields */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div
+                    role="alert"
+                    className={`p-3 text-sm rounded-xl flex items-start gap-2.5 ${
+                      isLocked
+                        ? 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
+                        : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:border-red-800 dark:text-red-300'
+                    }`}
+                  >
+                    {isLocked ? (
+                      <Lock className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+                    )}
+                    <span className="leading-snug">{error}</span>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {t('email')}
+                  </Label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-gray-500 dark:text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="user@sekolah.sch.id"
+                      required
+                      className="h-11 pl-10 rounded-xl bg-white dark:bg-gray-800/90 border-2 border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:border-[#002446] focus:ring-2 focus:ring-[#002446]/20 focus-visible:outline-none focus-visible:border-[#002446] focus-visible:ring-2 focus-visible:ring-[#002446] dark:focus:border-[#FF8928] dark:focus:ring-[#FF8928]/30 dark:focus-visible:border-[#FF8928] dark:focus-visible:ring-2 dark:focus-visible:ring-[#FF8928] transition-all shadow-2xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {t('password')}
+                  </Label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-gray-500 dark:text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="h-11 pl-10 pr-10 rounded-xl bg-white dark:bg-gray-800/90 border-2 border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:border-[#002446] focus:ring-2 focus:ring-[#002446]/20 focus-visible:outline-none focus-visible:border-[#002446] focus-visible:ring-2 focus-visible:ring-[#002446] dark:focus:border-[#FF8928] dark:focus:ring-[#FF8928]/30 dark:focus-visible:border-[#FF8928] dark:focus-visible:ring-2 dark:focus-visible:ring-[#FF8928] transition-all shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#002446] dark:focus-visible:ring-[#FF8928] cursor-pointer"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Checkbox "Ingat Saya" */}
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+                    <input
+                      type="checkbox"
+                      id="rememberMe"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded-md border-gray-300 dark:border-gray-600 text-[#002446] dark:text-brand-500 focus:ring-brand-500/20 focus:ring-offset-0 transition-colors accent-[#002446] dark:accent-brand-500 cursor-pointer"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                      {t('rememberMe')}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Submit Button with Loading Spinner */}
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-11 font-semibold text-white bg-[#002446] hover:bg-[#022b52] dark:bg-brand-600 dark:hover:bg-brand-700 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 mt-3 cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>{t('signingIn')}</span>
+                    </>
+                  ) : (
+                    t('loginButton')
+                  )}
+                </Button>
+              </form>
+
+              {/* Support / Help Info */}
+              <div className="pt-4 text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed">
+                  {t('needHelp')}
+                </p>
+              </div>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div
-                  role="alert"
-                  className={`p-3 text-sm rounded-xl flex items-start gap-2.5 ${
-                    isLocked
-                      ? 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
-                      : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:border-red-800 dark:text-red-300'
-                  }`}
-                >
-                  {isLocked ? (
-                    <Lock className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
-                  )}
-                  <span className="leading-snug">{error}</span>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t('email')}
-                </Label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="user@sekolah.sch.id"
-                    required
-                    className="h-11 pl-10 rounded-xl bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-brand-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t('password')}
-                </Label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11 pl-10 rounded-xl bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 dark:text-white dark:placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-brand-500"
-                  />
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full h-11 font-semibold text-white bg-[#002446] hover:bg-[#022b52] dark:bg-brand-600 dark:hover:bg-brand-700 rounded-xl shadow-xs transition-colors mt-2"
-                disabled={loading}
-              >
-                {loading ? '...' : t('loginButton')}
-              </Button>
-            </form>
-
-            {/* Mobile Footer Credit (hanya muncul di mobile karena sisi kiri disembunyikan) */}
-            <div className="lg:hidden mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 text-center text-xs text-gray-500 dark:text-gray-400">
-              <p className="font-semibold text-gray-800 dark:text-gray-300">LenteraBelajar LMS</p>
-              <p className="mt-0.5">{t('deptTik')}</p>
+            {/* Bottom Footer Credit (Seimbang dengan panel kiri) */}
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mt-auto">
+              <span className="font-semibold text-gray-800 dark:text-gray-200">
+                {t('footerLms')}
+              </span>
+              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                &copy; {new Date().getFullYear()}
+              </span>
             </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }

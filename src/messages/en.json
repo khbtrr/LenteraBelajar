@@ -30,8 +30,8 @@
     "logout": "Sign Out",
     "email": "Email",
     "password": "Password",
-    "loginTitle": "Sign in to LenteraBelajar",
-    "loginSubtitle": "Enter your email and password",
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Enter your email and password to continue",
     "loginButton": "Sign In",
     "loginTo": "Sign in to",
     "loginError": "Invalid email or password",
@@ -49,7 +49,15 @@
     "errorOccurred": "An error occurred while processing request",
     "deptTik": "Dept. of ICT SMA Plus PGRI Cibinong",
     "defaultQuote": "Education is not the filling of a pail, but the lighting of a fire.",
-    "defaultQuoteAuthor": "Plutarch"
+    "defaultQuoteAuthor": "Plutarch",
+    "rememberMe": "Remember me",
+    "needHelp": "Need account assistance? Contact your School Administrator",
+    "learningAccessPortal": "Learning Access Portal",
+    "lmsPortal": "LMS Portal",
+    "signingIn": "Signing in...",
+    "footerLms": "LenteraBelajar LMS",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "sidebar": {
     "navigationMenu": "Navigation menu",
