@@ -4,6 +4,9 @@ import { db } from '@/lib/db';
 import { requireRole, hashPassword, verifyPassword } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { Role } from '@prisma/client';
+import { validatePassword } from '@/lib/password-policy';
+import { recordAuditLog } from '@/lib/audit-log';
+import { recordFailedPassword } from '@/lib/login-security';
 
 export interface PlatformDashboardData {
   schools: {
@@ -228,8 +231,9 @@ export async function createPlatformUser(data: {
     throw new Error('Nama, email, dan kata sandi wajib diisi');
   }
 
-  if (data.password.length < 6) {
-    throw new Error('Kata sandi minimal 6 karakter');
+  const validation = validatePassword(data.password);
+  if (!validation.isValid) {
+    throw new Error(validation.error || 'Kata sandi tidak memenuhi kebijakan keamanan');
   }
 
   // Check email uniqueness
@@ -305,10 +309,11 @@ export async function togglePlatformUserActive(userId: string) {
 }
 
 export async function resetPlatformUserPassword(userId: string, newPassword: string) {
-  await requireRole('SUPER_ADMIN');
+  const session = await requireRole('SUPER_ADMIN');
 
-  if (!newPassword || newPassword.trim().length < 6) {
-    throw new Error('Kata sandi baru minimal 6 karakter');
+  const validation = validatePassword(newPassword.trim());
+  if (!validation.isValid) {
+    throw new Error(validation.error || 'Kata sandi baru tidak memenuhi kebijakan keamanan');
   }
 
   const user = await db.user.findUnique({ where: { id: userId } });
@@ -325,6 +330,13 @@ export async function resetPlatformUserPassword(userId: string, newPassword: str
       sessionVersion: { increment: 1 },
       lockedUntil: null,
     },
+  });
+
+  await recordAuditLog({
+    action: 'USER_PASSWORD_RESET',
+    userId: user.id,
+    userEmail: user.email,
+    details: `Platform user password reset by Super Admin (${session.user.email})`,
   });
 
   revalidatePath('/[locale]/platform/users', 'page');
@@ -354,7 +366,7 @@ export async function getPlatformSettings() {
       supportEmail: 'support@lenterabelajar.id',
       maxFailedLogins: 5,
       lockoutDurationMinutes: 15,
-      passwordMinLength: 6,
+      passwordMinLength: 8,
     },
   };
 }
@@ -394,13 +406,34 @@ export async function updateSuperAdminProfile(data: {
       throw new Error('Kata sandi lama wajib diisi untuk mengubah kata sandi');
     }
 
-    const isMatch = verifyPassword(data.currentPassword, user.passwordHash);
-    if (!isMatch) {
-      throw new Error('Kata sandi lama tidak sesuai');
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const remainingMinutes = Math.max(
+        1,
+        Math.ceil((user.lockedUntil.getTime() - Date.now()) / (60 * 1000))
+      );
+      throw new Error(`Akun sedang dikunci sementara selama ${remainingMinutes} menit.`);
     }
 
-    if (data.newPassword.trim().length < 6) {
-      throw new Error('Kata sandi baru minimal 6 karakter');
+    const isMatch = verifyPassword(data.currentPassword, user.passwordHash);
+    if (!isMatch) {
+      const failure = await recordFailedPassword(user.id);
+      await recordAuditLog({
+        action: failure.lockoutMinutes ? 'ACCOUNT_LOCKED' : 'LOGIN_FAILED',
+        userId: user.id,
+        userEmail: user.email,
+        details: `Percobaan gagal ganti kata sandi Super Admin. Percobaan ${failure.failed}/5`,
+      });
+
+      if (failure.lockoutMinutes) {
+        throw new Error(`Terlalu banyak percobaan gagal. Akun dikunci sementara selama ${failure.lockoutMinutes} menit.`);
+      }
+
+      throw new Error(`Kata sandi lama tidak sesuai. Sisa percobaan: ${Math.max(0, 5 - failure.failed)}`);
+    }
+
+    const validation = validatePassword(data.newPassword.trim());
+    if (!validation.isValid) {
+      throw new Error(validation.error || 'Kata sandi baru tidak memenuhi kebijakan keamanan');
     }
 
     updatedPasswordHash = hashPassword(data.newPassword.trim());
@@ -411,7 +444,14 @@ export async function updateSuperAdminProfile(data: {
     data: {
       name: trimmedName,
       email: trimmedEmail,
-      ...(updatedPasswordHash ? { passwordHash: updatedPasswordHash, sessionVersion: { increment: 1 } } : {}),
+      ...(updatedPasswordHash
+        ? {
+            passwordHash: updatedPasswordHash,
+            sessionVersion: { increment: 1 },
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+          }
+        : {}),
     },
     select: {
       id: true,
@@ -419,6 +459,15 @@ export async function updateSuperAdminProfile(data: {
       email: true,
     },
   });
+
+  if (updatedPasswordHash) {
+    await recordAuditLog({
+      action: 'PASSWORD_CHANGED',
+      userId: user.id,
+      userEmail: user.email,
+      details: 'Kata sandi Super Admin diperbarui melalui pengaturan platform',
+    });
+  }
 
   revalidatePath('/[locale]/platform/settings', 'page');
   return updated;

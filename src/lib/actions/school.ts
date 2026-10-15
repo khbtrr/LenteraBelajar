@@ -135,6 +135,8 @@ export async function switchActiveSchool(schoolId: string) {
     path: '/',
     maxAge: 30 * 24 * 60 * 60, // 30 hari
     sameSite: 'lax',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
   });
 
   return { success: true, schoolId };

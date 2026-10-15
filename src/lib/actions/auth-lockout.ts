@@ -17,7 +17,7 @@ export interface LockoutStatus {
  * Restricted to administrators to prevent public user enumeration
  */
 export async function getAccountLockoutStatus(email: string): Promise<LockoutStatus> {
-  await requireRole('ADMIN', 'SUPER_ADMIN');
+  const session = await requireRole('ADMIN', 'SUPER_ADMIN');
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail) {
     return { isLocked: false, remainingMinutes: 0, failedAttempts: 0, maxAttempts: 5 };
@@ -27,12 +27,18 @@ export async function getAccountLockoutStatus(email: string): Promise<LockoutSta
     const user = await db.user.findUnique({
       where: { email: cleanEmail },
       select: {
+        schoolId: true,
         lockedUntil: true,
         failedLoginAttempts: true,
       },
     });
 
     if (!user) {
+      return { isLocked: false, remainingMinutes: 0, failedAttempts: 0, maxAttempts: 5 };
+    }
+
+    // Cegah enumerasi pengguna lintas sekolah: Admin sekolah hanya dapat melihat status user di sekolahnya
+    if (session.user.role !== 'SUPER_ADMIN' && user.schoolId !== session.user.schoolId) {
       return { isLocked: false, remainingMinutes: 0, failedAttempts: 0, maxAttempts: 5 };
     }
 

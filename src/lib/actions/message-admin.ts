@@ -2,6 +2,7 @@
 
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth-utils';
+import { recordAuditLog } from '@/lib/audit-log';
 
 export interface AdminConversationItem {
   id: string;
@@ -209,6 +210,13 @@ export async function getConversationMessagesAdmin(
       throw new Error('Anda tidak memiliki akses ke sekolah ini');
     }
   }
+
+  await recordAuditLog({
+    action: 'MESSAGE_MONITORED',
+    userId: session.user.id,
+    userEmail: session.user.email,
+    details: `Admin ${session.user.email} membuka transkrip obrolan ID ${conversationId}`,
+  });
 
   const rawMessages = await db.directMessage.findMany({
     where: { conversationId },

@@ -7,6 +7,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { registerUploadedFile, bindRecentCourseAssets } from '@/lib/files';
 import { unpackArchiveToMemory } from '@/lib/utils/moodle-parser';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +21,16 @@ export async function POST(req: NextRequest) {
     const role = session.user.role;
     if (!['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
       return NextResponse.json({ error: 'Akses ditolak: Peran tidak diizinkan' }, { status: 403 });
+    }
+
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+    const rateLimitKey = `quiz-import:${session.user.id || ipAddress}`;
+    const rateLimit = await checkSharedRateLimit(rateLimitKey, 5, 60 * 1000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Terlalu banyak permintaan impor kuis. Silakan tunggu ${rateLimit.resetInSeconds} detik.` },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.resetInSeconds) } }
+      );
     }
 
     // Parse formData
@@ -117,6 +128,18 @@ export async function POST(req: NextRequest) {
 
       if (questions.length === 0) {
         return NextResponse.json({ error: 'Tidak ada soal valid yang ditemukan untuk diimpor' }, { status: 400 });
+      }
+
+      if (categoryId) {
+        const validCategory = await db.questionBankCategory.findFirst({
+          where: { id: categoryId, courseId },
+        });
+        if (!validCategory) {
+          return NextResponse.json(
+            { error: 'Kategori soal tidak valid atau tidak terdaftar pada mata pelajaran ini' },
+            { status: 400 }
+          );
+        }
       }
 
       await db.$transaction(

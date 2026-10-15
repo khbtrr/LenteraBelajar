@@ -4,6 +4,7 @@ import { bindRecentCourseAssets } from '@/lib/files';
 import { db } from '@/lib/db';
 import { parseMoodleXmlQuestions } from '@/lib/utils/moodle-parser';
 import { saveImageFile } from '@/lib/utils/moodle-storage';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
 import { revalidatePath } from 'next/cache';
 
 export async function POST(req: NextRequest) {
@@ -22,6 +23,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Akses ditolak: Hanya pengajar dan administrator yang diizinkan.' },
         { status: 403 }
+      );
+    }
+
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+    const rateLimitKey = `moodle-xml-questions:${session.user.id || ipAddress}`;
+    const rateLimit = await checkSharedRateLimit(rateLimitKey, 10, 60 * 1000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Terlalu banyak permintaan impor soal Moodle XML. Silakan tunggu ${rateLimit.resetInSeconds} detik.` },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.resetInSeconds) } }
       );
     }
 
@@ -98,6 +109,18 @@ export async function POST(req: NextRequest) {
           { error: 'Tidak ada soal valid yang ditemukan di dalam file XML.' },
           { status: 400 }
         );
+      }
+
+      if (targetCategoryId) {
+        const validCategory = await db.questionBankCategory.findFirst({
+          where: { id: targetCategoryId, courseId },
+        });
+        if (!validCategory) {
+          return NextResponse.json(
+            { error: 'Kategori soal tidak valid atau tidak terdaftar pada mata pelajaran ini.' },
+            { status: 400 }
+          );
+        }
       }
 
       // Group questions by category unless a targetCategoryId is explicitly chosen

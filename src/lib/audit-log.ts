@@ -9,7 +9,8 @@ export type AuditAction =
   | 'USER_PASSWORD_RESET'
   | 'USER_STATUS_TOGGLE'
   | 'USER_DELETED'
-  | 'COURSE_DELETED';
+  | 'COURSE_DELETED'
+  | 'MESSAGE_MONITORED';
 
 export interface AuditLogParams {
   action: AuditAction;

@@ -5,6 +5,9 @@ import { requireRole, verifyPassword, hashPassword } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
 import { AcademicYearStatus } from '@prisma/client';
 import { assertFileReferences, bindFileReferences } from '@/lib/files';
+import { validatePassword } from '@/lib/password-policy';
+import { recordAuditLog } from '@/lib/audit-log';
+import { recordFailedPassword } from '@/lib/login-security';
 
 export async function getSchoolSettings() {
   const session = await requireRole('ADMIN', 'SUPER_ADMIN');
@@ -208,22 +211,43 @@ export async function updateAdminPassword(data: {
     throw new Error('Konfirmasi kata sandi baru tidak cocok');
   }
 
-  if (data.newPassword.length < 6) {
-    throw new Error('Kata sandi baru minimal 6 karakter');
+  const validation = validatePassword(data.newPassword);
+  if (!validation.isValid) {
+    throw new Error(validation.error || 'Kata sandi tidak memenuhi kebijakan keamanan');
   }
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { passwordHash: true },
+    select: { id: true, email: true, passwordHash: true, lockedUntil: true },
   });
 
   if (!user) {
     throw new Error('Pengguna tidak ditemukan');
   }
 
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const remainingMinutes = Math.max(
+      1,
+      Math.ceil((user.lockedUntil.getTime() - Date.now()) / (60 * 1000))
+    );
+    throw new Error(`Akun sedang dikunci sementara selama ${remainingMinutes} menit karena terlalu banyak percobaan gagal.`);
+  }
+
   const isCurrentValid = verifyPassword(data.currentPassword, user.passwordHash);
   if (!isCurrentValid) {
-    throw new Error('Kata sandi saat ini salah');
+    const failure = await recordFailedPassword(user.id);
+    await recordAuditLog({
+      action: failure.lockoutMinutes ? 'ACCOUNT_LOCKED' : 'LOGIN_FAILED',
+      userId: user.id,
+      userEmail: user.email,
+      details: `Percobaan gagal ganti kata sandi admin. Percobaan ${failure.failed}/5`,
+    });
+
+    if (failure.lockoutMinutes) {
+      throw new Error(`Terlalu banyak percobaan gagal. Akun dikunci sementara selama ${failure.lockoutMinutes} menit.`);
+    }
+
+    throw new Error(`Kata sandi saat ini tidak tepat. Sisa percobaan: ${Math.max(0, 5 - failure.failed)}`);
   }
 
   const newHash = hashPassword(data.newPassword);
@@ -234,7 +258,16 @@ export async function updateAdminPassword(data: {
       passwordHash: newHash,
       sessionVersion: { increment: 1 },
       mustChangePassword: false,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
     },
+  });
+
+  await recordAuditLog({
+    action: 'PASSWORD_CHANGED',
+    userId: user.id,
+    userEmail: user.email,
+    details: 'Kata sandi administrator diperbarui melalui pengaturan sekolah',
   });
 
   revalidatePath('/[locale]/admin/settings', 'page');

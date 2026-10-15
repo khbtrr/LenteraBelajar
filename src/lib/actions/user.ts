@@ -208,6 +208,10 @@ export async function toggleUserActive(userId: string) {
   const user = await db.user.findUnique({ where: { id: userId, schoolId } });
   if (!user) throw new Error('User not found');
 
+  if (session.user.role !== 'SUPER_ADMIN' && user.role === Role.SUPER_ADMIN) {
+    throw new Error('Akses ditolak: Admin sekolah tidak dapat mengubah status akun Super Admin.');
+  }
+
   const updated = await db.user.update({
     where: { id: userId },
     data: { isActive: !user.isActive, sessionVersion: { increment: 1 } },
@@ -233,6 +237,10 @@ export async function resetUserPassword(userId: string) {
   const user = await db.user.findUnique({ where: { id: userId, schoolId } });
   if (!user) throw new Error('User not found');
 
+  if (session.user.role !== 'SUPER_ADMIN' && user.role === Role.SUPER_ADMIN) {
+    throw new Error('Akses ditolak: Admin sekolah tidak dapat mereset kata sandi akun Super Admin.');
+  }
+
   const defaultPwd = generateDefaultPassword(user.nis || user.nip);
   const passwordHash = hashPassword(defaultPwd);
 
@@ -241,6 +249,8 @@ export async function resetUserPassword(userId: string) {
     data: {
       passwordHash,
       mustChangePassword: true,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
       sessionVersion: { increment: 1 },
     },
     select: userSelect,
@@ -357,6 +367,10 @@ export async function deleteUser(userId: string, hardDelete = false) {
 
     if (user.id === session.user.id) {
       return { success: false, error: 'Anda tidak dapat menghapus akun Anda sendiri.' };
+    }
+
+    if (session.user.role !== 'SUPER_ADMIN' && user.role === Role.SUPER_ADMIN) {
+      return { success: false, error: 'Akses ditolak: Admin sekolah tidak dapat menghapus akun Super Admin.' };
     }
 
     if (hardDelete) {

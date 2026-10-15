@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession as auth } from '@/lib/auth-utils';
 import { parseAikenText } from '@/lib/utils/aiken-parser';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,6 +18,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Akses ditolak: Peran tidak diizinkan' },
         { status: 403 }
+      );
+    }
+
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+    const rateLimitKey = `quiz-import-aiken:${session.user.id || ipAddress}`;
+    const rateLimit = await checkSharedRateLimit(rateLimitKey, 10, 60 * 1000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Terlalu banyak permintaan pemrosesan format Aiken. Silakan tunggu ${rateLimit.resetInSeconds} detik.` },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.resetInSeconds) } }
       );
     }
 

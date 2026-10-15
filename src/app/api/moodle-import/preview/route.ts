@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession as auth } from '@/lib/auth-utils';
 import { parseMoodleBackup, buildMoodlePreview } from '@/lib/utils/moodle-parser';
 import { saveStagingArchive } from '@/lib/utils/moodle-storage';
+import { checkSharedRateLimit } from '@/lib/shared-rate-limit';
 import crypto from 'node:crypto';
 
 export async function POST(req: NextRequest) {
@@ -19,6 +20,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Akses ditolak: Hanya pengajar dan administrator yang dapat mengimpor data.' },
         { status: 403 }
+      );
+    }
+
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+    const rateLimitKey = `moodle-preview:${session.user.id || ipAddress}`;
+    const rateLimit = await checkSharedRateLimit(rateLimitKey, 5, 60 * 1000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Terlalu banyak permintaan impor. Silakan tunggu ${rateLimit.resetInSeconds} detik.` },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.resetInSeconds) } }
       );
     }
 

@@ -6,6 +6,7 @@ import { compare, hash } from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { validatePassword } from '@/lib/password-policy';
 import { recordAuditLog } from '@/lib/audit-log';
+import { recordFailedPassword } from '@/lib/login-security';
 import { assertFileReferences, bindFileReferences } from '@/lib/files';
 
 export interface UserProfileData {
@@ -244,16 +245,36 @@ export async function changeUserPassword(data: {
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, passwordHash: true },
+    select: { id: true, email: true, passwordHash: true, lockedUntil: true },
   });
 
   if (!user) {
     throw new Error('Pengguna tidak ditemukan');
   }
 
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const remainingMinutes = Math.max(
+      1,
+      Math.ceil((user.lockedUntil.getTime() - Date.now()) / (60 * 1000))
+    );
+    throw new Error(`Akun sedang dikunci sementara selama ${remainingMinutes} menit karena terlalu banyak percobaan gagal.`);
+  }
+
   const isCurrentPasswordValid = await compare(currentPassword, user.passwordHash);
   if (!isCurrentPasswordValid) {
-    throw new Error('Kata sandi saat ini tidak tepat');
+    const failure = await recordFailedPassword(user.id);
+    await recordAuditLog({
+      action: failure.lockoutMinutes ? 'ACCOUNT_LOCKED' : 'LOGIN_FAILED',
+      userId: user.id,
+      userEmail: user.email,
+      details: `Percobaan gagal ganti kata sandi profil. Percobaan ${failure.failed}/5`,
+    });
+
+    if (failure.lockoutMinutes) {
+      throw new Error(`Terlalu banyak percobaan gagal. Akun dikunci sementara selama ${failure.lockoutMinutes} menit.`);
+    }
+
+    throw new Error(`Kata sandi saat ini tidak tepat. Sisa percobaan: ${Math.max(0, 5 - failure.failed)}`);
   }
 
   const hashedNewPassword = await hash(newPassword, 12);
@@ -263,6 +284,8 @@ export async function changeUserPassword(data: {
     data: {
       passwordHash: hashedNewPassword,
       mustChangePassword: false,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
       sessionVersion: { increment: 1 },
     },
   });
