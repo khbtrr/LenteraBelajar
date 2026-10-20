@@ -10,8 +10,8 @@ Baseline: QA-AUDIT-2026-10-09.md. Implementasi dilakukan pada working tree yang 
 | QA-02 | verified | Assignment sekolah hanya SUPER_ADMIN; test admin self-assignment lintas tenant ditolak. |
 | QA-03 | verified | DTO user whitelist dan role guard; test PostgreSQL respons tanpa passwordHash. |
 | QA-04 | verified | Course guard + module DTO siswa; unit/integration akses privat lintas tenant ditolak. |
-| QA-05 | fixed | Cohort/enrollment/promosi/kelulusan memvalidasi resource, sekolah, role, dan membership sumber; test foreign enrollment ditolak. |
-| QA-06 | fixed | Preflight import serta create/update terpisah dengan scope predicate; tidak upsert akun global tanpa otorisasi. |
+| QA-05 | verified | Cohort/enrollment/promosi/kelulusan memvalidasi resource, sekolah, role, dan membership sumber; regression test p1-security-remediation membuktikan penolakan mutasi lintas tenant. |
+| QA-06 | verified | Preflight import serta create/update terpisah dengan scope predicate; regression test p1-security-remediation membuktikan penolakan import akun foreign/super-admin. |
 | QA-07 | fixed | Direktori siswa dibatasi role/school; kandidat lintas sekolah hanya lewat course management yang diotorisasi. |
 | QA-08 | fixed | Update isCrossSchool membatasi perubahan ke SUPER_ADMIN. |
 | QA-09 | fixed | Validasi year/category/teacher/parent dan target cohort pada mutation/import. |
@@ -20,10 +20,10 @@ Baseline: QA-AUDIT-2026-10-09.md. Implementasi dilakukan pada working tree yang 
 | QA-12 | verified | Counter failed-password row lock; lima permintaan bersamaan mencapai threshold5. |
 | QA-13 | verified | Helper reward/notifikasi menjadi server-only; manifest candidate tidak mendaftarkan awardXp/createNotification/touchDailyStreak sebagai action. |
 | QA-14 | verified | Filter conversation menggunakan AND; pencarian peserta B oleh admin A menghasilkan nol hasil. |
-| QA-15 | fixed | Guard course/module/item/bank diterapkan ke mutator; negative module/roster tests lulus. |
+| QA-15 | verified | Guard course/module/item/bank diterapkan ke mutator; regression test p1-security-remediation membuktikan penolakan mutasi module/content/assignment/bank lintas pengajar. |
 | QA-16 | verified | Enrollment/publication/cohort/target-remedial menjadi guard bersama; materi siswa difilter dan token dibuang. |
-| QA-17 | fixed | Analisis/remedial menolak siswa dan memeriksa scope course untuk staff. |
-| QA-18 | fixed | Kategori bank dan query pool diikat course target; jumlah pilihan divalidasi. |
+| QA-17 | verified | Analisis/remedial menolak siswa dan memeriksa scope course untuk staff; regression test p1-security-remediation membuktikan penolakan siswa dan staf non-owner. |
+| QA-18 | verified | Kategori bank dan query pool diikat course target; regression test p1-security-remediation membuktikan penolakan kategori bank lintas course pada pembuatan kuis. |
 | QA-19 | verified | Registri/binding file, private no-store, staged uploader dan resource checks; test foreign read ditolak, authorized read/Range lulus. |
 | QA-20 | verified | Sanitizer pada input/render HTML; unit malicious HTML dan browser legacy SVG handler inert. |
 | QA-21 | fixed | Bulk attendance memvalidasi seluruh record dan update id+sessionId. |
@@ -65,8 +65,8 @@ Baseline: QA-AUDIT-2026-10-09.md. Implementasi dilakukan pada working tree yang 
 
 ## Verifikasi yang sudah dilakukan
 
-- Unit:170 test pada23 file lulus pada pemeriksaan terakhir.
-- PostgreSQL:19 test terhadap modul/action produksi lulus.
+- Unit: 260 test pada 29 file lulus pada pemeriksaan terakhir (termasuk verifikasi P1: QA-05, QA-06, QA-15, QA-17, QA-18).
+- PostgreSQL: 19 test terhadap modul/action produksi lulus.
 - Rehearsal: DB kosong dan schema existing berhasil; record legacy dipertahankan. Backup/restore DB QA dan uploads hash cocok.
 - Worker limiter: dua proses menggunakan satu kuota global.
 - Build artifact: Next16.3.8 standalone berhasil; tracing uploads dan deprecation middleware diperbaiki.
