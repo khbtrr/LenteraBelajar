@@ -41,7 +41,12 @@ export default async function AdminLayout({
     });
   }
 
+  const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
+
   const sidebarItems = [
+    ...(isSuperAdmin
+      ? [{ label: tPortal('platformTitle'), href: '/platform/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> }]
+      : []),
     { label: t('dashboard'), href: '/admin/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: t('announcements'), href: '/admin/announcements', icon: <Megaphone className="h-5 w-5" /> },
     { label: t('messages'), href: '/messages', icon: <MessageSquare className="h-5 w-5" /> },
@@ -62,7 +67,7 @@ export default async function AdminLayout({
       items={sidebarItems}
       title={tPortal('adminTitle')}
       userName={session.user.name}
-      userRole={tRoles('ADMIN')}
+      userRole={isSuperAdmin ? tRoles('SUPER_ADMIN') : tRoles('ADMIN')}
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >

@@ -34,8 +34,8 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
     },
     {
       id: 'academic',
-      label: t('academicTab'),
-      icon: <GraduationCap className="w-4 h-4" />,
+      label: profile.role === 'SUPER_ADMIN' ? t('authorityInfoTitle') : t('academicTab'),
+      icon: profile.role === 'SUPER_ADMIN' ? <ShieldCheck className="w-4 h-4" /> : <GraduationCap className="w-4 h-4" />,
     },
   ];
 

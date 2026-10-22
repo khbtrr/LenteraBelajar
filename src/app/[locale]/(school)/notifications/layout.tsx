@@ -23,6 +23,7 @@ import {
   FileBarChart,
   MessageSquare,
   ShieldCheck,
+  School,
 } from 'lucide-react';
 
 export default async function NotificationsLayout({
@@ -36,6 +37,8 @@ export default async function NotificationsLayout({
   }
 
   const t = await getTranslations('sidebar');
+  const tPortal = await getTranslations('portal');
+  const tRoles = await getTranslations('roles');
   const role = session.user.role;
 
   let school = null;
@@ -46,11 +49,20 @@ export default async function NotificationsLayout({
     });
   }
 
-  let title = 'Portal LenteraBelajar';
-  let userRole = 'Pengguna';
+  let title = tPortal('sharedTitle');
+  let userRole = tRoles(role as any) || session.user.role;
   let sidebarItems: any[] = [];
 
-  if (role === 'STUDENT') {
+  if (role === 'SUPER_ADMIN') {
+    title = tPortal('platformTitle');
+    userRole = tRoles('SUPER_ADMIN');
+    sidebarItems = [
+      { label: t('dashboard'), href: '/platform/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+      { label: t('schools'), href: '/platform/schools', icon: <School className="h-5 w-5" /> },
+      { label: t('users'), href: '/platform/users', icon: <Users className="h-5 w-5" /> },
+      { label: t('settings'), href: '/platform/settings', icon: <Settings className="h-5 w-5" /> },
+    ];
+  } else if (role === 'STUDENT') {
     title = 'Portal Siswa';
     userRole = 'Siswa';
     sidebarItems = [
@@ -72,7 +84,7 @@ export default async function NotificationsLayout({
       { label: t('requestCourse'), href: '/teacher/request-course', icon: <PlusCircle className="h-5 w-5" /> },
       { label: 'Kalender & Jadwal', href: '/calendar', icon: <CalendarDays className="h-5 w-5" /> },
     ];
-  } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+  } else if (role === 'ADMIN') {
     title = 'Admin Sekolah';
     userRole = 'Administrator';
     sidebarItems = [
@@ -111,8 +123,8 @@ export default async function NotificationsLayout({
       title={title}
       userName={session.user.name}
       userRole={userRole}
-      schoolName={school?.name}
-      schoolLogo={school?.logo}
+      schoolName={role === 'SUPER_ADMIN' ? null : school?.name}
+      schoolLogo={role === 'SUPER_ADMIN' ? null : school?.logo}
     >
       {children}
     </AppLayout>

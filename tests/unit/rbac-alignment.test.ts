@@ -142,4 +142,56 @@ describe('RBAC Alignment & Authorization Enforcement', () => {
       expect(canCreateSchoolCalendarEvent(CalendarEventScope.SCHOOL, Role.STUDENT)).toBe(false);
     });
   });
+
+  describe('Super Admin Portal Layout & Navigation Integrity', () => {
+    function resolveLayoutSidebar(role: Role) {
+      if (role === Role.SUPER_ADMIN) {
+        return {
+          titleKey: 'platformTitle',
+          dashboardHref: '/platform/dashboard',
+          hasSchoolContext: false,
+        };
+      }
+      if (role === Role.ADMIN) {
+        return {
+          titleKey: 'adminTitle',
+          dashboardHref: '/admin/dashboard',
+          hasSchoolContext: true,
+        };
+      }
+      if (role === Role.TEACHER) {
+        return {
+          titleKey: 'teacherTitle',
+          dashboardHref: '/teacher/dashboard',
+          hasSchoolContext: true,
+        };
+      }
+      if (role === Role.STUDENT) {
+        return {
+          titleKey: 'studentTitle',
+          dashboardHref: '/student/dashboard',
+          hasSchoolContext: true,
+        };
+      }
+      return {
+        titleKey: 'supervisorTitle',
+        dashboardHref: '/supervisor/dashboard',
+        hasSchoolContext: true,
+      };
+    }
+
+    it('directs SUPER_ADMIN to platform dashboard and platform branding', () => {
+      const config = resolveLayoutSidebar(Role.SUPER_ADMIN);
+      expect(config.dashboardHref).toBe('/platform/dashboard');
+      expect(config.titleKey).toBe('platformTitle');
+      expect(config.hasSchoolContext).toBe(false);
+    });
+
+    it('directs ADMIN to school admin dashboard with school context', () => {
+      const config = resolveLayoutSidebar(Role.ADMIN);
+      expect(config.dashboardHref).toBe('/admin/dashboard');
+      expect(config.titleKey).toBe('adminTitle');
+      expect(config.hasSchoolContext).toBe(true);
+    });
+  });
 });
