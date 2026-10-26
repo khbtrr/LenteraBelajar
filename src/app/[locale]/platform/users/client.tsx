@@ -225,7 +225,41 @@ export function PlatformUsersClient({
 
     setDeletingUserId(user.id);
     try {
-      const res = await deletePlatformUser(user.id);
+      const res = await deletePlatformUser(user.id, false);
+
+      if (!res.success) {
+        if (res.requiresForce) {
+          const forceConfirmed = await showConfirm(
+            `${res.error}\n\nApakah Anda yakin ingin tetap menghapus pengguna ini beserta seluruh kelas yang diampunya secara permanen?`,
+            {
+              title: 'Konfirmasi Hapus Pengguna & Kelas',
+              confirmText: 'Hapus Pengguna & Kelas',
+              cancelText: 'Batal',
+              type: 'error',
+              confirmVariant: 'destructive',
+            }
+          );
+
+          if (!forceConfirmed) {
+            return;
+          }
+
+          const forceRes = await deletePlatformUser(user.id, true);
+          if (!forceRes.success) {
+            await showAlert(forceRes.error || 'Gagal menghapus pengguna.', { type: 'error' });
+            return;
+          }
+
+          setUsers((prev) => prev.filter((u) => u.id !== user.id));
+          setTotalCount((prev) => Math.max(0, prev - 1));
+          await showAlert(forceRes.message || `Akun ${user.name} berhasil dihapus permanen.`, { type: 'success' });
+          return;
+        }
+
+        await showAlert(res.error || 'Gagal menghapus pengguna.', { type: 'error' });
+        return;
+      }
+
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
       setTotalCount((prev) => Math.max(0, prev - 1));
       await showAlert(res.message || `Akun ${user.name} berhasil dihapus permanen.`, { type: 'success' });

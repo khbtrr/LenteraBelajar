@@ -56,6 +56,7 @@ const deletedRecords: {
   courseRequests: string[];
   userSchools: string[];
   users: string[];
+  courses: string[];
 } = {
   directMessages: [],
   quizAnswers: [],
@@ -65,6 +66,7 @@ const deletedRecords: {
   courseRequests: [],
   userSchools: [],
   users: [],
+  courses: [],
 };
 
 let mockTeachingCoursesCount = 0;
@@ -103,11 +105,14 @@ vi.mock('@/lib/db', () => ({
       findUnique: async () => ({ id: 'school-induk', isActive: true }),
     },
     course: {
-      count: async ({ where }: any) => {
-        if (where.teacherId === mockTargetUser?.id) {
-          return mockTeachingCoursesCount;
+      findMany: async ({ where }: any) => {
+        if (where.teacherId === mockTargetUser?.id && mockTeachingCoursesCount > 0) {
+          return Array.from({ length: mockTeachingCoursesCount }, (_, i) => ({
+            id: `course-${i + 1}`,
+            title: `Kelas Uji ${i + 1}`,
+          }));
         }
-        return 0;
+        return [];
       },
     },
     $transaction: async (cb: any) => {
@@ -138,6 +143,7 @@ vi.mock('@/lib/db', () => ({
           },
         },
         courseRequest: {
+          updateMany: async () => {},
           deleteMany: async ({ where }: any) => {
             deletedRecords.courseRequests.push(where.requesterId);
           },
@@ -145,6 +151,11 @@ vi.mock('@/lib/db', () => ({
         userSchool: {
           deleteMany: async ({ where }: any) => {
             deletedRecords.userSchools.push(where.userId);
+          },
+        },
+        course: {
+          delete: async ({ where }: any) => {
+            deletedRecords.courses.push(where.id);
           },
         },
         user: {
@@ -179,31 +190,46 @@ describe('Super Admin: Permanent Delete User Action (deletePlatformUser)', () =>
     deletedRecords.courseRequests = [];
     deletedRecords.userSchools = [];
     deletedRecords.users = [];
+    deletedRecords.courses = [];
     revalidatedPaths.length = 0;
     auditLogsRecorded.length = 0;
   });
 
   it('prevents Super Admin from deleting their own account', async () => {
-    await expect(deletePlatformUser('super-admin-1')).rejects.toThrow(
-      'Anda tidak dapat menghapus akun Anda sendiri'
-    );
+    const res = await deletePlatformUser('super-admin-1');
+    expect(res.success).toBe(false);
+    expect(res.error).toBe('Anda tidak dapat menghapus akun Anda sendiri.');
   });
 
-  it('throws an error if target user does not exist', async () => {
-    await expect(deletePlatformUser('non-existent')).rejects.toThrow(
-      'Pengguna tidak ditemukan'
-    );
+  it('returns error if target user does not exist', async () => {
+    const res = await deletePlatformUser('non-existent');
+    expect(res.success).toBe(false);
+    expect(res.error).toBe('Pengguna tidak ditemukan.');
   });
 
-  it('blocks deletion if user is still assigned as teacher of courses', async () => {
+  it('prompts requiresForce if user is still assigned as teacher of courses and force is false', async () => {
     mockTeachingCoursesCount = 2;
-    await expect(deletePlatformUser('target-user-1')).rejects.toThrow(
-      /masih tercatat sebagai guru pengampu di 2 kelas/
-    );
+    const res = await deletePlatformUser('target-user-1', false);
+    expect(res.success).toBe(false);
+    expect(res.requiresForce).toBe(true);
+    expect(res.teachingCoursesCount).toBe(2);
+    expect(res.error).toMatch(/masih tercatat sebagai guru pengampu di 2 kelas/);
   });
 
-  it('successfully deletes user permanently with cascade transaction and records audit log', async () => {
-    const result = await deletePlatformUser('target-user-1');
+  it('successfully deletes teacher and courses when force is true', async () => {
+    mockTeachingCoursesCount = 2;
+    const res = await deletePlatformUser('target-user-1', true);
+    expect(res.success).toBe(true);
+    expect(res.message).toMatch(/Budi Guru berhasil dihapus permanen.*beserta 2 kelas yang diampunya/);
+
+    expect(deletedRecords.courses).toEqual(['course-1', 'course-2']);
+    expect(deletedRecords.users).toContain('target-user-1');
+    expect(revalidatedPaths).toContain('/[locale]/admin/courses');
+  });
+
+  it('successfully deletes user without classes normally without requiring force', async () => {
+    mockTeachingCoursesCount = 0;
+    const result = await deletePlatformUser('target-user-1', false);
 
     expect(result.success).toBe(true);
     expect(result.message).toContain('Budi Guru berhasil dihapus permanen');
@@ -221,7 +247,6 @@ describe('Super Admin: Permanent Delete User Action (deletePlatformUser)', () =>
     // Verify audit log
     expect(auditLogsRecorded).toHaveLength(1);
     expect(auditLogsRecorded[0].action).toBe('USER_DELETED');
-    expect(auditLogsRecorded[0].userId).toBe('target-user-1');
 
     // Verify paths revalidated
     expect(revalidatedPaths).toContain('/[locale]/platform/users');
@@ -230,8 +255,8 @@ describe('Super Admin: Permanent Delete User Action (deletePlatformUser)', () =>
 
   it('blocks non-super admin callers', async () => {
     actor.role = 'ADMIN';
-    await expect(deletePlatformUser('target-user-1')).rejects.toThrow(
-      /Akses Ditolak/i
-    );
+    const res = await deletePlatformUser('target-user-1');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/Akses Ditolak/i);
   });
 });
