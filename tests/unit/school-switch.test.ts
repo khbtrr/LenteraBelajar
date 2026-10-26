@@ -65,13 +65,19 @@ vi.mock('@/lib/db', () => ({
         name: 'Super Admin',
         email: 'superadmin@lentera.test',
         role: actor.role,
-        schoolId: null,
+        schoolId: actor.schoolId,
         isActive: true,
         mustChangePassword: false,
         sessionVersion: 0,
         locale: 'id',
         assignedSchools: [],
       }),
+      update: async ({ where, data }: any) => {
+        if (where.id === actor.id) {
+          actor.schoolId = data.schoolId;
+        }
+        return { id: where.id, ...data };
+      },
     },
     userSchool: {
       findUnique: async () => null,
@@ -100,10 +106,13 @@ describe('School Switching & Multi-Tenant Context for Super Admin', () => {
     const res = await switchActiveSchool('sch-2');
     expect(res.success).toBe(true);
     expect(res.schoolId).toBe('sch-2');
+    expect(actor.schoolId).toBe('sch-2');
     expect(mockCookiesStore['active_school_id']).toBe('sch-2');
 
     expect(revalidatedPaths).toContain('/[locale]/admin');
     expect(revalidatedPaths).toContain('/[locale]/admin/dashboard');
+    expect(revalidatedPaths).toContain('/id/admin/dashboard');
+    expect(revalidatedPaths).toContain('/en/admin/dashboard');
     expect(revalidatedPaths).toContain('/');
   });
 

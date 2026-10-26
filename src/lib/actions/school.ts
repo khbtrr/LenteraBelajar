@@ -113,10 +113,19 @@ export async function getUserSchools() {
 
 export async function switchActiveSchool(schoolId: string) {
   const session = await requireAuth();
-  if (!await db.school.findUnique({ where: { id: schoolId, isActive: true }, select: { id: true } })) throw new Error('Sekolah tidak tersedia');
+  const targetSchool = await db.school.findUnique({
+    where: { id: schoolId, isActive: true },
+    select: { id: true, name: true, code: true },
+  });
+  if (!targetSchool) throw new Error('Sekolah tidak tersedia');
 
-  // Validasi hak akses
-  if (session.user.role !== 'SUPER_ADMIN') {
+  // Validasi hak akses & persistensi data sekolah aktif
+  if (session.user.role === 'SUPER_ADMIN') {
+    await db.user.update({
+      where: { id: session.user.id },
+      data: { schoolId: targetSchool.id },
+    });
+  } else {
     const isPrimary = session.user.homeSchoolId === schoolId;
     const hasAssignment = await db.userSchool.findUnique({
       where: {
@@ -151,6 +160,10 @@ export async function switchActiveSchool(schoolId: string) {
 
   revalidatePath('/[locale]/admin', 'layout');
   revalidatePath('/[locale]/admin/dashboard', 'page');
+  revalidatePath('/id/admin', 'layout');
+  revalidatePath('/en/admin', 'layout');
+  revalidatePath('/id/admin/dashboard', 'page');
+  revalidatePath('/en/admin/dashboard', 'page');
   revalidatePath('/', 'layout');
 
   return { success: true, schoolId };
