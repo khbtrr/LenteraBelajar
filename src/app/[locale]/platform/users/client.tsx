@@ -43,6 +43,7 @@ import {
   BookOpen,
   Shield,
   Award,
+  Trash2,
 } from 'lucide-react';
 import {
   PlatformUserItem,
@@ -50,6 +51,7 @@ import {
   createPlatformUser,
   togglePlatformUserActive,
   resetPlatformUserPassword,
+  deletePlatformUser,
 } from '@/lib/actions/platform';
 import { Role } from '@prisma/client';
 import { useDialog } from '@/context/DialogContext';
@@ -60,6 +62,7 @@ interface PlatformUsersClientProps {
   initialTotalPages: number;
   initialCurrentPage: number;
   schools: Array<{ id: string; name: string; code: string }>;
+  currentUserId?: string;
 }
 
 export function PlatformUsersClient({
@@ -68,8 +71,9 @@ export function PlatformUsersClient({
   initialTotalPages,
   initialCurrentPage,
   schools,
+  currentUserId,
 }: PlatformUsersClientProps) {
-  const { showAlert } = useDialog();
+  const { showAlert, showConfirm } = useDialog();
 
   const [users, setUsers] = useState<PlatformUserItem[]>(initialUsers);
   const [totalCount, setTotalCount] = useState(initialTotalCount);
@@ -81,6 +85,7 @@ export function PlatformUsersClient({
   const [selectedSchool, setSelectedSchool] = useState<string>('ALL');
   const [selectedRole, setSelectedRole] = useState<string>('ALL');
   const [loading, setLoading] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Create User Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -196,6 +201,39 @@ export function PlatformUsersClient({
       await showAlert(err?.message || 'Gagal mengatur ulang kata sandi', { type: 'error' });
     } finally {
       setResetLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: PlatformUserItem) => {
+    if (user.id === currentUserId) {
+      await showAlert('Anda tidak dapat menghapus akun Anda sendiri.', { type: 'error' });
+      return;
+    }
+
+    const confirmed = await showConfirm(
+      `Apakah Anda yakin ingin menghapus akun "${user.name}" (${user.email}) secara permanen? Seluruh riwayat dan data terkait akun ini akan dihapus dari sistem. Tindakan ini tidak dapat dibatalkan.`,
+      {
+        title: 'Hapus Pengguna Permanen',
+        confirmText: 'Ya, Hapus Permanen',
+        cancelText: 'Batal',
+        type: 'error',
+        confirmVariant: 'destructive',
+      }
+    );
+
+    if (!confirmed) return;
+
+    setDeletingUserId(user.id);
+    try {
+      const res = await deletePlatformUser(user.id);
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      setTotalCount((prev) => Math.max(0, prev - 1));
+      await showAlert(res.message || `Akun ${user.name} berhasil dihapus permanen.`, { type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err?.message || 'Gagal menghapus pengguna.', { type: 'error' });
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -419,7 +457,7 @@ export function PlatformUsersClient({
                             setUserToReset(user);
                             setIsResetOpen(true);
                           }}
-                          className="h-7 text-xs text-gray-600 border-gray-200 hover:bg-gray-100 flex items-center gap-1"
+                          className="h-7 text-xs text-gray-600 border-gray-200 hover:bg-gray-100 flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-[#002446]"
                           title="Reset Kata Sandi"
                         >
                           <KeyRound className="h-3.5 w-3.5 text-[#FF8928]" />
@@ -430,9 +468,27 @@ export function PlatformUsersClient({
                           size="sm"
                           variant="ghost"
                           onClick={() => handleToggleActive(user)}
-                          className="h-7 text-xs text-gray-500 hover:text-gray-700"
+                          disabled={user.id === currentUserId}
+                          className="h-7 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#002446]"
+                          title={user.id === currentUserId ? 'Akun aktif Anda saat ini' : (user.isActive ? 'Nonaktifkan Akun' : 'Aktifkan Akun')}
                         >
                           {user.isActive ? 'Suspend' : 'Aktifkan'}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteUser(user)}
+                          disabled={user.id === currentUserId || deletingUserId === user.id}
+                          className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 flex items-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-red-500"
+                          title={user.id === currentUserId ? 'Anda tidak dapat menghapus akun Anda sendiri' : 'Hapus Akun Permanen'}
+                        >
+                          {deletingUserId === user.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                          )}
+                          Hapus
                         </Button>
                       </div>
                     </TableCell>

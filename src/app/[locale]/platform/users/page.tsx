@@ -21,6 +21,7 @@ export default async function PlatformUsersPage() {
         initialTotalPages={data.totalPages}
         initialCurrentPage={data.currentPage}
         schools={data.schools}
+        currentUserId={data.currentUserId}
       />
     </div>
   );

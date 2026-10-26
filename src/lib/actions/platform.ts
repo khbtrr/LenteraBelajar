@@ -41,7 +41,7 @@ export interface PlatformDashboardData {
 }
 
 export async function getPlatformDashboardStats(): Promise<PlatformDashboardData> {
-  await requireRole('SUPER_ADMIN');
+  const session = await requireRole('SUPER_ADMIN');
 
   const [
     totalSchools,
@@ -132,7 +132,7 @@ export async function getPlatformUsers(filter: {
   page?: number;
   limit?: number;
 }) {
-  await requireRole('SUPER_ADMIN');
+  const session = await requireRole('SUPER_ADMIN');
 
   const page = filter.page && filter.page > 0 ? filter.page : 1;
   const limit = filter.limit && filter.limit > 0 ? filter.limit : 20;
@@ -211,6 +211,7 @@ export async function getPlatformUsers(filter: {
     totalPages: Math.ceil(totalCount / limit),
     currentPage: page,
     schools,
+    currentUserId: session.user.id,
   };
 }
 
@@ -222,7 +223,7 @@ export async function createPlatformUser(data: {
   schoolId?: string;
   nip?: string;
 }) {
-  await requireRole('SUPER_ADMIN');
+  const session = await requireRole('SUPER_ADMIN');
 
   const trimmedEmail = data.email.trim().toLowerCase();
   const trimmedName = data.name.trim();
@@ -341,6 +342,57 @@ export async function resetPlatformUserPassword(userId: string, newPassword: str
 
   revalidatePath('/[locale]/platform/users', 'page');
   return { success: true };
+}
+
+export async function deletePlatformUser(userId: string) {
+  const session = await requireRole('SUPER_ADMIN');
+
+  if (userId === session.user.id) {
+    throw new Error('Anda tidak dapat menghapus akun Anda sendiri');
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, role: true },
+  });
+  if (!user) {
+    throw new Error('Pengguna tidak ditemukan');
+  }
+
+  const teachingCoursesCount = await db.course.count({
+    where: { teacherId: userId },
+  });
+  if (teachingCoursesCount > 0) {
+    throw new Error(
+      `Pengguna tidak dapat dihapus permanen karena masih tercatat sebagai guru pengampu di ${teachingCoursesCount} kelas. Silakan alihkan guru pengampu kelas tersebut terlebih dahulu.`
+    );
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.directMessage.deleteMany({ where: { senderId: userId } });
+    await tx.quizAnswer.deleteMany({ where: { attempt: { userId } } });
+    await tx.quizAttempt.deleteMany({ where: { userId } });
+    await tx.assignmentSubmission.deleteMany({ where: { userId } });
+    await tx.grade.deleteMany({ where: { userId } });
+    await tx.courseRequest.deleteMany({ where: { requesterId: userId } });
+    await tx.userSchool.deleteMany({ where: { userId } });
+    await tx.user.delete({ where: { id: userId } });
+  });
+
+  await recordAuditLog({
+    action: 'USER_DELETED',
+    userId: user.id,
+    userEmail: user.email,
+    details: `Platform user permanently deleted by Super Admin (${session.user.email})`,
+  });
+
+  revalidatePath('/[locale]/platform/users', 'page');
+  revalidatePath('/[locale]/admin/users', 'page');
+
+  return {
+    success: true,
+    message: `Akun ${user.name} berhasil dihapus permanen dari sistem.`,
+  };
 }
 
 export async function getPlatformSettings() {

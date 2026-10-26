@@ -412,6 +412,7 @@ export async function deleteUser(userId: string, hardDelete = false) {
       });
 
       revalidatePath('/[locale]/admin/users', 'page');
+      revalidatePath('/[locale]/platform/users', 'page');
       return { success: true, mode: 'deleted' as const };
     } else {
       await db.user.update({
@@ -427,6 +428,7 @@ export async function deleteUser(userId: string, hardDelete = false) {
       });
 
       revalidatePath('/[locale]/admin/users', 'page');
+      revalidatePath('/[locale]/platform/users', 'page');
       return { success: true, mode: 'deactivated' as const };
     }
   } catch (err: any) {
