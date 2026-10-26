@@ -68,10 +68,11 @@ export function SchoolSwitcher() {
     try {
       setSwitching(true);
       setCurrentSchoolId(schoolId);
+      if (typeof document !== 'undefined') {
+        document.cookie = `active_school_id=${schoolId}; path=/; max-age=2592000; SameSite=Lax`;
+      }
       await switchActiveSchool(schoolId);
-      startTransition(() => {
-        router.refresh();
-      });
+      window.location.reload();
     } catch (err) {
       console.error('Failed to switch school:', err);
     } finally {

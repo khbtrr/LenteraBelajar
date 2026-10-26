@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, getActiveSchoolId } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 export async function getSchools() {
   await requireRole('SUPER_ADMIN');
@@ -132,13 +132,21 @@ export async function switchActiveSchool(schoolId: string) {
     }
   }
 
+  let isHttps = false;
+  try {
+    const headerList = await headers();
+    const proto = headerList.get('x-forwarded-proto') || '';
+    const referer = headerList.get('referer') || '';
+    isHttps = proto === 'https' || referer.startsWith('https://');
+  } catch {}
+
   const cookieStore = await cookies();
   cookieStore.set('active_school_id', schoolId, {
     path: '/',
     maxAge: 30 * 24 * 60 * 60, // 30 hari
     sameSite: 'lax',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    httpOnly: false,
+    secure: isHttps,
   });
 
   revalidatePath('/[locale]/admin', 'layout');

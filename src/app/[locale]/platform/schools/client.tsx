@@ -62,8 +62,11 @@ export function PlatformSchoolsClient({
   const handleSwitchSchool = async (schoolId: string) => {
     try {
       setSwitchingId(schoolId);
+      if (typeof document !== 'undefined') {
+        document.cookie = `active_school_id=${schoolId}; path=/; max-age=2592000; SameSite=Lax`;
+      }
       await switchActiveSchool(schoolId);
-      window.location.href = `/${locale}/admin/dashboard`;
+      window.location.href = `/${locale}/admin/dashboard?schoolId=${schoolId}`;
     } catch (err: any) {
       console.error(err);
       await showAlert(err?.message || 'Gagal berpindah ke sekolah', { type: 'error' });

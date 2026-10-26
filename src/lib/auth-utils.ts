@@ -3,7 +3,7 @@ import { hashSync, compareSync } from 'bcryptjs';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import type { Role } from '@prisma/client';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { db } from '@/lib/db';
 import { getIndukSchool } from '@/lib/school';
 
@@ -32,6 +32,22 @@ export async function getServerSession(options: { allowPasswordChange?: boolean 
   try {
     requestedSchool = (await cookies()).get('active_school_id')?.value;
   } catch {}
+
+  if (!requestedSchool) {
+    try {
+      const headerList = await headers();
+      const referer = headerList.get('referer') || '';
+      const xUrl = headerList.get('x-url') || '';
+      const urlToParse = xUrl || referer;
+      if (urlToParse.includes('schoolId=')) {
+        const parsed = new URL(urlToParse, 'http://localhost');
+        const paramSchoolId = parsed.searchParams.get('schoolId');
+        if (paramSchoolId) {
+          requestedSchool = paramSchoolId;
+        }
+      }
+    } catch {}
+  }
   const assignedSchoolIds = account.assignedSchools.map((assignment) => assignment.schoolId);
   const allowed = [account.schoolId, ...assignedSchoolIds].filter((id): id is string => Boolean(id));
   let schoolId: string | null = account.schoolId ?? assignedSchoolIds[0] ?? null;
