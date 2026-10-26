@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { School, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -23,10 +23,12 @@ interface SchoolItem {
 
 export function SchoolSwitcher() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [schools, setSchools] = useState<SchoolItem[]>([]);
   const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null);
   const [canSwitch, setCanSwitch] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [switching, setSwitching] = useState(false);
 
@@ -40,6 +42,7 @@ export function SchoolSwitcher() {
           setSchools(res.schools);
           setCurrentSchoolId(res.currentSchoolId);
           setCanSwitch(res.canSwitch);
+          setIsSuperAdmin(Boolean((res as any).isSuperAdmin));
         }
       } catch (err) {
         console.error('Failed to load user schools:', err);
@@ -75,6 +78,29 @@ export function SchoolSwitcher() {
       setSwitching(false);
     }
   };
+
+  if (isSuperAdmin) {
+    if (pathname?.includes('/platform')) {
+      return null;
+    }
+
+    if (!currentSchool) return null;
+
+    return (
+      <div
+        className="flex items-center gap-2 h-9 px-3 rounded-lg border border-brand-200 dark:border-brand-900 bg-brand-50/60 dark:bg-brand-950/40 text-brand-950 dark:text-brand-100 text-xs font-semibold max-w-[280px] sm:max-w-[340px] truncate shadow-2xs"
+        title={`Sekolah Aktif: ${currentSchool.name}`}
+      >
+        <School className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
+        <span className="truncate">{currentSchool.name}</span>
+        {currentSchool.code && (
+          <span className="font-mono text-[10px] bg-brand-200/50 dark:bg-brand-800/50 px-1.5 py-0.5 rounded text-brand-800 dark:text-brand-200 shrink-0 ml-auto">
+            {currentSchool.code}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   if (!canSwitch) {
     return (

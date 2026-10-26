@@ -71,6 +71,7 @@ export async function getUserSchools() {
       currentSchoolId: activeId || allSchools[0]?.id || null,
       schools: allSchools,
       canSwitch: allSchools.length > 1,
+      isSuperAdmin: true,
     };
   }
 
@@ -106,6 +107,7 @@ export async function getUserSchools() {
     currentSchoolId: activeId || schools[0]?.id || null,
     schools,
     canSwitch: schools.length > 1,
+    isSuperAdmin: false,
   };
 }
 
@@ -138,6 +140,10 @@ export async function switchActiveSchool(schoolId: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
   });
+
+  revalidatePath('/[locale]/admin', 'layout');
+  revalidatePath('/[locale]/admin/dashboard', 'page');
+  revalidatePath('/', 'layout');
 
   return { success: true, schoolId };
 }

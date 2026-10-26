@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -47,6 +47,7 @@ export function PlatformSchoolsClient({
   initialSchools: any[];
 }) {
   const t = useTranslations('schools');
+  const locale = useLocale();
   const router = useRouter();
   const { showAlert } = useDialog();
   const [schools, setSchools] = useState<SchoolItem[]>(initialSchools);
@@ -62,7 +63,7 @@ export function PlatformSchoolsClient({
     try {
       setSwitchingId(schoolId);
       await switchActiveSchool(schoolId);
-      router.push('/admin/dashboard');
+      window.location.href = `/${locale}/admin/dashboard`;
     } catch (err: any) {
       console.error(err);
       await showAlert(err?.message || 'Gagal berpindah ke sekolah', { type: 'error' });
