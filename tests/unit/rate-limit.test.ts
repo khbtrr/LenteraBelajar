@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 describe('Rate Limiting & Client IP Extraction', () => {
@@ -54,26 +54,74 @@ describe('Rate Limiting & Client IP Extraction', () => {
   });
 
   describe('Client IP Resolution from Headers', () => {
+    const originalHops = process.env.TRUSTED_PROXY_HOPS;
+    const originalHeader = process.env.TRUSTED_CLIENT_IP_HEADER;
+
+    beforeEach(() => {
+      delete process.env.TRUSTED_PROXY_HOPS;
+      delete process.env.TRUSTED_CLIENT_IP_HEADER;
+    });
+
+    afterEach(() => {
+      if (originalHops === undefined) delete process.env.TRUSTED_PROXY_HOPS;
+      else process.env.TRUSTED_PROXY_HOPS = originalHops;
+      if (originalHeader === undefined) delete process.env.TRUSTED_CLIENT_IP_HEADER;
+      else process.env.TRUSTED_CLIENT_IP_HEADER = originalHeader;
+    });
+
     it('extracts client IP from single x-forwarded-for header', () => {
       const headers = new Headers({ 'x-forwarded-for': '198.51.100.42' });
       expect(getClientIp(headers)).toBe('198.51.100.42');
     });
 
-    it('extracts originating client IP from comma-separated x-forwarded-for proxy chain', () => {
-      const headers = new Headers({
-        'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178',
-      });
-      expect(getClientIp(headers)).toBe('203.0.113.195');
+    it('ignores client-prepended entries and takes the one added by the single trusted proxy', () => {
+      const headers = new Headers({ 'x-forwarded-for': '203.0.113.9, 198.51.100.42' });
+      expect(getClientIp(headers)).toBe('198.51.100.42');
     });
 
-    it('falls back to x-real-ip when x-forwarded-for is absent', () => {
-      const headers = new Headers({ 'x-real-ip': '192.0.2.10' });
-      expect(getClientIp(headers)).toBe('192.0.2.10');
+    it('does not let a rotating spoofed leftmost entry change the resolved IP', () => {
+      const resolved = new Set(
+        ['1.1.1.1', '2.2.2.2', '3.3.3.3'].map((fake) =>
+          getClientIp(new Headers({ 'x-forwarded-for': `${fake}, 198.51.100.42` }))
+        )
+      );
+      expect([...resolved]).toEqual(['198.51.100.42']);
     });
 
-    it('falls back to cf-connecting-ip when other forward headers are absent', () => {
-      const headers = new Headers({ 'cf-connecting-ip': '198.18.0.5' });
+    it('counts TRUSTED_PROXY_HOPS entries from the right', () => {
+      process.env.TRUSTED_PROXY_HOPS = '2';
+      const headers = new Headers({ 'x-forwarded-for': '203.0.113.9, 198.51.100.42, 10.0.0.2' });
+      expect(getClientIp(headers)).toBe('198.51.100.42');
+    });
+
+    it('uses the leftmost entry when the chain is shorter than the configured hops', () => {
+      process.env.TRUSTED_PROXY_HOPS = '3';
+      const headers = new Headers({ 'x-forwarded-for': '198.51.100.42' });
+      expect(getClientIp(headers)).toBe('198.51.100.42');
+    });
+
+    it('ignores x-real-ip and cf-connecting-ip unless a trusted header is configured', () => {
+      const headers = new Headers({ 'x-real-ip': '192.0.2.10', 'cf-connecting-ip': '198.18.0.5' });
+      expect(getClientIp(headers)).toBe('127.0.0.1');
+    });
+
+    it('reads the configured trusted header ahead of x-forwarded-for', () => {
+      process.env.TRUSTED_CLIENT_IP_HEADER = 'CF-Connecting-IP';
+      const headers = new Headers({ 'cf-connecting-ip': '198.18.0.5', 'x-forwarded-for': '203.0.113.9' });
       expect(getClientIp(headers)).toBe('198.18.0.5');
+    });
+
+    it('ignores every forwarded header when TRUSTED_PROXY_HOPS is 0', () => {
+      process.env.TRUSTED_PROXY_HOPS = '0';
+      process.env.TRUSTED_CLIENT_IP_HEADER = 'x-real-ip';
+      const headers = new Headers({ 'x-forwarded-for': '203.0.113.9', 'x-real-ip': '192.0.2.10' });
+      expect(getClientIp(headers)).toBe('127.0.0.1');
+    });
+
+    it('falls back to one hop when TRUSTED_PROXY_HOPS is invalid', () => {
+      process.env.TRUSTED_PROXY_HOPS = 'abc';
+      const headers = new Headers({ 'x-forwarded-for': '203.0.113.9, 198.51.100.42' });
+      expect(getClientIp(headers)).toBe('198.51.100.42');
     });
 
     it('defaults to 127.0.0.1 when no remote address headers are present', () => {

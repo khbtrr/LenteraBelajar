@@ -13,18 +13,17 @@ export async function POST(request: Request) {
     const ipAddress = getClientIp(request.headers);
     const userAgent = request.headers.get('user-agent') || '';
 
-    // Rate Limiting: Max 20 requests per minute
-    const rateLimit = await checkSharedRateLimit(`change-password:${ipAddress}`, 20, 60 * 1000);
+    const session = await getServerSession({ allowPasswordChange: true });
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rateLimit = await checkSharedRateLimit(`change-password:${session.user.id}`, 20, 60 * 1000);
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: `Terlalu banyak permintaan. Harap tunggu ${rateLimit.resetInSeconds} detik.` },
         { status: 429 }
       );
-    }
-
-    const session = await getServerSession({ allowPasswordChange: true });
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { currentPassword, newPassword } = await request.json();

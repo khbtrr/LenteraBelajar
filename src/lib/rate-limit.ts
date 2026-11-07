@@ -94,21 +94,41 @@ export function checkRateLimit(
   };
 }
 
+const FALLBACK_IP = '127.0.0.1';
+const DEFAULT_TRUSTED_PROXY_HOPS = 1;
+
+function trustedProxyHops(): number {
+  const raw = process.env.TRUSTED_PROXY_HOPS;
+  if (raw === undefined || raw.trim() === '') return DEFAULT_TRUSTED_PROXY_HOPS;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : DEFAULT_TRUSTED_PROXY_HOPS;
+}
+
 /**
- * Extract client IP from incoming request headers
+ * Resolve the client IP behind a reverse proxy we operate.
+ *
+ * Forwarded headers are client-controlled, so the leftmost x-forwarded-for entry is never used.
+ * With N trusted proxies the real client is the Nth entry from the right; entries to its left are
+ * attacker-supplied. TRUSTED_CLIENT_IP_HEADER names a header the proxy overwrites (for example
+ * cf-connecting-ip) and takes precedence when set. TRUSTED_PROXY_HOPS=0 means no proxy: all
+ * forwarded headers are ignored.
  */
 export function getClientIp(headers: Headers): string {
-  const forwarded = headers.get('x-forwarded-for');
-  if (forwarded) {
-    const ips = forwarded.split(',').map((ip) => ip.trim());
-    if (ips[0]) return ips[0];
+  const hops = trustedProxyHops();
+  if (hops === 0) return FALLBACK_IP;
+
+  const trustedHeader = process.env.TRUSTED_CLIENT_IP_HEADER?.trim().toLowerCase();
+  if (trustedHeader) {
+    const value = headers.get(trustedHeader)?.trim();
+    if (value) return value;
   }
 
-  const realIp = headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
+  const forwarded = headers.get('x-forwarded-for');
+  if (forwarded) {
+    const ips = forwarded.split(',').map((ip) => ip.trim()).filter(Boolean);
+    if (ips.length > 0) return ips[Math.max(ips.length - hops, 0)];
+  }
 
-  const cfIp = headers.get('cf-connecting-ip');
-  if (cfIp) return cfIp.trim();
-
-  return '127.0.0.1';
+  return FALLBACK_IP;
 }
+
