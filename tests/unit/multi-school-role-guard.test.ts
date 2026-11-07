@@ -6,6 +6,7 @@ const target = vi.hoisted(() => ({
   value: null as null | Record<string, unknown>,
 }));
 const update = vi.hoisted(() => vi.fn(async ({ data }: { data: unknown }) => data));
+const courseCount = vi.hoisted(() => ({ value: 0 }));
 
 vi.mock('@/lib/auth-utils', () => ({
   requireRole: async () => ({ user: { id: 'actor', email: 'actor@lentera.test', role: actor.role, schoolId: actor.schoolId } }),
@@ -21,11 +22,12 @@ vi.mock('@/lib/db', () => ({
       update,
     },
     userSchool: { deleteMany: async () => ({}), upsert: async () => ({}) },
+    course: { count: async () => courseCount.value },
   },
 }));
 
 import { resetUserPassword, updateUser } from '@/lib/actions/user';
-import { isMultiSchoolUser } from '@/lib/user-scope';
+import { isMultiSchoolUser, isUserInSchool, getUserSchoolIds } from '@/lib/user-scope';
 
 function setTarget(assignedSchoolIds: string[], role: Role = Role.TEACHER) {
   target.value = {
@@ -50,12 +52,19 @@ describe('isMultiSchoolUser', () => {
     expect(isMultiSchoolUser({ schoolId: 'a', assignedSchools: [{ schoolId: 'b' }] })).toBe(true);
     expect(isMultiSchoolUser({ schoolId: null, assignedSchools: [{ schoolId: 'a' }, { schoolId: 'b' }] })).toBe(true);
   });
+
+  it('resolves all school IDs associated with a user', () => {
+    expect(getUserSchoolIds({ schoolId: 'a', assignedSchoolIds: ['b', 'c'] })).toEqual(['a', 'b', 'c']);
+    expect(isUserInSchool({ schoolId: 'a', assignedSchoolIds: ['b'] }, 'b')).toBe(true);
+    expect(isUserInSchool({ schoolId: 'a', assignedSchoolIds: ['b'] }, 'c')).toBe(false);
+  });
 });
 
 describe('multi-school users and school admins', () => {
   beforeEach(() => {
     actor.role = 'ADMIN';
     actor.schoolId = 'school-a';
+    courseCount.value = 0;
     update.mockClear();
   });
 
@@ -102,5 +111,25 @@ describe('multi-school users and school admins', () => {
     setTarget(['school-a'], Role.TEACHER);
     const result = await resetUserPassword('teacher-ab');
     expect(result.temporaryPassword).toBeUndefined();
+  });
+
+  it('blocks removing an assigned school when the teacher owns active courses there', async () => {
+    actor.role = 'SUPER_ADMIN';
+    setTarget(['school-a', 'school-b'], Role.TEACHER);
+    courseCount.value = 2;
+    await expect(
+      updateUser('teacher-ab', { ...profile, role: Role.TEACHER, assignedSchoolIds: ['school-a'] })
+    ).rejects.toThrow(/guru pengampu di 2 kelas pada sekolah yang akan dicabut/);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('blocks changing a teacher role when the user owns active courses', async () => {
+    actor.role = 'SUPER_ADMIN';
+    setTarget(['school-a'], Role.TEACHER);
+    courseCount.value = 3;
+    await expect(
+      updateUser('teacher-ab', { ...profile, role: Role.STUDENT })
+    ).rejects.toThrow(/guru pengampu di 3 kelas/);
+    expect(update).not.toHaveBeenCalled();
   });
 });

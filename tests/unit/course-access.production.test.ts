@@ -54,4 +54,18 @@ describe('course detail production action', () => {
     state.role = 'SUPERVISOR'; state.schoolId = 'school-b';
     expect((await getCourseById('course-b'))?.id).toBe('course-b');
   });
+
+  it('denies a teacher who owns the course in a school they are not assigned to', async () => {
+    state.role = 'TEACHER';
+    state.course.teacherId = 'caller';
+    state.schoolId = 'school-a';
+    await expect(getCourseById('course-b')).rejects.toThrow(/Akses ditolak/);
+  });
+
+  it('allows a teacher who owns the course and is assigned to the course school', async () => {
+    state.role = 'TEACHER';
+    state.course.teacherId = 'caller';
+    state.schoolId = 'school-b';
+    expect((await getCourseById('course-b'))?.id).toBe('course-b');
+  });
 });

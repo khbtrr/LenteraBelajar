@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth-utils';
 import type { AccessItemType } from '@prisma/client';
+import { isUserInSchool } from '@/lib/user-scope';
 
 export async function assertCourseAccess(courseId: string, mode: 'read' | 'manage' | 'roster' = 'read') {
   const session = await requireAuth();
@@ -14,7 +15,9 @@ export async function assertCourseAccess(courseId: string, mode: 'read' | 'manag
   if (role === 'SUPER_ADMIN') return { session, course };
   if (role === 'ADMIN' && schoolId === course.schoolId) return { session, course };
   if (role === 'SUPERVISOR' && mode !== 'manage' && schoolId === course.schoolId) return { session, course };
-  if (role === 'TEACHER' && course.teacherId === id) return { session, course };
+  if (role === 'TEACHER' && course.teacherId === id && isUserInSchool(session.user, course.schoolId)) {
+    return { session, course };
+  }
   if (role === 'STUDENT' && mode === 'read') {
     const enrollment = await db.enrollment.findUnique({
       where: { courseId_userId: { courseId, userId: id } },

@@ -11,6 +11,7 @@ import { assertItemAccess, assertModuleAccess, assertCourseAccess } from '@/lib/
 import { startQuiz, submitQuiz } from '@/lib/cbt';
 import { assertFileReferences, bindFileReferences } from '@/lib/files';
 import { sanitizeRichText } from '@/lib/rich-text';
+import { isUserInSchool } from '@/lib/user-scope';
 
 export async function getQuizById(quizId: string) {
   const { session } = await assertItemAccess('QUIZ', quizId);
@@ -120,8 +121,10 @@ export async function createQuiz(data: {
   });
 
   if (!moduleItem) throw new Error('Modul tidak ditemukan');
-  if (session.user.role === 'TEACHER' && moduleItem.course.teacherId !== session.user.id) {
-    throw new Error('Akses ditolak: Anda bukan pengajar untuk modul ini');
+  if (session.user.role === 'TEACHER') {
+    if (moduleItem.course.teacherId !== session.user.id || !isUserInSchool(session.user, moduleItem.course.schoolId)) {
+      throw new Error('Akses ditolak: Anda bukan pengajar untuk modul ini');
+    }
   }
   if (session.user.role === 'ADMIN' && session.user.schoolId && moduleItem.course.schoolId !== session.user.schoolId) {
     throw new Error('Akses ditolak: Modul ini berada di sekolah lain');
@@ -213,8 +216,10 @@ async function assertQuizOwnership(quizId: string) {
 
   if (!quiz) throw new Error('Kuis tidak ditemukan');
   const course = quiz.module.course;
-  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
-    throw new Error('Akses ditolak: Anda bukan pengajar untuk kuis ini');
+  if (session.user.role === 'TEACHER') {
+    if (course.teacherId !== session.user.id || !isUserInSchool(session.user, course.schoolId)) {
+      throw new Error('Akses ditolak: Anda bukan pengajar untuk kuis ini');
+    }
   }
   if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
     throw new Error('Akses ditolak: Kuis ini berada di sekolah lain');
@@ -244,8 +249,10 @@ async function assertQuizQuestionOwnership(questionId: string) {
 
   if (!question) throw new Error('Butir soal tidak ditemukan');
   const course = question.quiz.module.course;
-  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
-    throw new Error('Akses ditolak: Anda bukan pengajar untuk soal ini');
+  if (session.user.role === 'TEACHER') {
+    if (course.teacherId !== session.user.id || !isUserInSchool(session.user, course.schoolId)) {
+      throw new Error('Akses ditolak: Anda bukan pengajar untuk soal ini');
+    }
   }
   if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
     throw new Error('Akses ditolak: Soal ini berada di sekolah lain');

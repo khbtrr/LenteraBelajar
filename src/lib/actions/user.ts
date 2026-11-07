@@ -325,6 +325,35 @@ export async function updateUser(
     }
   }
 
+  if (data.role !== user.role && user.role === Role.TEACHER) {
+    const teachingCoursesCount = await db.course.count({
+      where: { teacherId: userId },
+    });
+    if (teachingCoursesCount > 0) {
+      throw new Error(
+        `Akses ditolak: Pengguna masih menjadi guru pengampu di ${teachingCoursesCount} kelas. Silakan alihkan guru pengampu terlebih dahulu sebelum mengubah peran.`
+      );
+    }
+  }
+
+  if (data.assignedSchoolIds !== undefined) {
+    const currentAssigned = user.assignedSchools.map((s) => s.schoolId);
+    const removedSchools = currentAssigned.filter((sId) => !data.assignedSchoolIds!.includes(sId));
+    if (removedSchools.length > 0) {
+      const coursesInRemoved = await db.course.count({
+        where: {
+          teacherId: userId,
+          schoolId: { in: removedSchools },
+        },
+      });
+      if (coursesInRemoved > 0) {
+        throw new Error(
+          `Akses ditolak: Pengguna masih menjadi guru pengampu di ${coursesInRemoved} kelas pada sekolah yang akan dicabut penugasannya. Silakan alihkan guru pengampu terlebih dahulu.`
+        );
+      }
+    }
+  }
+
   const updated = await db.user.update({
     where: { id: userId },
     data: {

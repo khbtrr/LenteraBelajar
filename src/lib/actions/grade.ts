@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { createNotification } from '@/lib/notifications';
 import { assertCourseAccess, assertItemAccess } from '@/lib/access';
+import { isUserInSchool } from '@/lib/user-scope';
 import { gradeEssay } from '@/lib/cbt';
 import { loadCourseGrades, meanScore } from '@/lib/course-grades';
 
@@ -211,8 +212,10 @@ export async function gradeAssignmentSubmission(
   if (!submission) throw new Error('Submission not found');
 
   const course = submission.assignment.module.course;
-  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
-    throw new Error('Akses ditolak: Anda bukan pengajar untuk mata pelajaran ini.');
+  if (session.user.role === 'TEACHER') {
+    if (course.teacherId !== session.user.id || !isUserInSchool(session.user, course.schoolId)) {
+      throw new Error('Akses ditolak: Anda bukan pengajar untuk mata pelajaran ini.');
+    }
   }
   if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
     throw new Error('Akses ditolak: Mata pelajaran ini tidak berada dalam sekolah Anda.');
@@ -312,8 +315,10 @@ export async function getQuizAttemptsList(quizId: string) {
   }
 
   const course = quiz.module.course;
-  if (session.user.role === 'TEACHER' && course.teacherId !== session.user.id) {
-    throw new Error('Akses ditolak: Anda bukan pengajar untuk kuis ini.');
+  if (session.user.role === 'TEACHER') {
+    if (course.teacherId !== session.user.id || !isUserInSchool(session.user, course.schoolId)) {
+      throw new Error('Akses ditolak: Anda bukan pengajar untuk kuis ini.');
+    }
   }
   if (session.user.role === 'ADMIN' && session.user.schoolId && course.schoolId !== session.user.schoolId) {
     throw new Error('Akses ditolak: Kuis ini tidak berada dalam sekolah Anda.');
