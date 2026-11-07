@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireSchool, requireRole, hashPassword } from '@/lib/auth-utils';
 import { generateDefaultPassword } from '@/lib/password-policy';
+import { isMultiSchoolUser } from '@/lib/user-scope';
 import { recordAuditLog } from '@/lib/audit-log';
 import { Role } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
@@ -234,11 +235,17 @@ export async function resetUserPassword(userId: string) {
   const schoolId = session.user.schoolId;
   if (!schoolId) throw new Error('No school selected');
 
-  const user = await db.user.findUnique({ where: { id: userId, schoolId } });
+  const user = await db.user.findUnique({
+    where: { id: userId, schoolId },
+    include: { assignedSchools: { select: { schoolId: true } } },
+  });
   if (!user) throw new Error('User not found');
 
   if (session.user.role !== 'SUPER_ADMIN' && user.role === Role.SUPER_ADMIN) {
     throw new Error('Akses ditolak: Admin sekolah tidak dapat mereset kata sandi akun Super Admin.');
+  }
+  if (session.user.role !== 'SUPER_ADMIN' && isMultiSchoolUser(user)) {
+    throw new Error('Akses ditolak: Pengguna terdaftar di lebih dari satu sekolah, reset kata sandi memerlukan Super Admin.');
   }
 
   const defaultPwd = generateDefaultPassword(user.nis || user.nip);
@@ -303,6 +310,9 @@ export async function updateUser(
       throw new Error('Akses ditolak: Admin sekolah tidak dapat mengubah pengguna dengan peran Super Admin.');
     }
     if (user.schoolId !== schoolId) throw new Error('Akses ditolak: Perubahan akun utama sekolah lain memerlukan Super Admin');
+    if (data.role !== user.role && isMultiSchoolUser(user)) {
+      throw new Error('Akses ditolak: Pengguna terdaftar di lebih dari satu sekolah, perubahan peran memerlukan Super Admin.');
+    }
   }
 
   if (data.email !== user.email) {
