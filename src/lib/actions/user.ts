@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db';
 import { requireSchool, requireRole, hashPassword } from '@/lib/auth-utils';
-import { generateDefaultPassword } from '@/lib/password-policy';
+import { resolveInitialPassword } from '@/lib/password-policy';
 import { isMultiSchoolUser } from '@/lib/user-scope';
 import { recordAuditLog } from '@/lib/audit-log';
 import { Role } from '@prisma/client';
@@ -53,8 +53,7 @@ export async function createUser(data: {
     throw new Error('Akses ditolak: Admin sekolah tidak dapat membuat akun dengan peran Super Admin.');
   }
 
-  // Generate compliant default password
-  const initialPassword = generateDefaultPassword(data.nis || data.nip);
+  const { password: initialPassword, generated } = resolveInitialPassword(data.role, data.nis || data.nip);
   const passwordHash = hashPassword(initialPassword);
 
   const user = await db.user.create({
@@ -86,7 +85,7 @@ export async function createUser(data: {
   }
 
   revalidatePath('/[locale]/admin/users', 'page');
-  return user;
+  return { ...user, temporaryPassword: generated ? initialPassword : undefined };
 }
 
 export async function bulkImportUsers(
@@ -114,6 +113,7 @@ export async function bulkImportUsers(
 
   let successCount = 0;
   let cohortAssignedCount = 0;
+  const generatedCredentials: { email: string; password: string }[] = [];
 
   for (const item of usersList) {
     if (!item.email || !item.name) continue;
@@ -129,13 +129,13 @@ export async function bulkImportUsers(
   for (const item of usersList) {
     if (!item.email || !item.name) continue;
 
-    const initialPassword = generateDefaultPassword(item.nis || item.nip);
-    const passwordHash = hashPassword(initialPassword);
-
     const targetRole =
       session.user.role !== 'SUPER_ADMIN' && item.role === Role.SUPER_ADMIN
         ? Role.STUDENT
         : item.role || Role.STUDENT;
+
+    const { password: initialPassword, generated } = resolveInitialPassword(targetRole, item.nis || item.nip);
+    const passwordHash = hashPassword(initialPassword);
 
     const existingNow = await db.user.findUnique({ where: { email: item.email.trim().toLowerCase() } });
     if (existingNow && (existingNow.schoolId !== schoolId || existingNow.role === 'SUPER_ADMIN' || existingNow.role !== targetRole)) {
@@ -158,6 +158,9 @@ export async function bulkImportUsers(
       },
     });
     successCount++;
+    if (!existingNow && generated) {
+      generatedCredentials.push({ email: user.email, password: initialPassword });
+    }
 
     // Process cohort / class assignment if provided and user is a student
     const targetCohortName = (item.className || item.cohortName || '').trim();
@@ -198,7 +201,7 @@ export async function bulkImportUsers(
 
   revalidatePath('/[locale]/admin/users', 'page');
   revalidatePath('/[locale]/admin/cohorts', 'page');
-  return { success: true, count: successCount, cohortAssignedCount };
+  return { success: true, count: successCount, cohortAssignedCount, generatedCredentials };
 }
 
 export async function toggleUserActive(userId: string) {
@@ -248,7 +251,7 @@ export async function resetUserPassword(userId: string) {
     throw new Error('Akses ditolak: Pengguna terdaftar di lebih dari satu sekolah, reset kata sandi memerlukan Super Admin.');
   }
 
-  const defaultPwd = generateDefaultPassword(user.nis || user.nip);
+  const { password: defaultPwd, generated } = resolveInitialPassword(user.role, user.nis || user.nip);
   const passwordHash = hashPassword(defaultPwd);
 
   const updated = await db.user.update({
@@ -271,7 +274,7 @@ export async function resetUserPassword(userId: string) {
   });
 
   revalidatePath('/[locale]/admin/users', 'page');
-  return updated;
+  return { ...updated, temporaryPassword: generated ? defaultPwd : undefined };
 }
 
 export async function updateUser(

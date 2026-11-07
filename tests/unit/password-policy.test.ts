@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { validatePassword, generateDefaultPassword } from '@/lib/password-policy';
+import {
+  validatePassword,
+  generateDefaultPassword,
+  generateRandomPassword,
+  resolveInitialPassword,
+} from '@/lib/password-policy';
 
 describe('Password Policy & Default Generation', () => {
   describe('Password Complexity Validation', () => {
@@ -76,6 +81,39 @@ describe('Password Policy & Default Generation', () => {
         const validation = validatePassword(generated);
         expect(validation.isValid).toBe(true);
       }
+    });
+  });
+
+  describe('Initial password resolution', () => {
+    it('generates policy-compliant, non-repeating random passwords', () => {
+      const seen = new Set<string>();
+      for (let i = 0; i < 200; i++) {
+        const pwd = generateRandomPassword();
+        expect(validatePassword(pwd).isValid).toBe(true);
+        expect(pwd).toHaveLength(14);
+        seen.add(pwd);
+      }
+      expect(seen.size).toBe(200);
+    });
+
+    it('never falls back to a static or identifier-derived password for ADMIN and SUPERVISOR', () => {
+      for (const role of ['ADMIN', 'SUPERVISOR', 'SUPER_ADMIN']) {
+        const first = resolveInitialPassword(role, 'NIP123');
+        const second = resolveInitialPassword(role, 'NIP123');
+        expect(first.generated).toBe(true);
+        expect(first.password).not.toBe(second.password);
+        expect(first.password).not.toContain('Lentera');
+      }
+    });
+
+    it('keeps the identifier pattern for students and teachers that have one', () => {
+      expect(resolveInitialPassword('STUDENT', '123456')).toEqual({ password: 'Lentera123456!', generated: false });
+      expect(resolveInitialPassword('TEACHER', 'NIP-9')).toEqual({ password: 'LenteraNIP9!', generated: false });
+    });
+
+    it('uses a random password when a student or teacher has no identifier', () => {
+      expect(resolveInitialPassword('STUDENT', '').generated).toBe(true);
+      expect(resolveInitialPassword('TEACHER', null).password).not.toBe('Lentera2026!');
     });
   });
 });

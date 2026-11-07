@@ -88,4 +88,19 @@ describe('multi-school users and school admins', () => {
     await expect(updateUser('teacher-ab', { ...profile, role: Role.ADMIN })).resolves.toBeDefined();
     await expect(resetUserPassword('teacher-ab')).resolves.toBeDefined();
   });
+
+  it('returns a one-time random password when resetting an admin', async () => {
+    setTarget(['school-a'], Role.ADMIN);
+    const first = await resetUserPassword('teacher-ab');
+    const second = await resetUserPassword('teacher-ab');
+    expect(first.temporaryPassword).toBeTruthy();
+    expect(first.temporaryPassword).not.toBe(second.temporaryPassword);
+    expect(first.temporaryPassword).not.toBe('Lentera2026!');
+  });
+
+  it('returns no temporary password for a teacher with a NIP', async () => {
+    setTarget(['school-a'], Role.TEACHER);
+    const result = await resetUserPassword('teacher-ab');
+    expect(result.temporaryPassword).toBeUndefined();
+  });
 });

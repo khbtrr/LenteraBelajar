@@ -46,7 +46,7 @@ import {
   resetUserPassword,
 } from '@/lib/actions/user';
 import { unlockUserAccount } from '@/lib/actions/auth-lockout';
-import { generateDefaultPassword } from '@/lib/password-policy';
+import { generateDefaultPassword, hasPredictableInitialPassword } from '@/lib/password-policy';
 import { Role } from '@prisma/client';
 import * as XLSX from 'xlsx';
 import { useDialog } from '@/context/DialogContext';
@@ -126,7 +126,7 @@ export function AdminUsersClient({
     e.preventDefault();
     setLoading(true);
     try {
-      const created = await createUser({
+      const { temporaryPassword, ...created } = await createUser({
         name,
         email,
         role,
@@ -142,7 +142,12 @@ export function AdminUsersClient({
       setNis('');
       setNip('');
       setSelectedSchoolIds([]);
-      await showAlert(t('userAddedAlert', { name: created.name }), { type: 'success' });
+      await showAlert(
+        temporaryPassword
+          ? t('userAddedWithPasswordAlert', { name: created.name, password: temporaryPassword })
+          : t('userAddedAlert', { name: created.name }),
+        { type: 'success' }
+      );
     } catch (err: any) {
       console.error(err);
       await showAlert(err?.message || t('userAddFailedAlert'), { type: 'error' });
@@ -371,6 +376,10 @@ export function AdminUsersClient({
           : t('importSuccess', { count: res.count });
       setImportStatus(successMsg);
       await showAlert(successMsg, { type: 'success' });
+      if (res.generatedCredentials.length > 0) {
+        const lines = res.generatedCredentials.map((c) => `${c.email}: ${c.password}`).join('\n');
+        await showAlert(t('importGeneratedPasswords', { credentials: lines }), { type: 'success' });
+      }
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -395,17 +404,23 @@ export function AdminUsersClient({
   };
 
   const handleResetPassword = async (user: UserItem) => {
-    const defaultText = generateDefaultPassword(user.nis || user.nip);
+    const identifier = user.nis || user.nip;
+    const predictable = hasPredictableInitialPassword(user.role, identifier);
     const confirmed = await showConfirm(
-      t('resetConfirmDesc', { name: user.name, defaultText }),
+      predictable
+        ? t('resetConfirmDesc', { name: user.name, defaultText: generateDefaultPassword(identifier) })
+        : t('resetConfirmDescRandom', { name: user.name }),
       { title: t('resetConfirmTitle'), confirmText: t('confirmReset'), cancelText: t('cancelButton') }
     );
     if (!confirmed) {
       return;
     }
     try {
-      await resetUserPassword(user.id);
-      await showAlert(t('resetSuccessAlert', { name: user.name, defaultText }), { type: 'success' });
+      const { temporaryPassword } = await resetUserPassword(user.id);
+      await showAlert(
+        t('resetSuccessAlert', { name: user.name, defaultText: temporaryPassword ?? generateDefaultPassword(identifier) }),
+        { type: 'success' }
+      );
     } catch (err: any) {
       console.error(err);
       await showAlert(err?.message || t('resetFailedAlert'), { type: 'error' });

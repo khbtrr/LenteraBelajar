@@ -52,3 +52,53 @@ export function generateDefaultPassword(identifier?: string | null): string {
   }
   return 'Lentera2026!';
 }
+
+const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const LOWER = 'abcdefghijkmnopqrstuvwxyz';
+const DIGITS = '23456789';
+const SYMBOLS = '!@#$%*?';
+const RANDOM_PASSWORD_LENGTH = 14;
+
+function randomIndex(max: number): number {
+  // Rejection sampling avoids modulo bias.
+  const limit = Math.floor(0x100000000 / max) * max;
+  const buffer = new Uint32Array(1);
+  do {
+    globalThis.crypto.getRandomValues(buffer);
+  } while (buffer[0] >= limit);
+  return buffer[0] % max;
+}
+
+function pick(chars: string): string {
+  return chars[randomIndex(chars.length)];
+}
+
+/** One-time password from a CSPRNG that always satisfies validatePassword. */
+export function generateRandomPassword(): string {
+  const all = UPPER + LOWER + DIGITS + SYMBOLS;
+  const chars = [pick(UPPER), pick(LOWER), pick(DIGITS), pick(SYMBOLS)];
+  while (chars.length < RANDOM_PASSWORD_LENGTH) chars.push(pick(all));
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomIndex(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}
+
+const PREDICTABLE_PASSWORD_ROLES = new Set(['STUDENT', 'TEACHER']);
+
+export function hasPredictableInitialPassword(role: string, identifier?: string | null): boolean {
+  return PREDICTABLE_PASSWORD_ROLES.has(role) && !!identifier && identifier.trim().length > 0;
+}
+
+/** `generated` is true when the password is random and must be shown to the admin once. */
+export function resolveInitialPassword(
+  role: string,
+  identifier?: string | null,
+): { password: string; generated: boolean } {
+  if (hasPredictableInitialPassword(role, identifier)) {
+    return { password: generateDefaultPassword(identifier), generated: false };
+  }
+  return { password: generateRandomPassword(), generated: true };
+}
+
