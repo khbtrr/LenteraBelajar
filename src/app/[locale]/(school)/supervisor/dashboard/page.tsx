@@ -260,9 +260,9 @@ export default async function SupervisorDashboard() {
             ) : (
               <>
                 {/* 4 Status Breakdown Cards */}
-                <div className="grid grid-cols-4 gap-2.5">
-                  <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/50 text-center">
-                    <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="min-w-0 p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/50 text-center">
+                    <div className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase leading-tight">
                       {tSup('present')}
                     </div>
                     <div className="text-xl font-bold text-emerald-900 dark:text-emerald-200 mt-0.5">
@@ -271,8 +271,8 @@ export default async function SupervisorDashboard() {
                     <div className="text-[10px] text-emerald-700 dark:text-emerald-400">{presentPercent}%</div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/50 text-center">
-                    <div className="text-[11px] font-bold text-blue-800 dark:text-blue-300 uppercase">
+                  <div className="min-w-0 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/50 text-center">
+                    <div className="text-[11px] font-bold text-blue-800 dark:text-blue-300 uppercase leading-tight">
                       {tSup('sick')}
                     </div>
                     <div className="text-xl font-bold text-blue-900 dark:text-blue-200 mt-0.5">
@@ -281,8 +281,8 @@ export default async function SupervisorDashboard() {
                     <div className="text-[10px] text-blue-700 dark:text-blue-400">{sickPercent}%</div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/50 text-center">
-                    <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase">
+                  <div className="min-w-0 p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/50 text-center">
+                    <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase leading-tight">
                       {tSup('permission')}
                     </div>
                     <div className="text-xl font-bold text-amber-900 dark:text-amber-200 mt-0.5">
@@ -291,8 +291,8 @@ export default async function SupervisorDashboard() {
                     <div className="text-[10px] text-amber-700 dark:text-amber-400">{permissionPercent}%</div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/50 text-center">
-                    <div className="text-[11px] font-bold text-rose-800 dark:text-rose-300 uppercase">
+                  <div className="min-w-0 p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/50 text-center">
+                    <div className="text-[11px] font-bold text-rose-800 dark:text-rose-300 uppercase leading-tight">
                       {tSup('absent')}
                     </div>
                     <div className="text-xl font-bold text-rose-900 dark:text-rose-200 mt-0.5">
