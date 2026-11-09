@@ -34,6 +34,9 @@ export function FilePreviewer({
   const [rotation, setRotation] = useState(0);
   const [imageError, setImageError] = useState(false);
 
+  const isSafePath = typeof fileUrl === 'string' && fileUrl.startsWith('/') && !fileUrl.startsWith('//');
+  const safeFileUrl = isSafePath ? fileUrl : '';
+
   const ext = (fileName.split('.').pop() || '').toLowerCase();
   const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext);
   const isPdf = ext === 'pdf';
@@ -80,7 +83,7 @@ export function FilePreviewer({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {isImage && (
+          {isImage && isSafePath && (
             <>
               <Button
                 type="button"
@@ -131,38 +134,54 @@ export function FilePreviewer({
             </>
           )}
 
-          <a
-            href={fileUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 px-2 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-            title={t('openNewTab')}
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline text-[11px]">{t('openNewTab')}</span>
-          </a>
+          {isSafePath ? (
+            <>
+              <a
+                href={safeFileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                title={t('openNewTab')}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline text-[11px]">{t('openNewTab')}</span>
+              </a>
 
-          <a
-            href={fileUrl}
-            download={fileName}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-700 text-white hover:bg-slate-600 transition-colors text-[11px]"
-            title={t('download')}
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t('download')}</span>
-          </a>
+              <a
+                href={safeFileUrl}
+                download={fileName}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-700 text-white hover:bg-slate-600 transition-colors text-[11px]"
+                title={t('download')}
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t('download')}</span>
+              </a>
+            </>
+          ) : (
+            <span className="text-[11px] text-amber-400 font-medium px-2 py-1 bg-amber-950/40 border border-amber-800/60 rounded">
+              {t('unsafeUrlNotice')}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Main Preview Area */}
       <div className="flex-1 relative overflow-auto flex items-center justify-center p-2 min-h-[360px] bg-slate-950/60">
-        {isImage ? (
+        {!isSafePath ? (
+          <div className="text-center p-8 max-w-md bg-slate-900/90 border border-amber-800/60 rounded-xl shadow-xl space-y-3">
+            <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
+            <h4 className="text-sm font-semibold text-white break-all">{fileName}</h4>
+            <p className="text-xs text-amber-300 leading-relaxed">
+              {t('unsafeUrlNotice')}
+            </p>
+          </div>
+        ) : isImage ? (
           imageError ? (
             <div className="text-center p-6 text-slate-400 space-y-2">
               <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
               <p className="text-sm">{t('imageError')}</p>
               <a
-                href={fileUrl}
+                href={safeFileUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-blue-400 underline block"
@@ -174,7 +193,7 @@ export function FilePreviewer({
             <div className="overflow-auto max-h-full max-w-full flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={fileUrl}
+                src={safeFileUrl}
                 alt={fileName}
                 onError={() => setImageError(true)}
                 style={{
@@ -187,8 +206,9 @@ export function FilePreviewer({
           )
         ) : isPdf ? (
           <iframe
-            src={`${fileUrl}#toolbar=1&navpanes=0`}
+            src={`${safeFileUrl}#toolbar=1&navpanes=0`}
             title={fileName}
+            sandbox="allow-scripts allow-same-origin"
             className="w-full h-full min-h-[520px] rounded border-0 bg-white"
           />
         ) : (
@@ -217,14 +237,14 @@ export function FilePreviewer({
 
             <div className="flex items-center justify-center gap-3 pt-2">
               <a
-                href={fileUrl}
+                href={safeFileUrl}
                 download={fileName}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FF8928] hover:bg-[#FF8928]/90 text-white text-xs font-semibold shadow-md transition-colors"
               >
                 <Download className="h-4 w-4" /> {t('downloadFile')}
               </a>
               <a
-                href={fileUrl}
+                href={safeFileUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors"

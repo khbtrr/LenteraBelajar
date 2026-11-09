@@ -1661,7 +1661,8 @@
     "downloadFile": "Unduh Berkas",
     "imageError": "Gagal memuat pratinjau gambar.",
     "openImageDirectly": "Buka gambar langsung di tab baru",
-    "unsupportedFormatNotice": "Berkas berformat .{ext} tidak dapat dipratinjau langsung di peramban tanpa aplikasi eksternal. Silakan unduh atau buka berkas untuk memeriksanya."
+    "unsupportedFormatNotice": "Berkas berformat .{ext} tidak dapat dipratinjau langsung di peramban tanpa aplikasi eksternal. Silakan unduh atau buka berkas untuk memeriksanya.",
+    "unsafeUrlNotice": "Tautan berkas eksternal dibatasi untuk alasan keamanan."
   },
   "teacherSubmissions": {
     "title": "Penilaian Tugas: {title}",

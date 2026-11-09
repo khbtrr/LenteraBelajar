@@ -180,8 +180,19 @@ export async function submitAssignment(data: {
 }) {
   const session = await requireAuth();
   if (session.user.role !== 'STUDENT') throw new Error('Akses ditolak: Hanya siswa dapat mengumpulkan tugas');
+
+  if (!data.fileUrl || typeof data.fileUrl !== 'string' || !data.fileUrl.startsWith('/api/files/')) {
+    throw new Error('Akses ditolak: URL berkas harus berupa berkas internal (/api/files/)');
+  }
+  if (!data.fileName || typeof data.fileName !== 'string' || data.fileName.trim().length === 0) {
+    throw new Error('Nama berkas tidak valid');
+  }
+
   await assertItemAccess('ASSIGNMENT', data.assignmentId);
-  await assertFileReferences(data.fileUrl);
+  const referencedAssets = await assertFileReferences(data.fileUrl);
+  if (!referencedAssets || referencedAssets.length === 0) {
+    throw new Error('Akses ditolak: Berkas lampiran tidak ditemukan atau tidak valid');
+  }
 
   const assignment = await db.assignment.findUnique({
     where: { id: data.assignmentId },

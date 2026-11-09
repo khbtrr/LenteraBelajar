@@ -1661,7 +1661,8 @@
     "downloadFile": "Download File",
     "imageError": "Failed to load image preview.",
     "openImageDirectly": "Open image directly in a new tab",
-    "unsupportedFormatNotice": "Files in .{ext} format cannot be previewed directly in browser without external software. Please download or open the file to review it."
+    "unsupportedFormatNotice": "Files in .{ext} format cannot be previewed directly in browser without external software. Please download or open the file to review it.",
+    "unsafeUrlNotice": "External file link is restricted for security reasons."
   },
   "teacherSubmissions": {
     "title": "Assignment Grading: {title}",
