@@ -329,14 +329,25 @@ export async function addStudentToCohort(cohortId: string, userId: string) {
 export async function removeStudentFromCohort(cohortId: string, userId: string) {
   await assertSchoolResource('cohort', cohortId);
 
-  const deleted = await db.cohortMember.delete({
-    where: {
-      cohortId_userId: {
+  const [deleted] = await db.$transaction([
+    db.cohortMember.delete({
+      where: {
+        cohortId_userId: {
+          cohortId,
+          userId,
+        },
+      },
+    }),
+    db.enrollment.updateMany({
+      where: {
         cohortId,
         userId,
       },
-    },
-  });
+      data: {
+        cohortId: null,
+      },
+    }),
+  ]);
 
   revalidatePath('/[locale]/admin/cohorts', 'page');
   return deleted;
@@ -407,12 +418,23 @@ export async function bulkAddStudentsToCohort(cohortId: string, userIds: string[
 export async function bulkRemoveStudentsFromCohort(cohortId: string, userIds: string[]) {
   await assertSchoolResource('cohort', cohortId);
 
-  const result = await db.cohortMember.deleteMany({
-    where: {
-      cohortId,
-      userId: { in: userIds },
-    },
-  });
+  const [result] = await db.$transaction([
+    db.cohortMember.deleteMany({
+      where: {
+        cohortId,
+        userId: { in: userIds },
+      },
+    }),
+    db.enrollment.updateMany({
+      where: {
+        cohortId,
+        userId: { in: userIds },
+      },
+      data: {
+        cohortId: null,
+      },
+    }),
+  ]);
 
   revalidatePath('/[locale]/admin/cohorts', 'page');
   return result;
@@ -490,6 +512,15 @@ export async function promoteCohortStudents(data: {
           userId: { in: data.studentIds },
         },
       });
+      await tx.enrollment.updateMany({
+        where: {
+          cohortId: data.sourceCohortId,
+          userId: { in: data.studentIds },
+        },
+        data: {
+          cohortId: null,
+        },
+      });
     }
   });
 
@@ -527,6 +558,15 @@ export async function graduateCohortStudents(data: {
       where: {
         cohortId: data.cohortId,
         userId: { in: data.studentIds },
+      },
+    });
+    await tx.enrollment.updateMany({
+      where: {
+        cohortId: data.cohortId,
+        userId: { in: data.studentIds },
+      },
+      data: {
+        cohortId: null,
       },
     });
 
@@ -722,6 +762,10 @@ export async function batchPromoteExcel(data: {
       await tx.cohortMember.deleteMany({
         where: { userId: { in: transferOutUserIds }, cohort: { schoolId } },
       });
+      await tx.enrollment.updateMany({
+        where: { userId: { in: transferOutUserIds }, cohort: { schoolId } },
+        data: { cohortId: null },
+      });
       await tx.user.updateMany({
         where: { id: { in: transferOutUserIds }, schoolId },
         data: { isActive: false, sessionVersion: { increment: 1 } },
@@ -823,6 +867,13 @@ export async function batchPromoteExcel(data: {
             userId: { in: promotedUserIds },
           },
         });
+        await tx.enrollment.updateMany({
+          where: {
+            cohortId: { in: data.sourceCohortIds },
+            userId: { in: promotedUserIds },
+          },
+          data: { cohortId: null },
+        });
       } else {
         // Jika rombel asal tidak dispesifikkan secara manual, hapus keanggotaan selain rombel baru
         for (const item of normalPromotions) {
@@ -834,6 +885,14 @@ export async function batchPromoteExcel(data: {
                 cohortId: { not: targetCohortId },
                 cohort: { schoolId },
               },
+            });
+            await tx.enrollment.updateMany({
+              where: {
+                userId: item.userId,
+                cohortId: { not: targetCohortId },
+                cohort: { schoolId },
+              },
+              data: { cohortId: null },
             });
           }
         }

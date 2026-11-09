@@ -60,7 +60,16 @@ export async function assertItemAccess(itemType: AccessItemType, itemId: string,
         db.cohortMember.findFirst({ where: { userId, cohortId: { in: ids } }, select: { id: true } }),
         db.itemAccessOverride.findUnique({ where: { itemType_itemId_userId: { itemType, itemId, userId } }, select: { id: true } }),
       ]);
-      if (!override && !membership && (!enrollment?.cohortId || !ids.includes(enrollment.cohortId))) {
+      const hasActiveCohort = Boolean(
+        membership ||
+          (enrollment?.cohortId &&
+            ids.includes(enrollment.cohortId) &&
+            (await db.cohortMember.findFirst({
+              where: { userId, cohortId: enrollment.cohortId },
+              select: { id: true },
+            })))
+      );
+      if (!override && !hasActiveCohort) {
         throw new Error('Akses ditolak: Konten tidak tersedia untuk rombel Anda');
       }
     }
