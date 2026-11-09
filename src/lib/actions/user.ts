@@ -48,6 +48,10 @@ export async function createUser(data: {
     throw new Error('Akses ditolak: Hanya Super Admin dapat menetapkan sekolah');
   }
 
+  if (data.name && /[\r\n\t]/.test(data.name)) {
+    throw new Error('Nama pengguna tidak boleh mengandung karakter baris baru atau tab');
+  }
+
   // Cegah eskalasi wewenang: Admin sekolah dilarang membuat Super Admin
   if (session.user.role !== 'SUPER_ADMIN' && data.role === Role.SUPER_ADMIN) {
     throw new Error('Akses ditolak: Admin sekolah tidak dapat membuat akun dengan peran Super Admin.');
@@ -117,6 +121,9 @@ export async function bulkImportUsers(
 
   for (const item of usersList) {
     if (!item.email || !item.name) continue;
+    if (/[\r\n\t]/.test(item.name)) {
+      item.name = item.name.replace(/[\r\n\t]+/g, ' ').trim();
+    }
     const existingUser = await db.user.findUnique({ where: { email: item.email.trim().toLowerCase() } });
     if (existingUser && (existingUser.role === 'SUPER_ADMIN' || existingUser.schoolId !== schoolId)) {
       throw new Error(`Gagal mengimpor: Email ${item.email} sudah terdaftar`);
@@ -298,6 +305,10 @@ export async function updateUser(
     include: { assignedSchools: true },
   });
   if (!user) throw new Error('Pengguna tidak ditemukan');
+
+  if (data.name && /[\r\n\t]/.test(data.name)) {
+    throw new Error('Nama pengguna tidak boleh mengandung karakter baris baru atau tab');
+  }
 
   if (session.user.role !== 'SUPER_ADMIN' && data.assignedSchoolIds !== undefined) {
     const before = user.assignedSchools.map((assignment) => assignment.schoolId).sort();

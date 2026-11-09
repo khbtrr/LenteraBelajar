@@ -183,6 +183,9 @@ export async function updateUserProfile(data: {
     if (trimmed.length > 100) {
       throw new Error('Nama lengkap maksimal 100 karakter');
     }
+    if (/[\r\n\t]/.test(trimmed)) {
+      throw new Error('Nama lengkap tidak boleh mengandung karakter baris baru atau tab');
+    }
     updateData.name = trimmed;
   }
 

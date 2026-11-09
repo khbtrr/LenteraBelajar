@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import type { CohortLegerReportData } from '@/lib/actions/leger';
 import * as XLSX from 'xlsx';
+import { sanitizeSpreadsheetMatrix } from '@/lib/export';
 import { useTranslations, useLocale } from 'next-intl';
 
 interface Props {
@@ -217,7 +218,7 @@ export function AdminLegerClient({
     ];
     rows.push(lowestRow);
 
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const worksheet = XLSX.utils.aoa_to_sheet(sanitizeSpreadsheetMatrix(rows));
 
     // Styling kolom width
     worksheet['!cols'] = [

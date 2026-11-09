@@ -69,6 +69,7 @@ import {
 } from '@/lib/actions/cohort';
 import { useDialog } from '@/context/DialogContext';
 import * as XLSX from 'xlsx';
+import { sanitizeSpreadsheetData } from '@/lib/export';
 
 interface Student {
   id: string;
@@ -455,7 +456,7 @@ export function CohortsClient({
       [t('sheetGroupName')]: cohort.name,
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const worksheet = XLSX.utils.json_to_sheet(sanitizeSpreadsheetData(rows));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, t('sheetStudentList'));
 
@@ -670,7 +671,7 @@ export function CohortsClient({
       'Kelas Baru (Wajib Diisi)': '',
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const worksheet = XLSX.utils.json_to_sheet(sanitizeSpreadsheetData(rows));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Pemetaan Siswa');
 
