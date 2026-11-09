@@ -3,6 +3,8 @@
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-utils';
 import { revalidatePath } from 'next/cache';
+import { recordAuditLog } from '@/lib/audit-log';
+import { canStaffModerateConversation } from '@/lib/user-scope';
 
 export interface ContactableUser {
   id: string;
@@ -735,7 +737,7 @@ export async function pollNewMessages(
       participants: {
         include: {
           user: {
-            select: { schoolId: true },
+            select: { schoolId: true, role: true },
           },
         },
       },
@@ -747,22 +749,18 @@ export async function pollNewMessages(
   }
 
   const isParticipant = conv.participants.some((p) => p.userId === currentUserId);
-  const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
-  const isAdminOrSupervisor = ['ADMIN', 'SUPERVISOR'].includes(session.user.role);
 
   if (!isParticipant) {
-    if (isSuperAdmin) {
-      // Allowed
-    } else if (isAdminOrSupervisor && session.user.schoolId) {
-      const hasSchoolParticipant = conv.participants.some(
-        (p) => p.user.schoolId === session.user.schoolId
-      );
-      if (!hasSchoolParticipant) {
-        throw new Error('Anda tidak memiliki akses ke percakapan ini');
-      }
-    } else {
+    if (!canStaffModerateConversation(session.user, conv)) {
       throw new Error('Anda tidak memiliki akses ke percakapan ini');
     }
+
+    await recordAuditLog({
+      action: 'MESSAGE_MONITORED',
+      userId: session.user.id,
+      userEmail: session.user.email,
+      details: `Staf ${session.user.email} (${session.user.role}) memantau pesan obrolan ID ${conversationId} via polling`,
+    });
   }
 
   const rawMessages = await db.directMessage.findMany({

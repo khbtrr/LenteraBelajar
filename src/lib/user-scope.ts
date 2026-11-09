@@ -29,3 +29,32 @@ export function isUserInSchool(user: SchoolMembership, schoolId: string): boolea
   return getUserSchoolIds(user).includes(schoolId);
 }
 
+export function canStaffModerateConversation(
+  staff: { role: string; schoolId?: string | null },
+  conversation: {
+    participants: {
+      user: { id?: string; role: string; schoolId?: string | null };
+    }[];
+  }
+): boolean {
+  if (staff.role === 'SUPER_ADMIN') return true;
+  if (!['ADMIN', 'SUPERVISOR'].includes(staff.role)) return false;
+  if (!staff.schoolId) return false;
+
+  const schoolId = staff.schoolId;
+  const participants = conversation.participants.map((p) => p.user);
+
+  const hasSchoolParticipant = participants.some(
+    (u) => u.role !== 'SUPER_ADMIN' && u.schoolId === schoolId
+  );
+  if (!hasSchoolParticipant) return false;
+
+  const hasForeignParticipant = participants.some(
+    (u) => u.role !== 'SUPER_ADMIN' && u.schoolId !== schoolId
+  );
+  if (hasForeignParticipant) return false;
+
+  return true;
+}
+
+

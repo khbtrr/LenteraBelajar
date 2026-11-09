@@ -3,6 +3,8 @@
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth-utils';
 import { recordAuditLog } from '@/lib/audit-log';
+import { canStaffModerateConversation } from '@/lib/user-scope';
+import { Role, Prisma } from '@prisma/client';
 
 export interface AdminConversationItem {
   id: string;
@@ -42,16 +44,33 @@ export async function getSchoolConversations(
   const role = session.user.role;
   const schoolId = session.user.schoolId;
 
-  // Filter conversations where at least one participant belongs to school
-  const schoolFilter =
+  // Non-superadmin staff can only monitor conversations where all participants belong to their school
+  const schoolFilter: Prisma.ConversationWhereInput =
     role === 'SUPER_ADMIN' || !schoolId
       ? {}
       : {
-          participants: {
-            some: {
-              user: { schoolId },
+          AND: [
+            {
+              participants: {
+                some: {
+                  user: {
+                    role: { not: Role.SUPER_ADMIN },
+                    schoolId,
+                  },
+                },
+              },
             },
-          },
+            {
+              participants: {
+                none: {
+                  user: {
+                    role: { not: Role.SUPER_ADMIN },
+                    schoolId: { not: schoolId },
+                  },
+                },
+              },
+            },
+          ],
         };
 
   // Search filter by participant name or email
@@ -203,12 +222,8 @@ export async function getConversationMessagesAdmin(
     throw new Error('Obrolan tidak ditemukan');
   }
 
-  // Check school access
-  if (role !== 'SUPER_ADMIN' && schoolId) {
-    const hasAccess = conv.participants.some((p) => p.user.schoolId === schoolId);
-    if (!hasAccess) {
-      throw new Error('Anda tidak memiliki akses ke sekolah ini');
-    }
+  if (!canStaffModerateConversation(session.user, conv)) {
+    throw new Error('Anda tidak memiliki akses ke percakapan ini');
   }
 
   await recordAuditLog({
