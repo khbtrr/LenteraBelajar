@@ -226,32 +226,35 @@ export async function submitAssignment(data: {
     throw new Error('Batas waktu pengumpulan tugas telah berakhir.');
   }
 
-  const existing = await db.assignmentSubmission.findFirst({
-    where: {
-      assignmentId: data.assignmentId,
-      userId: session.user.id,
-    },
-  });
+  const { submission, isInitialSubmission } = await db.$transaction(async (tx) => {
+    const existing = await tx.assignmentSubmission.findUnique({
+      where: {
+        assignmentId_userId: {
+          assignmentId: data.assignmentId,
+          userId: session.user.id,
+        },
+      },
+    });
 
-  // Prevent overwriting submission that has already been graded
-  if (existing && (existing.score !== null || existing.gradedAt !== null)) {
-    throw new Error('Tugas yang sudah dinilai tidak dapat diubah atau dikumpulkan ulang.');
-  }
+    // Prevent overwriting submission that has already been graded
+    if (existing && (existing.score !== null || existing.gradedAt !== null)) {
+      throw new Error('Tugas yang sudah dinilai tidak dapat diubah atau dikumpulkan ulang.');
+    }
 
-  let submission;
-  if (existing) {
-    submission = await db.assignmentSubmission.update({
-      where: { id: existing.id },
-      data: {
+    const sub = await tx.assignmentSubmission.upsert({
+      where: {
+        assignmentId_userId: {
+          assignmentId: data.assignmentId,
+          userId: session.user.id,
+        },
+      },
+      update: {
         fileUrl: data.fileUrl,
         fileName: data.fileName,
         fileSize: data.fileSize,
         submittedAt: new Date(),
       },
-    });
-  } else {
-    submission = await db.assignmentSubmission.create({
-      data: {
+      create: {
         assignmentId: data.assignmentId,
         userId: session.user.id,
         fileUrl: data.fileUrl,
@@ -260,7 +263,9 @@ export async function submitAssignment(data: {
         submittedAt: new Date(),
       },
     });
-  }
+
+    return { submission: sub, isInitialSubmission: !existing };
+  });
 
   await bindFileReferences('SUBMISSION', submission.id, data.fileUrl);
   // Notify course teacher
@@ -277,7 +282,7 @@ export async function submitAssignment(data: {
     }
 
     // Gamification XP Award (only on initial submission)
-    if (!existing && assignment) {
+    if (isInitialSubmission && assignment) {
       const isOntime = !assignment.deadline || new Date() <= new Date(assignment.deadline);
       const xpAmount = isOntime ? 40 : 20;
       await awardXp(
@@ -286,7 +291,7 @@ export async function submitAssignment(data: {
         `Mengumpulkan tugas: ${assignment.title} (${isOntime ? 'Tepat Waktu' : 'Terlambat'})`,
         'ASSIGNMENT',
         assignment.module.course.id,
-        `ASSIGNMENT:${submission.id}`
+        `ASSIGNMENT:${session.user.id}:${data.assignmentId}`
       );
     }
   } catch (err) {

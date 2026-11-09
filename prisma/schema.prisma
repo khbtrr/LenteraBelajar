@@ -461,6 +461,7 @@ model AssignmentSubmission {
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   user       User       @relation(fields: [userId], references: [id])
 
+  @@unique([assignmentId, userId])
   @@index([assignmentId])
   @@index([userId])
 }
