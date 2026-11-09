@@ -3,21 +3,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "${APP_BIND_ADDRESS:-127.0.0.1}:3000:3000"
+      target: runner
+    expose:
+      - "3000"
     environment:
-      - TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-1}
-      - TRUSTED_CLIENT_IP_HEADER=${TRUSTED_CLIENT_IP_HEADER:-}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-lenterabelajar}?schema=public
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET must be set}
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
-      - AUTH_TRUST_HOST=${AUTH_TRUST_HOST:-true}
-      - AUTH_SECRET=${AUTH_SECRET:-${NEXTAUTH_SECRET:?AUTH_SECRET must be set}}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      - DB_POOL_MAX=${DB_POOL_MAX:-40}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - AUTH_TRUST_HOST=true
+      - AUTH_SECRET=${AUTH_SECRET}
+      - CBT_WORKER_SECRET=${CBT_WORKER_SECRET}
       - UPLOAD_DIR=/app/uploads
       - MAX_FILE_SIZE_MB=50
-      - NEXT_PUBLIC_APP_NAME=LenteraBelajar
+      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-LenteraBelajar}
     volumes:
-      - uploads:/app/uploads
+      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -26,12 +27,32 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2048M
-        reservations:
-          cpus: '0.25'
-          memory: 512M
-    restart: unless-stopped
+          cpus: '3.0'
+          memory: 3072M
+    restart: always
+
+  nginx-proxy:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-internal.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    restart: always
+
+  cbt-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    command: ["node", "scripts/cbt-worker.cjs"]
+    environment:
+      - CBT_WORKER_SECRET=${CBT_WORKER_SECRET}
+      - INTERNAL_APP_URL=http://nginx-proxy:80
+    depends_on:
+      - nginx-proxy
+    restart: always
 
   migrate:
     build:
@@ -39,40 +60,48 @@ services:
       dockerfile: Dockerfile
       target: migrator
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-lenterabelajar}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
     depends_on:
       db:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1024M
     restart: "no"
 
   db:
-    image: postgres:16
+    image: postgres:16-alpine
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=400"
+      - "-c"
+      - "shared_buffers=4096MB"
+      - "-c"
+      - "effective_cache_size=12288MB"
+      - "-c"
+      - "work_mem=32MB"
+      - "-c"
+      - "maintenance_work_mem=512MB"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
-      - POSTGRES_DB=${POSTGRES_DB:-lenterabelajar}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2048M
-        reservations:
-          cpus: '0.25'
-          memory: 512M
-    restart: unless-stopped
+          cpus: '4.0'
+          memory: 6144M
+    restart: always
 
 volumes:
   pgdata:
-  uploads:
+  uploads_data:
