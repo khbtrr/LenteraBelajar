@@ -70,6 +70,8 @@ export default async function AdminLayout({
       title={tPortal('adminTitle')}
       userName={session.user.name}
       userRole={isSuperAdmin ? tRoles('SUPER_ADMIN') : tRoles('ADMIN')}
+      role={session.user.role}
+      tourCompleted={session.user.tourCompleted}
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >

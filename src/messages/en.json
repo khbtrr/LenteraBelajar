@@ -2802,5 +2802,37 @@
     "closeBtn": "Close",
     "noItemsInModule": "No materials, quizzes, or assignments in this module yet.",
     "selectCohortsLabel": "Check Allowed Cohorts:"
+  },
+  "tour": {
+    "restartTour": "Replay Tour",
+    "stepBadge": "Step {current} of {total}",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "close": "Close Tour",
+    "ariaTourDialog": "LenteraBelajar New User Onboarding Tour",
+    "steps": {
+      "sidebarTitle": "Navigation Menu",
+      "sidebarDesc": "Access all learning menus, schedules, and primary school activities here.",
+      "schoolSwitcherTitle": "School Identity",
+      "schoolSwitcherDesc": "View active school details or switch institutions if you are assigned to multiple schools.",
+      "headerControlsTitle": "Settings & Appearance",
+      "headerControlsDesc": "Change interface language and toggle between light or dark mode for viewing comfort.",
+      "notificationsTitle": "Notification Center",
+      "notificationsDesc": "Receive timely updates on assignments, quizzes, and official school announcements.",
+      "userProfileTitle": "Account Menu",
+      "userProfileDesc": "Manage your profile or replay this guided tour whenever you need a refresher.",
+      "studentFocusTitle": "Learning Progress & Gamification",
+      "studentFocusDesc": "Track your level, daily learning streaks, enrolled courses, and upcoming deadlines in one place.",
+      "teacherFocusTitle": "Course & Class Management",
+      "teacherFocusDesc": "Manage your active courses, create lesson materials, and review student progress efficiently.",
+      "adminFocusTitle": "School Operations & Data",
+      "adminFocusDesc": "Monitor user summaries, active academic years, cohort groups, and official announcements.",
+      "supervisorFocusTitle": "Academic Quality Monitoring",
+      "supervisorFocusDesc": "Track student attendance rates, teacher engagement, and academic evaluation reports transparently.",
+      "platformFocusTitle": "Multi-Tenant Platform Control",
+      "platformFocusDesc": "Manage school tenants, institutional licenses, and global system configurations centrally."
+    }
   }
 }

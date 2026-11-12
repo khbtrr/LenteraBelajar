@@ -126,6 +126,8 @@ export default async function ProfileLayout({
       userName={session.user.name}
       userRole={userRole}
       userAvatar={user?.avatar}
+      role={session.user.role}
+      tourCompleted={session.user.tourCompleted}
       schoolName={role === 'SUPER_ADMIN' ? null : school?.name}
       schoolLogo={role === 'SUPER_ADMIN' ? null : school?.logo}
     >

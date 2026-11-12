@@ -54,6 +54,7 @@ model User {
   avatar           String?
   isActive         Boolean  @default(true)
   mustChangePassword Boolean @default(false)
+  tourCompletedAt    DateTime?
   sessionVersion     Int     @default(0)
   locale           String   @default("id")
   schoolId         String?

@@ -42,6 +42,8 @@ export default async function StudentLayout({
       title={tPortal('studentTitle')}
       userName={session.user.name}
       userRole={tRoles('STUDENT')}
+      role={session.user.role}
+      tourCompleted={session.user.tourCompleted}
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >

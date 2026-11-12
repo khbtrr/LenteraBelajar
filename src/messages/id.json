@@ -2802,5 +2802,37 @@
     "closeBtn": "Tutup",
     "noItemsInModule": "Belum ada materi, kuis, atau tugas di bab ini.",
     "selectCohortsLabel": "Centang Rombel yang Diizinkan:"
+  },
+  "tour": {
+    "restartTour": "Ulangi Tur",
+    "stepBadge": "Langkah {current} dari {total}",
+    "skip": "Lewati",
+    "back": "Kembali",
+    "next": "Lanjut",
+    "finish": "Selesai",
+    "close": "Tutup Tur",
+    "ariaTourDialog": "Panduan Pengguna Baru LenteraBelajar",
+    "steps": {
+      "sidebarTitle": "Menu Navigasi",
+      "sidebarDesc": "Akses seluruh menu pembelajaran, jadwal, dan aktivitas utama sekolah Anda di sini.",
+      "schoolSwitcherTitle": "Identitas Sekolah",
+      "schoolSwitcherDesc": "Lihat informasi institusi aktif Anda atau beralih sekolah jika Anda memiliki penugasan di beberapa sekolah.",
+      "headerControlsTitle": "Pengaturan & Tampilan",
+      "headerControlsDesc": "Ubah bahasa antarmuka dan sesuaikan kenyamanan mata dengan mode terang atau gelap.",
+      "notificationsTitle": "Pusat Notifikasi",
+      "notificationsDesc": "Dapatkan pemberitahuan tepat waktu terkait tugas, kuis, dan pengumuman sekolah.",
+      "userProfileTitle": "Menu Akun",
+      "userProfileDesc": "Kelola profil pribadi atau jalankan kembali tur panduan ini kapan pun Anda butuhkan.",
+      "studentFocusTitle": "Progres Belajar & Gamifikasi",
+      "studentFocusDesc": "Pantau level, streak belajar harian, serta kursus dan tugas terdekat dalam satu tempat.",
+      "teacherFocusTitle": "Pengelolaan Kelas & Kursus",
+      "teacherFocusDesc": "Pantau kursus aktif, kelola materi ajar, dan tinjau kemajuan belajar siswa dengan praktis.",
+      "adminFocusTitle": "Operasional & Data Sekolah",
+      "adminFocusDesc": "Pantau ringkasan pengguna, tahun ajaran aktif, rombel kohort, dan pengumuman resmi sekolah.",
+      "supervisorFocusTitle": "Pemantauan Kualitas Pembelajaran",
+      "supervisorFocusDesc": "Pantau kehadiran siswa, keaktifan guru, dan rekapitulasi penilaian sekolah secara transparan.",
+      "platformFocusTitle": "Kendali Platform Multi-Tenant",
+      "platformFocusDesc": "Kelola seluruh sekolah, lisensi institusi, dan konfigurasi sistem LenteraBelajar secara terpusat."
+    }
   }
 }

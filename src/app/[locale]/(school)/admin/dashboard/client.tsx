@@ -216,7 +216,7 @@ export function AdminDashboardClient({ initialData, adminName }: AdminDashboardC
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+      <div data-tour="role-dashboard-focus" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         {/* Metric 1: Total Pengguna */}
         <Card className="hover:shadow-md transition-shadow border-gray-200 dark:border-gray-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">

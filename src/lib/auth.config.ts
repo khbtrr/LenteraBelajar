@@ -12,6 +12,7 @@ export const authConfig: NextAuthConfig = {
         token.mustChangePassword = (user as { mustChangePassword: boolean }).mustChangePassword;
         token.locale = (user as { locale: string }).locale;
         token.sessionVersion = (user as { sessionVersion: number }).sessionVersion;
+        token.tourCompleted = Boolean((user as { tourCompleted?: boolean }).tourCompleted);
       }
       return token;
     },
@@ -23,6 +24,7 @@ export const authConfig: NextAuthConfig = {
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
         session.user.locale = (token.locale as string) || 'id';
         session.user.sessionVersion = token.sessionVersion as number;
+        session.user.tourCompleted = Boolean(token.tourCompleted);
       }
       return session;
     },

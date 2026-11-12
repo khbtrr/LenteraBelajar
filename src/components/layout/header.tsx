@@ -1,7 +1,8 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
-import { LogOut, Menu, X, User } from 'lucide-react';
+import { LogOut, Menu, X, User, Compass } from 'lucide-react';
+import { useTour } from '@/components/tour/tour-context';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -41,6 +42,7 @@ export function Header({
   const t = useTranslations();
   const locale = useLocale();
   const { isMobileOpen, toggleMobileSidebar, toggleSidebar } = useSidebar();
+  const { startTour } = useTour();
 
   const initials = (userName || 'User')
     .split(' ')
@@ -85,19 +87,23 @@ export function Header({
         </Link>
 
         {/* Multi-School Switcher */}
-        <SchoolSwitcher />
+        <div data-tour="school-switcher">
+          <SchoolSwitcher />
+        </div>
       </div>
 
       {/* Right side: Tools, Switcher, Theme, Notifications & User */}
       <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-        {/* Language Switcher */}
-        <LanguageSwitcher />
-
-        {/* Dark Mode Toggle */}
-        <ThemeToggleButton />
+        {/* Language Switcher & Dark Mode Toggle */}
+        <div data-tour="header-controls" className="flex items-center gap-1">
+          <LanguageSwitcher />
+          <ThemeToggleButton />
+        </div>
 
         {/* Notification Dropdown */}
-        <NotificationDropdown />
+        <div data-tour="notifications">
+          <NotificationDropdown />
+        </div>
 
         {/* Gamification Streak & Level Chip (Students) */}
         <div className="hidden sm:block"><GamificationChip userRole={userRole} /></div>
@@ -105,61 +111,70 @@ export function Header({
         <div className="h-6 w-[1px] bg-gray-200 dark:bg-gray-800 hidden sm:block mx-1" />
 
         {/* User Profile Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              aria-label={`${t('sidebar.profile')}: ${userName}`}
-              className="flex items-center gap-3 px-2 py-1.5 h-auto rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        <div data-tour="user-profile">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                aria-label={`${t('sidebar.profile')}: ${userName}`}
+                className="flex items-center gap-3 px-2 py-1.5 h-auto rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <Avatar className="h-9 w-9 border border-gray-200 dark:border-gray-700 shadow-xs">
+                  {userAvatar && <AvatarImage src={userAvatar} alt={userName} />}
+                  <AvatarFallback className="bg-brand-500 text-white font-semibold text-xs">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden md:flex flex-col items-start leading-tight">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {userName}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {userRole}
+                  </span>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-56 p-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-theme-lg"
             >
-              <Avatar className="h-9 w-9 border border-gray-200 dark:border-gray-700 shadow-xs">
-                {userAvatar && <AvatarImage src={userAvatar} alt={userName} />}
-                <AvatarFallback className="bg-brand-500 text-white font-semibold text-xs">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="hidden md:flex flex-col items-start leading-tight">
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <DropdownMenuLabel className="px-3 py-2">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                   {userName}
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-normal">
                   {userRole}
-                </span>
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="w-56 p-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-theme-lg"
-          >
-            <DropdownMenuLabel className="px-3 py-2">
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                {userName}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-normal">
-                {userRole}
-              </p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-gray-800" />
-            <DropdownMenuItem asChild>
-              <Link
-                href="/profile"
+                </p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-gray-800" />
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/profile"
+                  className="cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <User className="h-4 w-4 text-brand-500" />
+                  <span>{t('sidebar.profile')}</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={startTour}
                 className="cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <User className="h-4 w-4 text-brand-500" />
-                <span>{t('sidebar.profile')}</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-gray-800" />
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              {t('auth.logout')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <Compass className="h-4 w-4 text-brand-500" />
+                <span>{t('tour.restartTour')}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1 border-gray-100 dark:border-gray-800" />
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                {t('auth.logout')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );

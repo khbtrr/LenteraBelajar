@@ -43,6 +43,8 @@ export default async function SupervisorLayout({
       title={tPortal('supervisorTitle')}
       userName={session.user.name}
       userRole={tRoles('SUPERVISOR')}
+      role={session.user.role}
+      tourCompleted={session.user.tourCompleted}
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >

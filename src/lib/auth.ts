@@ -12,6 +12,7 @@ declare module 'next-auth' {
     mustChangePassword: boolean;
     locale: string;
     sessionVersion: number;
+    tourCompleted?: boolean;
   }
   interface Session {
     user: {
@@ -23,6 +24,7 @@ declare module 'next-auth' {
       mustChangePassword: boolean;
       locale: string;
       sessionVersion: number;
+      tourCompleted?: boolean;
     };
   }
 }
@@ -43,10 +45,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!token || args.user) return token;
       if (typeof token.sub !== 'string') return null;
       const account = await db.user.findUnique({ where: { id: token.sub }, select: {
-        isActive: true, sessionVersion: true, role: true, schoolId: true, mustChangePassword: true, locale: true,
+        isActive: true, sessionVersion: true, role: true, schoolId: true, mustChangePassword: true, locale: true, tourCompletedAt: true,
       } });
       if (!account?.isActive || account.sessionVersion !== token.sessionVersion) return null;
-      return { ...token, role: account.role, schoolId: account.schoolId, mustChangePassword: account.mustChangePassword, locale: account.locale };
+      return {
+        ...token,
+        role: account.role,
+        schoolId: account.schoolId,
+        mustChangePassword: account.mustChangePassword,
+        locale: account.locale,
+        tourCompleted: Boolean(account.tourCompletedAt),
+      };
     },
   },
   providers: [
@@ -181,6 +190,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           mustChangePassword: user.mustChangePassword,
           locale: user.locale,
           sessionVersion: user.sessionVersion,
+          tourCompleted: Boolean(user.tourCompletedAt),
         };
       },
     }),

@@ -22,7 +22,7 @@ export async function getServerSession(options: { allowPasswordChange?: boolean 
     where: { id: session.user.id },
     select: {
       id: true, name: true, email: true, role: true, schoolId: true, isActive: true,
-      mustChangePassword: true, sessionVersion: true, locale: true,
+      mustChangePassword: true, sessionVersion: true, locale: true, tourCompletedAt: true,
       assignedSchools: { select: { schoolId: true } },
     },
   });
@@ -68,6 +68,7 @@ export async function getServerSession(options: { allowPasswordChange?: boolean 
     ...session.user, id: account.id, name: account.name, email: account.email,
     role: account.role, schoolId, homeSchoolId: account.schoolId, assignedSchoolIds,
     mustChangePassword: account.mustChangePassword, sessionVersion: account.sessionVersion, locale: account.locale,
+    tourCompleted: Boolean(account.tourCompletedAt),
   } };
 }
 

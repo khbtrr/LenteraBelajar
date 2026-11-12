@@ -32,7 +32,7 @@ export default async function PlatformDashboard() {
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="role-dashboard-focus" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Schools */}
         <Card className="border-l-4 border-l-[#002446] shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">

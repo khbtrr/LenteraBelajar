@@ -78,7 +78,7 @@ export default async function SupervisorDashboard() {
       </div>
 
       {/* 4 Metrik Kartu Utama */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+      <div data-tour="role-dashboard-focus" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         <Card className="border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">

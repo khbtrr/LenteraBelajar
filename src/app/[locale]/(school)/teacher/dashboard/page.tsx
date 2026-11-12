@@ -75,7 +75,7 @@ export default async function TeacherDashboard() {
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div data-tour="role-dashboard-focus" className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-white border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold text-gray-500 uppercase tracking-wider">

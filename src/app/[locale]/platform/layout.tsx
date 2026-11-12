@@ -29,6 +29,8 @@ export default async function PlatformLayout({
       title="Platform Admin"
       userName={session.user.name}
       userRole="Super Admin"
+      role={session.user.role}
+      tourCompleted={session.user.tourCompleted}
     >
       {children}
     </AppLayout>

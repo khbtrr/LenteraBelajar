@@ -85,7 +85,7 @@ export default async function StudentDashboard() {
 
       {/* Gamification Progress Widget */}
       {gamificationProfile && (
-        <Card className="border border-amber-200/80 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xs overflow-hidden">
+        <Card data-tour="role-dashboard-focus" className="border border-amber-200/80 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xs overflow-hidden">
           <CardContent className="p-5">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
               {/* Level & Title */}

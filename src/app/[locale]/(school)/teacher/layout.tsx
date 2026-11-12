@@ -114,6 +114,8 @@ export default async function TeacherLayout({
       title={portalTitle}
       userName={session.user.name}
       userRole={tRoles(session.user.role)}
+      role={session.user.role}
+      tourCompleted={session.user.tourCompleted}
       schoolName={school?.name}
       schoolLogo={school?.logo}
     >

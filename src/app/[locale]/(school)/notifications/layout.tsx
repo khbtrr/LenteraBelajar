@@ -123,6 +123,8 @@ export default async function NotificationsLayout({
       title={title}
       userName={session.user.name}
       userRole={userRole}
+      role={session.user.role}
+      tourCompleted={session.user.tourCompleted}
       schoolName={role === 'SUPER_ADMIN' ? null : school?.name}
       schoolLogo={role === 'SUPER_ADMIN' ? null : school?.logo}
     >
