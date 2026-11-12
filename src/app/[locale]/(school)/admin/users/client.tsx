@@ -376,6 +376,20 @@ export function AdminUsersClient({
           : t('importSuccess', { count: res.count });
       setImportStatus(successMsg);
       await showAlert(successMsg, { type: 'success' });
+      if (res.createdCredentials.length > 0) {
+        const sheet = XLSX.utils.json_to_sheet(
+          res.createdCredentials.map((c) => ({
+            Nama: c.name,
+            Peran: c.role,
+            'Username (Email)': c.email,
+            Password: c.password,
+          }))
+        );
+        sheet['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 34 }, { wch: 30 }];
+        const book = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(book, sheet, 'Akun Baru');
+        XLSX.writeFile(book, `akun-baru-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      }
       if (res.generatedCredentials.length > 0) {
         const lines = res.generatedCredentials.map((c) => `${c.email}: ${c.password}`).join('\n');
         await showAlert(t('importGeneratedPasswords', { credentials: lines }), { type: 'success' });

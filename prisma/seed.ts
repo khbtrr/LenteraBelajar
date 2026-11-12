@@ -15,7 +15,13 @@ async function main() {
   const superAdminEmail = 'superadmin@lenterabelajar.com';
   const superAdmin = await prisma.user.upsert({
     where: { email: superAdminEmail },
-    update: {},
+    update: {
+      passwordHash: hashSync('SuperAdmin123!', 10),
+      isActive: true,
+      mustChangePassword: false,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    },
     create: {
       email: superAdminEmail,
       passwordHash: hashSync('SuperAdmin123!', 10),
@@ -30,7 +36,11 @@ async function main() {
   // 2. Demo School (Tenant)
   const school = await prisma.school.upsert({
     where: { code: 'SMALH' },
-    update: {},
+    update: {
+      name: 'SMA Lentera Harapan',
+      address: 'Jl. Pendidikan No. 10, Jakarta',
+      isActive: true,
+    },
     create: {
       name: 'SMA Lentera Harapan',
       code: 'SMALH',
@@ -43,7 +53,13 @@ async function main() {
   // 3. Admin Sekolah
   const admin = await prisma.user.upsert({
     where: { email: 'admin@sekolah.sch.id' },
-    update: {},
+    update: {
+      passwordHash: hashSync('Admin123!', 10),
+      isActive: true,
+      mustChangePassword: false,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    },
     create: {
       email: 'admin@sekolah.sch.id',
       passwordHash: hashSync('Admin123!', 10),
@@ -58,7 +74,13 @@ async function main() {
   // 4. Guru Pengampu
   const teacher = await prisma.user.upsert({
     where: { email: 'guru@sekolah.sch.id' },
-    update: {},
+    update: {
+      passwordHash: hashSync('Guru123!', 10),
+      isActive: true,
+      mustChangePassword: false,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    },
     create: {
       email: 'guru@sekolah.sch.id',
       passwordHash: hashSync('Guru123!', 10),
@@ -74,7 +96,13 @@ async function main() {
   // 5. Kepala Sekolah / Supervisor
   const supervisor = await prisma.user.upsert({
     where: { email: 'kepsek@sekolah.sch.id' },
-    update: {},
+    update: {
+      passwordHash: hashSync('Kepsek123!', 10),
+      isActive: true,
+      mustChangePassword: false,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    },
     create: {
       email: 'kepsek@sekolah.sch.id',
       passwordHash: hashSync('Kepsek123!', 10),
@@ -90,7 +118,12 @@ async function main() {
   // 6. Siswa (Password awal = NIS 20261001)
   const student = await prisma.user.upsert({
     where: { email: 'siswa@sekolah.sch.id' },
-    update: {},
+    update: {
+      passwordHash: hashSync('20261001', 10),
+      isActive: true,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    },
     create: {
       email: 'siswa@sekolah.sch.id',
       passwordHash: hashSync('20261001', 10), // Password default adalah NIS

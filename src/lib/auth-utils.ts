@@ -52,7 +52,10 @@ export async function getServerSession(options: { allowPasswordChange?: boolean 
   const allowed = [account.schoolId, ...assignedSchoolIds].filter((id): id is string => Boolean(id));
   let schoolId: string | null = account.schoolId ?? assignedSchoolIds[0] ?? null;
   if (requestedSchool && (account.role === 'SUPER_ADMIN' || allowed.includes(requestedSchool))) {
-    schoolId = requestedSchool;
+    const requestedValid = await db.school.findUnique({ where: { id: requestedSchool, isActive: true }, select: { id: true } });
+    if (requestedValid) {
+      schoolId = requestedSchool;
+    }
   }
   if (!schoolId && account.role === 'SUPER_ADMIN') {
     schoolId = (await getIndukSchool({ id: true }))?.id ?? null;

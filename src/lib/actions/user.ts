@@ -118,6 +118,7 @@ export async function bulkImportUsers(
   let successCount = 0;
   let cohortAssignedCount = 0;
   const generatedCredentials: { email: string; password: string }[] = [];
+  const createdCredentials: { name: string; email: string; role: Role; password: string }[] = [];
 
   for (const item of usersList) {
     if (!item.email || !item.name) continue;
@@ -165,8 +166,9 @@ export async function bulkImportUsers(
       },
     });
     successCount++;
-    if (!existingNow && generated) {
-      generatedCredentials.push({ email: user.email, password: initialPassword });
+    if (!existingNow) {
+      createdCredentials.push({ name: user.name, email: user.email, role: user.role, password: initialPassword });
+      if (generated) generatedCredentials.push({ email: user.email, password: initialPassword });
     }
 
     // Process cohort / class assignment if provided and user is a student
@@ -208,7 +210,7 @@ export async function bulkImportUsers(
 
   revalidatePath('/[locale]/admin/users', 'page');
   revalidatePath('/[locale]/admin/cohorts', 'page');
-  return { success: true, count: successCount, cohortAssignedCount, generatedCredentials };
+  return { success: true, count: successCount, cohortAssignedCount, generatedCredentials, createdCredentials };
 }
 
 export async function toggleUserActive(userId: string) {
